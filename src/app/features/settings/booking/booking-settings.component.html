@@ -631,15 +631,15 @@
               <!-- Client Info -->
               @if (selectedEventDetails.extendedProps?.shared?.clientName) {
                 <div
-                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700 min-w-0 overflow-hidden"
                 >
-                  <div class="flex items-center gap-3 mb-2">
+                  <div class="flex items-start gap-3 mb-2">
                     <div
                       class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0"
                     >
                       <i class="fas fa-user"></i>
                     </div>
-                    <div>
+                    <div class="min-w-0 flex-1">
                       <p
                         class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                       >
@@ -651,7 +651,7 @@
                             '/portal/clientes',
                             selectedEventDetails.extendedProps?.shared?.clientId,
                           ]"
-                          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm"
+                          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm break-words"
                         >
                           {{
                             formatClientDisplayName(
@@ -663,7 +663,7 @@
                         </a>
                       } @else {
                         <span
-                          class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5"
+                          class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5 break-words"
                         >
                           {{
                             formatClientDisplayName(
@@ -681,10 +681,10 @@
                     selectedEventDetails.extendedProps?.shared?.clientPhone
                   ) {
                     <div
-                      class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300"
+                      class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300 min-w-0"
                     >
-                      <i class="fas fa-phone w-3 text-gray-400"></i>
-                      <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
+                      <i class="fas fa-phone w-3 text-gray-400 flex-shrink-0"></i>
+                      <span class="break-all">{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
                     </div>
                   }
                 </div>
@@ -696,14 +696,22 @@
                 selectedEventDetails.extendedProps?.shared?.paymentStatus
               ) {
                 <div
-                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700 min-w-0 overflow-hidden"
                 >
-                  <div class="flex items-center gap-3 mb-1">
+                  <div class="flex items-center gap-3 mb-2">
                     <div
-                      class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0"
+                      class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                       [ngClass]="{
+                        'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400':
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus === 'paid',
                         'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400':
                           selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending',
+                        'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400':
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus === 'refunded',
+                        'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300':
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'paid' &&
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'pending' &&
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'refunded',
                       }"
                     >
                       <i class="fas fa-euro-sign text-xs"></i>
@@ -714,16 +722,27 @@
                       Pago
                     </p>
                   </div>
-                  <div class="pl-10 flex flex-wrap items-baseline gap-x-2">
+                  <div class="pl-10 flex flex-wrap items-baseline gap-x-2 min-w-0">
                     @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
                       @case ('paid') {
-                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400"
-                          >Pagado</span
+                        <span
+                          class="text-sm font-bold text-emerald-600 dark:text-emerald-400 capitalize"
+                          >Pagado · {{ formatPaymentMethod(selectedEventDetails.extendedProps?.shared?.paymentMethod) }}</span
                         >
                       }
                       @case ('pending') {
                         <span class="text-sm font-bold text-amber-600 dark:text-amber-400"
-                          >Pendiente</span
+                          >Pendiente de pago</span
+                        >
+                      }
+                      @case ('partial') {
+                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400"
+                          >Pago parcial</span
+                        >
+                      }
+                      @case ('refunded') {
+                        <span class="text-sm font-bold text-rose-600 dark:text-rose-400"
+                          >Reembolsado</span
                         >
                       }
                       @default {
@@ -743,6 +762,16 @@
                       </span>
                     }
                   </div>
+                  @if (
+                    selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'paid' &&
+                    selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'refunded' &&
+                    selectedEventDetails.extendedProps?.shared?.totalPrice
+                  ) {
+                    <div class="pl-10 mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <i class="fas fa-exclamation-circle"></i>
+                      <span>Falta cobrar {{ selectedEventDetails.extendedProps?.shared?.totalPrice | currency: (selectedEventDetails.extendedProps?.shared?.currency || 'EUR') }}</span>
+                    </div>
+                  }
                 </div>
               }
             </div>
