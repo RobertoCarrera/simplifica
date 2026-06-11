@@ -772,6 +772,27 @@
                       <span>Falta cobrar {{ selectedEventDetails.extendedProps?.shared?.totalPrice | currency: (selectedEventDetails.extendedProps?.shared?.currency || 'EUR') }}</span>
                     </div>
                   }
+                  <!-- "Marcar como pagado" button — only on local (DB-backed)
+                       bookings that aren't already paid/refunded. Opens the
+                       same payment-method dialog as the "Crear y marcar
+                       como pagado" CTA in the create form. -->
+                  @if (
+                    selectedEventDetails.isLocal &&
+                    selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'paid' &&
+                    selectedEventDetails.extendedProps?.shared?.paymentStatus !== 'refunded'
+                  ) {
+                    <div class="pl-10 mt-3">
+                      <button
+                        type="button"
+                        (click)="openMarkAsPaidDialog()"
+                        [disabled]="markAsPaidLoading()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <i class="fas" [class.fa-coins]="!markAsPaidLoading()" [class.fa-spinner]="markAsPaidLoading()" [class.fa-spin]="markAsPaidLoading()"></i>
+                        <span>Marcar como pagado</span>
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -1087,4 +1108,13 @@
       </div>
     </div>
   </app-confirm-dialog>
+
+  <!-- Payment-method dialog for the "Marcar como pagado" CTA in the
+       event-details modal. Same component used by the event-form
+       "Crear y marcar como pagado" flow. -->
+  <app-payment-method-dialog
+    (selected)="onMarkAsPaidMethodChosen($event)"
+    (cancelled)="markAsPaidDialogRef?.close()"
+    #markAsPaidDialogRef
+  ></app-payment-method-dialog>
 </div>
