@@ -3,6 +3,7 @@ import {
   EventEmitter,
   Input,
   Output,
+  ViewChild,
   inject,
   effect,
   signal,
@@ -30,12 +31,13 @@ import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.ser
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
 import { CustomSelectComponent, SelectOption } from "../../ui/custom-select/custom-select.component";
+import { PaymentMethodDialogComponent, PaymentMethodChoice } from "./payment-method-dialog.component";
 import { firstValueFrom, take } from "rxjs";
 
 @Component({
   selector: "app-event-form",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent, CustomSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent, CustomSelectComponent, PaymentMethodDialogComponent],
   template: `
     <div
       class="evf-overlay"
@@ -48,7 +50,7 @@ import { firstValueFrom, take } from "rxjs";
         <div
           class="evf-backdrop"
           aria-hidden="true"
-          (click)="close.emit()"
+          (click)="closeModal()"
         ></div>
 
         <!-- Modal Panel -->
@@ -399,7 +401,7 @@ import { firstValueFrom, take } from "rxjs";
             <div class="evf-footer-actions">
               <button
                 type="button"
-                (click)="close.emit()"
+                (click)="closeModal()"
                 class="evf-btn-secondary"
               >
                 <i class="fas fa-times sm:hidden"></i>
@@ -407,12 +409,25 @@ import { firstValueFrom, take } from "rxjs";
               </button>
 
               @if (!slotFull()) {
+                @if (!eventToEdit) {
+                  <button
+                    type="button"
+                    [disabled]="!canSubmit() || loading"
+                    (click)="onSubmitAndMarkAsPaid()"
+                    class="evf-btn-paid"
+                    title="Crear la reserva y marcarla como pagada, eligiendo el método"
+                  >
+                    <i class="fas fa-coins text-sm"></i>
+                    <span>Crear y marcar como pagado</span>
+                  </button>
+                }
+
                 <div class="evf-submit-wrap" [class.evf-submit-wrap--blocked]="!canSubmit() && !loading && !checkingCapacity()">
                   <button
                     type="button"
                     [disabled]="!canSubmit()"
                     (click)="onSubmit()"
-                    class="evf-btn-primary"
+                    class="evf-btn-primary evf-btn-primary--main"
                     (mouseenter)="submitTooltipOpen.set(true)"
                     (mouseleave)="submitTooltipOpen.set(false)"
                     (focus)="submitTooltipOpen.set(true)"
@@ -456,6 +471,15 @@ import { firstValueFrom, take } from "rxjs";
         </div>
       </div>
     </div>
+
+    <!-- Payment method dialog — opens when "Crear y marcar como pagado" is clicked.
+         Emits the chosen method upward; the parent then re-runs onSubmit
+         with that method passed in. -->
+    <app-payment-method-dialog
+      (selected)="onPaymentMethodChosen($event)"
+      (cancelled)="paymentMethodDialogRef?.close()"
+      #paymentMethodDialogRef
+    ></app-payment-method-dialog>
 
   `,
   styles: [`
@@ -1264,6 +1288,23 @@ import { firstValueFrom, take } from "rxjs";
       background: rgb(51 65 85);
     }
 
+    /* ---- "Crear y marcar como pagado" — secondary CTA with green tint ---- */
+    .evf-btn-paid {
+      background: rgb(22 163 74); /* green-600 */
+      color: white;
+    }
+    .evf-btn-paid:hover:not(:disabled) {
+      background: rgb(21 128 61); /* green-700 */
+    }
+    .evf-btn-paid:disabled {
+      background: rgb(134 239 172); /* green-300 (faded) */
+      cursor: not-allowed;
+    }
+    :host-context(.dark) .evf-btn-paid:disabled,
+    .dark .evf-btn-paid:disabled {
+      background: rgb(20 83 45); /* green-900 (faded on dark) */
+    }
+
     /* ---- Submit-button wrapper + disabled-blocked tooltip ---- */
     .evf-submit-wrap {
       position: relative;
@@ -1597,6 +1638,78 @@ import { firstValueFrom, take } from "rxjs";
       align-items: center;
       gap: 0.5rem;
       flex-shrink: 0;
+      /* On mobile the 3 actions don't fit on one line, so stack them
+         vertically. column-reverse keeps the primary "Crear Reserva"
+         action at the bottom (closest to the user's thumb) and the
+         less-frequent "Cancelar" / "Crear y marcar como pagado" at the
+         top. On sm+ we lay them out horizontally in a single row. */
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    @media (min-width: 640px) {
+      .evf-footer-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+      }
+    }
+
+    /* Primary submit ("Crear Reserva") — visually dominant. Larger
+       padding and font than the other footer actions so the eye
+       lands on it first, especially on mobile. */
+    .evf-btn-primary--main {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      order: 1;
+    }
+    @media (min-width: 640px) {
+      .evf-btn-primary--main {
+        order: 2; /* keep primary rightmost in the row */
+      }
+    }
+
+    /* Secondary "Crear y marcar como pagado" — outline style, less
+       visually heavy than the primary. Shown in the middle of the
+       action cluster so the primary remains the call to action. */
+    .evf-btn-paid {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: var(--evf-radius-md);
+      background: transparent;
+      color: rgb(22 163 74);
+      border: 1.5px solid rgb(34 197 94 / 0.4);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      order: 2;
+    }
+    .evf-btn-paid:hover:not(:disabled) {
+      background: rgb(34 197 94 / 0.08);
+      border-color: rgb(34 197 94 / 0.7);
+    }
+    .evf-btn-paid:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    :host-context(.dark) .evf-btn-paid,
+    .dark .evf-btn-paid {
+      color: rgb(74 222 128);
+      border-color: rgb(74 222 128 / 0.3);
+    }
+    :host-context(.dark) .evf-btn-paid:hover:not(:disabled),
+    .dark .evf-btn-paid:hover:not(:disabled) {
+      background: rgb(74 222 128 / 0.1);
+      border-color: rgb(74 222 128 / 0.6);
+    }
+    @media (min-width: 640px) {
+      .evf-btn-paid {
+        order: 1; /* sits between Cancelar and the primary */
+      }
     }
 
     /* ================================================================
@@ -1666,6 +1779,42 @@ export class EventFormComponent implements OnInit, OnChanges {
 
   loading = false;
   checkingCapacity = signal(false);
+  /**
+   * Payment method selected in the dialog when "Crear y marcar como pagado"
+   * was clicked. null = the user is using the regular "Crear Reserva" path
+   * (no payment method, status stays pending).
+   */
+  pendingPaymentMethod: PaymentMethodChoice | null = null;
+  /** Reference to the payment-method dialog so we can open it from TS. */
+  @ViewChild('paymentMethodDialogRef') paymentMethodDialogRef?: PaymentMethodDialogComponent;
+
+  /**
+   * Open the payment-method dialog. Triggered by the
+   * "Crear y marcar como pagado" footer button.
+   */
+  onSubmitAndMarkAsPaid(): void {
+    if (!this.canSubmit() || this.loading) return;
+    this.paymentMethodDialogRef?.open();
+  }
+
+  /**
+   * Called by the dialog when the user picks a method. Store the choice
+   * and re-run onSubmit with the method passed through.
+   */
+  onPaymentMethodChosen(selection: { method: PaymentMethodChoice }): void {
+    this.pendingPaymentMethod = selection.method;
+    this.onSubmit();
+  }
+
+  /**
+   * Reset modal-local state and emit close. Used by the Cancel button
+   * and the X close icon. Keeps the payment-method picker fresh across
+   * opens so a previous "marcar como pagado" choice doesn't leak.
+   */
+  closeModal(): void {
+    this.pendingPaymentMethod = null;
+    this.close.emit();
+  }
 
   get serviceName(): string {
     const service = this.form.get("service")?.value as any;
@@ -3308,7 +3457,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         if (!companyId)
           throw new Error("No se pudo obtener el ID de la empresa");
 
-        const bookingData = {
+        const bookingData: any = {
           company_id: companyId,
           client_id: finalClient.id,
           customer_name:
@@ -3325,6 +3474,15 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           session_type: (formValue as any).session_type || "presencial",
           total_price: (formValue.service as any)?.base_price || undefined,
         };
+        // If the user clicked "Crear y marcar como pagado" the dialog
+        // stored the chosen method in pendingPaymentMethod. Persist it
+        // on the booking and mark the payment_status as paid. For all
+        // other paths (regular Crear Reserva, edit) the fields stay
+        // unset so the booking starts in pending/awaiting-payment.
+        if (this.pendingPaymentMethod) {
+          bookingData.payment_method = this.pendingPaymentMethod;
+          bookingData.payment_status = 'paid';
+        }
 
         if (this.eventToEdit && this.eventToEdit.isLocal) {
           const localId =
@@ -3587,6 +3745,10 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
 
       this.created.emit({ localBooking, googleEvent: createdGoogleEvent });
+      // Reset the payment-method picker so a future "Crear Reserva"
+      // (without marking as paid) doesn't accidentally carry over
+      // the previous "marcar como pagado" choice.
+      this.pendingPaymentMethod = null;
       this.close.emit();
     } catch (error: any) {
       console.error("Error creating event:", error);
