@@ -406,8 +406,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'nav.docs',
       icon: 'book-open',
       route: '/docs',
-      module: 'core',
-      sidebarKey: 'core_/docs',
+      module: 'production',
+      sidebarKey: 'documentacion',
     },
     {
       id: 2,

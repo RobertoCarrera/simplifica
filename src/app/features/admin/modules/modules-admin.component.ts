@@ -28,6 +28,7 @@ const SIDEBAR_CATALOG: { key: string; label: string; icon: string; category: 'co
   { key: 'moduloReservas',      label: 'Reservas',          icon: 'fa-calendar-alt',    category: 'production' },
   { key: 'moduloProyectos',     label: 'Proyectos',         icon: 'fa-project-diagram', category: 'production' },
   { key: 'marketing',          label: 'Marketing',         icon: 'fa-bullhorn',       category: 'production' },
+  { key: 'documentacion',      label: 'Documentación',     icon: 'fa-book',           category: 'production' },
 ];
 
 export interface SidebarOrderItem {
@@ -72,6 +73,7 @@ export class ModulesAdminComponent implements OnInit {
   pricingLoading = signal(false);
   plans = signal<Plan[]>([]);
   addons = signal<PlanAddon[]>([]);
+  pricingSavingKey = signal<string | null>(null); // `${planId}:${moduleKey}` while RPC in flight
 
   // Modules catalog for resolving module_key → label
   private moduleLabelMap: Record<string, string> = Object.fromEntries(
@@ -350,6 +352,57 @@ export class ModulesAdminComponent implements OnInit {
 
   moduleLabel(key: string): string {
     return this.moduleLabelMap[key] || key;
+  }
+
+  /** All module keys available in the catalog (derived from SIDEBAR_CATALOG). */
+  get availableModuleKeys(): string[] {
+    return Object.keys(this.moduleLabelMap);
+  }
+
+  isModuleInPlan(plan: Plan, moduleKey: string): boolean {
+    return plan.included_modules.includes(moduleKey);
+  }
+
+  /**
+   * Toggle a module in/out of a plan's included_modules.
+   * Optimistic update: flips the local signal first, then calls the RPC.
+   * On error, reverts and shows a toast.
+   */
+  async toggleModuleInPlan(plan: Plan, moduleKey: string) {
+    const wasIncluded = this.isModuleInPlan(plan, moduleKey);
+    const wantIncluded = !wasIncluded;
+    const key = `${plan.id}:${moduleKey}`;
+    this.pricingSavingKey.set(key);
+
+    // Optimistic local update
+    const updated: Plan = {
+      ...plan,
+      included_modules: wantIncluded
+        ? Array.from(new Set([...plan.included_modules, moduleKey]))
+        : plan.included_modules.filter((k) => k !== moduleKey),
+    };
+    this.plans.set(this.plans().map((p) => (p.id === plan.id ? updated : p)));
+
+    try {
+      await firstValueFrom(this.planService.togglePlanModule(plan, moduleKey, wantIncluded));
+      this.toast.success(
+        'Plan actualizado',
+        wantIncluded
+          ? `${this.moduleLabel(moduleKey)} añadido a ${plan.name}.`
+          : `${this.moduleLabel(moduleKey)} quitado de ${plan.name}.`,
+      );
+    } catch (e: any) {
+      // Revert
+      this.plans.set(this.plans().map((p) => (p.id === plan.id ? plan : p)));
+      console.error('Error updating plan module:', e);
+      this.toast.error('Error', e?.message || 'No se pudo actualizar el plan.');
+    } finally {
+      this.pricingSavingKey.set(null);
+    }
+  }
+
+  isPricingCellSaving(planId: string, moduleKey: string): boolean {
+    return this.pricingSavingKey() === `${planId}:${moduleKey}`;
   }
 
   /** Add-ons that apply to a given plan (empty applies_to_plans = applies to all). */
