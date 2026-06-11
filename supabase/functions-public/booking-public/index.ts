@@ -126,7 +126,7 @@ async function handleGetServices(
     const { data: services, error: se } = await db
         .from('services')
         .select(`id, name, description, duration_minutes, base_price, booking_color,
-            professional_services ( professionals ( id, display_name, avatar_url, is_active ) )`)
+            professional_services ( professionals ( id, display_name, avatar_url, is_active, is_public ) )`)
         .eq('company_id', (company as any).id)
         .eq('is_bookable', true)
         .eq('is_public', true)
@@ -137,7 +137,8 @@ async function handleGetServices(
         .from('professionals')
         .select('id, display_name, title, bio, avatar_url')
         .eq('company_id', (company as any).id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_public', true);
     if (pe) throw pe;
 
     // Resolve enabled filters from company_filter_visibility table.
@@ -178,7 +179,7 @@ async function handleGetServices(
             color: s.booking_color,
             professionals: (s.professional_services ?? [])
                 .map((ps: any) => ps.professionals)
-                .filter((p: any) => p?.id && p?.display_name && p.is_active !== false)
+                .filter((p: any) => p?.id && p?.display_name && p.is_active !== false && p.is_public !== false)
                 .map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url ?? null })),
         })),
         professionals: (professionals ?? []).map((p: any) => ({
