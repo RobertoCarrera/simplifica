@@ -45,7 +45,9 @@
       "label": "Navegació de l'article",
       "previous": "Anterior",
       "next": "Següent"
-    }
+    },
+    "categoryEmpty": "Aquesta categoria no té articles encara",
+    "backToIndex": "Tornar a la pàgina principal"
   },
   "sidebar": {
     "expandir": "Expandir barra lateral",

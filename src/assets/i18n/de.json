@@ -37,6 +37,32 @@
     "facturas": "Rechnungen",
     "rgpd": "DSGVO"
   },
+  "docs": {
+    "sidebar": {
+      "label": "Dokumentationsindex",
+      "empty": "Keine Artikel"
+    },
+    "search": {
+      "placeholder": "In der Dokumentation suchen…",
+      "empty": "Keine Ergebnisse für {q}"
+    },
+    "toc": {
+      "label": "Inhaltsverzeichnis",
+      "title": "In diesem Artikel"
+    },
+    "mobileTabs": {
+      "label": "Ansicht wechseln",
+      "index": "Index",
+      "article": "Artikel"
+    },
+    "footerNav": {
+      "label": "Artikelnavigation",
+      "previous": "Zurück",
+      "next": "Weiter"
+    },
+    "categoryEmpty": "Diese Kategorie enthält noch keine Artikel",
+    "backToIndex": "Zurück zum Index"
+  },
   "sidebar": {
     "expandir": "Erweitern",
     "colapsar": "Einklappen",

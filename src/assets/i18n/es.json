@@ -45,7 +45,9 @@
       "label": "Navegación del artículo",
       "previous": "Anterior",
       "next": "Siguiente"
-    }
+    },
+    "categoryEmpty": "Esta categoría no tiene artículos todavía",
+    "backToIndex": "Volver al índice"
   },
   "sidebar": {
     "expandir": "Expandir sidebar",
@@ -1949,7 +1951,7 @@
       "noLogsDesc": "No se han encontrado emails con los filtros seleccionados.",
       "date": "Fecha",
       "recipient": "Destinatario",
-    "type": "Tipo",
+      "type": "Tipo",
       "subject": "Asunto",
       "error": "Error",
       "page": "Página {current} de {total}"
@@ -2720,7 +2722,6 @@
   },
   "marketing": {
     "title": "Marketing",
-
     "panel": "Panel",
     "campaigns": "Campañas",
     "totalCampaigns": "Total Campañas",
@@ -2746,7 +2747,20 @@
     "statusLabel": "Estado",
     "audience": "Audiencia",
     "created": "Creada",
-    "actions": "Acciones",
+    "actions": {
+      "newCampaign": "Nueva campaña",
+      "create": "Crear",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar esta campaña? Esta acción no se puede deshacer.",
+      "filterSubscribersOnly": "Solo suscriptores con consentimiento",
+      "send": "Enviar",
+      "cancelSend": "Cancelar envío",
+      "confirmSend": "Enviar ahora",
+      "close": "Cerrar"
+    },
     "sendNow": "Enviar ahora",
     "backToMarketing": "Volver a Marketing",
     "editCampaign": "Editar campaña",
@@ -2837,7 +2851,6 @@
     "filterBirthday3months": "Próximos 3 meses",
     "clearFilters": "Limpiar filtros",
     "filterActiveResults": "Resultados",
-
     "subtitle": "Panel de control de campañas de marketing",
     "stats": {
       "campaigns": "Campañas",
@@ -2852,20 +2865,6 @@
       "bannerEmpty": "Aún no hay clientes con consentimiento marketing. Pídeles que lo acepten desde el portal de cliente o desde el panel RGPD.",
       "viewPanel": "Ver consentimiento",
       "noSubscribers": "No hay suscriptores con consentimiento marketing"
-    },
-    "actions": {
-      "newCampaign": "Nueva campaña",
-      "create": "Crear",
-      "cancel": "Cancelar",
-      "save": "Guardar",
-      "edit": "Editar",
-      "delete": "Eliminar",
-      "confirmDelete": "¿Eliminar esta campaña? Esta acción no se puede deshacer.",
-      "filterSubscribersOnly": "Solo suscriptores con consentimiento",
-      "send": "Enviar",
-      "cancelSend": "Cancelar envío",
-      "confirmSend": "Enviar ahora",
-      "close": "Cerrar"
     },
     "form": {
       "name": "Nombre de la campaña",
@@ -2905,6 +2904,5 @@
       "resultSummary": "{{sent}} enviados, {{failed}} fallidos de {{total}} destinatarios.",
       "firstErrors": "Primeros errores"
     }
-
   }
 }
