@@ -32,10 +32,10 @@ import { AuthService } from '../../../services/auth.service';
         <app-responsive-sidebar></app-responsive-sidebar>
 
         <!-- Main content area -->
-        <div class="main-content-area flex flex-col h-full" [class]="mainAreaClasses()">
+        <div class="main-content-area flex flex-col h-full" [class.collapsed]="mainAreaClasses() === 'collapsed'">
           <!-- Page content -->
-          <main class="flex-1" [class]="getMainContentPadding() + ' ' + getOverflowClass()">
-            <div [class]="getContentWrapperClasses()">
+          <main class="flex-1" [ngClass]="[getMainContentPadding(), getOverflowClass()]">
+            <div [ngClass]="getContentWrapperClasses()">
               <router-outlet></router-outlet>
             </div>
           </main>

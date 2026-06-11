@@ -3,14 +3,15 @@ module.exports = {
   darkMode: 'class',
   content: ['./src/**/*.{html,ts}'],
   theme: {
-    // Custom breakpoints:
-    //   3xl = 1100px → three-column docs shell (sidebar + content + ToC)
-    //   md  = 768px  (Tailwind default)
-    //   sm  = 640px  (Tailwind default)
-    screens: {
-      '3xl': '1100px',
-    },
+    // Custom breakpoints. IMPORTANT: must live under `extend.screens` so the
+    // Tailwind defaults (sm 640, md 768, lg 1024, xl 1280, 2xl 1536) are kept.
+    // Putting `3xl` directly under `theme.screens` REPLACED the default
+    // screen set, so `md:flex` / `md:hidden` stopped being generated and the
+    // desktop sidebar collapsed to mobile layout. (regression Jun 2026)
     extend: {
+      screens: {
+        '3xl': '1100px', // three-column docs shell (sidebar + content + ToC)
+      },
       colors: {
         primary: {
           50: 'var(--color-primary-50)',
