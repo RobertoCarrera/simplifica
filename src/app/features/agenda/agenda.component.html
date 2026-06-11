@@ -1,5 +1,22 @@
 <div class="flex h-full bg-white dark:bg-gray-800 overflow-hidden text-sm relative">
 
+  <!-- DEBUG-BLOCK: investigar por qué Roberto (professional) ve el toggle "Servicio" -->
+  <div style="position:fixed;top:5px;right:5px;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-width:560px;border:2px solid #0f0;white-space:pre-wrap;line-height:1.3;">
+🔍 DEBUG AGENDA-BLOCK-MODE
+authService.userRole(): {{ authService.userRole() }}
+canBlockByService(): {{ canBlockByService() }}
+isProfessional(): {{ isProfessional() }}
+email: {{ authService.userProfile?.email }}
+is_super_admin (profile): {{ authService.userProfile?.is_super_admin }}
+isRoberto(): {{ authService.isRoberto() }}
+isAdmin(): {{ authService.isAdmin() }}
+isSuperAdmin(): {{ authService.isSuperAdmin() }}
+isInProfessionalMode(): {{ authService.isInProfessionalMode() }}
+currentCompanyId(): {{ authService.currentCompanyId() }}
+currentProfessionalId(): {{ authService.activeProfessionalId() ?? 'NULL' }}
+blockMode (form): {{ blockDateForm().blockMode }}
+  </div>
+
   <ng-template #sideContent>
     <!-- Left Side: Sidebar Filters Inner -->
     <!-- Mini Calendar -->
