@@ -157,7 +157,14 @@ export class CustomSelectComponent {
   }
 
   selectOption(option: SelectOption): void {
-    if (option.disabled) return;
+    // Allow selecting "disabled" options too. The label already indicates
+    // unavailability (e.g. "(no disponible)") so the user can see what
+    // they're picking, and downstream validation in the parent component
+    // (e.g. event-form's submitBlockReason) is the right place to block
+    // submit — not the click handler. Dropping the click on disabled
+    // options made the form silently appear "filled" (the label was shown
+    // in the trigger) but never propagated to the form control, leaving
+    // the user stuck with a tooltip claiming "Servicio not selected".
     this.value = option.value;
     this.valueChange.emit(option.value);
     this.close();

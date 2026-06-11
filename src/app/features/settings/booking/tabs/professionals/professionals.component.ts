@@ -110,14 +110,29 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         // user_id is no longer strictly required at creation if we are inviting by email
         // We will validate manually before submit
         this.form = this.fb.group({
-            user_id: [''], 
+            user_id: [''],
             display_name: ['', Validators.required],
             title: [''],
             bio: [''],
             is_active: [true],
+            // Default true so a new pro is public from the start; the DB CHECK
+            // constraint + the active-effect below force it back to false if
+            // is_active is toggled off.
+            is_public: [true],
             google_calendar_id: [''],
             default_resource_id: [''],
             color: ['']
+        });
+
+        // When is_active flips to false, force is_public to false too. The
+        // DB CHECK constraint would reject the save otherwise (and the UI
+        // does the same to keep state consistent). The reverse — turning
+        // is_active back on — does NOT auto-re-enable is_public, because
+        // being public again is a deliberate marketing decision.
+        this.form.get('is_active')?.valueChanges.subscribe((active) => {
+            if (active === false) {
+                this.form.get('is_public')?.setValue(false, { emitEvent: false });
+            }
         });
     }
 
@@ -311,6 +326,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 title: professional.title || '',
                 bio: professional.bio || '',
                 is_active: professional.is_active,
+                is_public: professional.is_public ?? (professional.is_active !== false),
                 google_calendar_id: professional.google_calendar_id || '',
                 default_resource_id: professional.default_resource_id || '',
                 color: professional.color || this.getSuggestedColor()
@@ -324,6 +340,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 title: '',
                 bio: '',
                 is_active: true,
+                is_public: true,
                 google_calendar_id: '',
                 default_resource_id: '',
                 color: this.getSuggestedColor()
@@ -717,6 +734,10 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 title: val.title,
                 bio: val.bio,
                 is_active: val.is_active,
+                // The service layer normalizes this against is_active (if active
+                // is false, is_public is forced to false) so it's safe to
+                // pass the raw form value here.
+                is_public: val.is_public,
                 avatar_url: avatarUrl || undefined,
                 google_calendar_id: val.google_calendar_id || undefined,
                 default_resource_id: val.default_resource_id || null,

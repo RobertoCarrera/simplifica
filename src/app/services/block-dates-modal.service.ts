@@ -20,6 +20,8 @@ export interface BlockDateFormData {
 @Injectable({ providedIn: 'root' })
 export class BlockDatesModalService {
   showModal = signal(false);
+  editingBlockId = signal<string | null>(null);
+  editingBlockType = signal<'professional' | 'service' | null>(null);
   formData = signal<BlockDateFormData>({
     professionalId: '',
     serviceId: '',
@@ -88,5 +90,18 @@ export class BlockDatesModalService {
       professionalId: mode === 'professional' ? f.professionalId : '',
       serviceId: mode === 'service' ? f.serviceId : '',
     }));
+  }
+
+  editBlock(block: BlockDateFormData, type: BlockMode, id: string) {
+    this.editingBlockId.set(id);
+    this.editingBlockType.set(type);
+    this.formData.set(block);
+    this.showModal.set(true);
+  }
+
+  resetForm() {
+    this.editingBlockId.set(null);
+    this.editingBlockType.set(null);
+    this.close();
   }
 }

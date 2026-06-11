@@ -431,15 +431,55 @@
                   </div>
                 </div>
 
-                <!-- Status Toggle -->
-                <div class="flex items-center pt-6">
-                  <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 w-full">
+                <!-- Status Toggles: Activo + Público.
+                     The two are independent flags in the DB, but they're not
+                     fully orthogonal: a professional that is_active=false
+                     is forced to is_public=false (DB CHECK constraint
+                     `professionals_public_requires_active`). We mirror that
+                     rule in the UI by disabling the "Público" toggle whenever
+                     "Activo" is off, and by auto-flipping it off the moment
+                     the user turns "Activo" off. -->
+                <div class="flex flex-col sm:flex-row items-stretch gap-4 pt-6">
+                  <!-- Activo -->
+                  <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex-1">
                     <label class="flex items-center cursor-pointer group">
                       <div class="relative">
                         <input type="checkbox" formControlName="is_active" class="sr-only peer" />
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
                       </div>
-                      <span class="ml-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Activo</span>
+                      <div class="ml-3 min-w-0">
+                        <div class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Activo</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Puede recibir reservas y aparecer en la agenda.</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  <!-- Público -->
+                  <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex-1"
+                       [class.opacity-50]="!form.get('is_active')?.value"
+                       [attr.title]="!form.get('is_active')?.value ? 'Para ser público el profesional debe estar activo.' : null">
+                    <label class="flex items-center group"
+                           [class.cursor-pointer]="form.get('is_active')?.value"
+                           [class.cursor-not-allowed]="!form.get('is_active')?.value">
+                      <div class="relative">
+                        <input
+                          type="checkbox"
+                          formControlName="is_public"
+                          class="sr-only peer"
+                          [attr.disabled]="!form.get('is_active')?.value ? true : null"
+                        />
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-500"
+                             [class.opacity-60]="!form.get('is_active')?.value"></div>
+                      </div>
+                      <div class="ml-3 min-w-0">
+                        <div class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                          Público
+                          @if (!form.get('is_active')?.value) {
+                            <span class="ml-1 text-xs font-normal text-gray-400">(requiere activo)</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Aparece en la URL pública de reservas para clientes externos.</div>
+                      </div>
                     </label>
                   </div>
                 </div>

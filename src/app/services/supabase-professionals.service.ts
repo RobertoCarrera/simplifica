@@ -14,6 +14,7 @@ export interface Professional {
     bio?: string;
     avatar_url?: string;
     is_active: boolean;
+    is_public?: boolean; // Client-facing visibility for agenda/bookings
     color?: string; // HEX color for calendar
     google_calendar_id?: string;
     default_resource_id?: string;
@@ -251,16 +252,16 @@ export class SupabaseProfessionalsService {
     }
 
     /** Lightweight query for dropdowns/calendars — no nested JOINs */
-    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active' | 'calendar_views' | 'slug'>[]> {
+    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active' | 'is_public' | 'calendar_views' | 'slug'>[]> {
         const targetCompanyId = companyId || this.companyId;
         if (!targetCompanyId) return from(Promise.resolve([]));
 
         return from(
             this.supabase
                 .from('professionals')
-                .select('id, user_id, company_id, display_name, color, is_active, calendar_views, slug')
+                .select('id, user_id, company_id, display_name, color, is_active, is_public, calendar_views, slug')
                 .eq('company_id', targetCompanyId)
-                .eq('is_active', true)
+                .eq('is_public', true)
                 .order('display_name')
                 .limit(200)
         ).pipe(
@@ -301,6 +302,14 @@ export class SupabaseProfessionalsService {
         // Actually, PostgREST upsert requires the conflict columns. If user_id is null, it might create duplicates.
         // But for our case, if we have email, we can just insert and rely on accept_company_invitation to link it.
 
+        // Enforce the business rule at the application layer too: you cannot
+        // create a pro that is_public=true but is_active=false. The DB CHECK
+        // constraint `professionals_public_requires_active` will reject the
+        // row if we don't normalize here, so this gives a friendlier error.
+        const isActive = professional.is_active ?? true;
+        const wantsPublic = professional.is_public ?? true;
+        const isPublic = isActive ? wantsPublic : false;
+
         const payload = {
             user_id: professional.user_id || null,
             company_id: professional.company_id || this.companyId,
@@ -311,7 +320,8 @@ export class SupabaseProfessionalsService {
             avatar_url: professional.avatar_url,
             google_calendar_id: professional.google_calendar_id || null,
             default_resource_id: professional.default_resource_id || null,
-            is_active: professional.is_active ?? true,
+            is_active: isActive,
+            is_public: isPublic,
             color: professional.color || null
         };
 
@@ -338,6 +348,19 @@ export class SupabaseProfessionalsService {
     }
 
     async updateProfessional(id: string, updates: Partial<Professional>): Promise<Professional> {
+        // Enforce the business rule: if the caller is flipping is_active to
+        // false, force is_public to false too (a deactivated pro must not
+        // remain public). The DB CHECK constraint would catch this anyway,
+        // but normalizing here lets the UI stay consistent without 400s.
+        let nextIsPublic = updates.is_public;
+        if (updates.is_active === false) {
+            nextIsPublic = false;
+        }
+        // Symmetric guard: if the caller is trying to set is_public=true but
+        // not setting is_active, we have to read the current row to know
+        // whether to allow it. Cheaper to let the DB CHECK constraint reject
+        // it in that rare case and let the UI handle the error.
+
         const { data, error } = await this.supabase
             .from('professionals')
             .update({
@@ -350,6 +373,7 @@ export class SupabaseProfessionalsService {
                 google_calendar_id: updates.google_calendar_id,
                 default_resource_id: updates.default_resource_id,
                 is_active: updates.is_active,
+                is_public: nextIsPublic,
                 color: updates.color,
                 calendar_views: updates.calendar_views,
                 updated_at: new Date().toISOString()
@@ -430,6 +454,13 @@ export class SupabaseProfessionalsService {
      * Pass `null`/`undefined` to return all bookable services for the company
      * (used by the professionals management tab where you need the full list
      * to assign services).
+     *
+     * NOTE: this method does NOT filter by `professionals.is_public`. The
+     * `is_public` flag controls whether a professional appears in the public
+     * client-facing booking URL — it is NOT a permission boundary for the
+     * internal CRM. An admin creating a booking for a non-public pro from
+     * the calendar modal must still see that pro's services. The public
+     * URL has its own endpoint that DOES apply the is_public filter.
      */
     async getBookableServices(
         professionalId?: string | null,

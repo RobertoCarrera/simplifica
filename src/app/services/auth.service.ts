@@ -91,6 +91,10 @@ export class AuthService {
   // as NG0200 in browsers with strict DI (Vercel production build). We resolve it
   // lazily via Injector when actually needed.
   private injector = inject(Injector);
+  /** Lazy getter to avoid circular dependency with SupabaseModulesService at construction time. */
+  private get modulesService(): SupabaseModulesService {
+    return this.injector.get(SupabaseModulesService);
+  }
   /** True while _doSetCurrentUser runs after cache hydration — prevents re-blocking the sidebar. */
   private _hydratedFromCache = false;
   /** True only for the first setCurrentUser call of a session (with or without cache).

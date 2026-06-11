@@ -1620,7 +1620,11 @@
     "saving": "Guardando...",
     "blockDatesBtn": "Bloquear fechas",
     "activeBlocks": "Bloqueos activos",
-    "deleteBlock": "Eliminar bloqueo"
+    "deleteBlock": "Eliminar bloqueo",
+    "updateBlock": "Actualizar bloqueo",
+    "cancelEdit": "Cancelar",
+    "public": "Público",
+    "publicHelp": "Visible en la agenda para clientes"
   },
   "webmail": {
     "myAccounts": "Mis Cuentas",
