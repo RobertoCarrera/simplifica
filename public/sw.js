@@ -1,7 +1,7 @@
-const CACHE_NAME = 'simplifica-crm-v2.2';
-const STATIC_CACHE = 'simplifica-static-v2.2';
-const DYNAMIC_CACHE = 'simplifica-dynamic-v2.2';
-const API_CACHE = 'simplifica-api-v2.2';
+const CACHE_NAME = 'simplifica-crm-v2.3';
+const STATIC_CACHE = 'simplifica-static-v2.3';
+const DYNAMIC_CACHE = 'simplifica-dynamic-v2.3';
+const API_CACHE = 'simplifica-api-v2.3';
 
 // API cache TTL: 5 minutes
 const API_CACHE_TTL_MS = 5 * 60 * 1000;
