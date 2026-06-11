@@ -3190,24 +3190,35 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       // `client` control ends up null and the user sees no client at all
       // in the edit modal — even though the booking obviously had one.
       //
-      // clientId may be:
-      //   - a real uuid → stub mirrors it (user can swap to a real one)
-      //   - 'new'        → invitation-only, keep id 'new'
-      //   - null/undef   → treat as invitation-only; the save flow will
-      //                    auto-create the client from name+email
+      // The stub starts life as isNew=true (i.e. needs the save flow's
+      // auto-create block). populateEditForm runs an async DB lookup
+      // immediately after this — see the resolvedClientBlock below —
+      // and replaces the stub with the real client if the email/name
+      // matches an existing record. This is the fix for the duplicate
+      // client bug: previously, editing a booking whose client was
+      // filtered out of this.clients (e.g. professional mode) caused
+      // a brand-new client row to be created on every save.
       const clientName =
         shared.clientName ||
         shared.client_name ||
         '';
       const clientEmail = shared.clientEmail || shared.client_email || '';
       const displayName = clientName || `Cliente ${(clientId || 'new').toString().slice(0, 8)}`;
-      // CRITICAL: when the original clientId is null or 'new', we set
-      // isNew=true so the save flow's auto-create block kicks in and
-      // replaces this stub's id with a real uuid before the booking
-      // payload hits the DB. Without isNew here, the form's client.id
-      // would stay as 'new'/'null' and PostgREST would reject the
-      // UPDATE with 'invalid input syntax for type uuid'.
+      // When clientId is null/undefined/'new', the booking is an
+      // invitation-only one. The save flow will auto-create the client
+      // from name+email. When clientId is a real uuid that simply
+      // wasn't loaded into this.clients, the stub mirrors it so the
+      // UPDATE doesn't fail with a UUID error — but the async
+      // resolution below may still swap it for the real client if
+      // found.
       const isInvitationStub = !clientId || clientId === 'new';
+      // For invitation-only bookings (clientId null/'new'), isNew is
+      // true so the save flow auto-creates the client. For real-uuid
+      // bookings where the client simply isn't in this.clients (e.g.
+      // filtered out by professional mode), isNew stays FALSE: the
+      // save flow uses the existing clientId as-is. This avoids the
+      // duplicate-client bug where editing a booking always created
+      // a new client row.
       client = {
         id: clientId || 'new',
         name: displayName,
@@ -3496,6 +3507,81 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       let targetMemberIdForOwner: string | undefined;
       if (assignedProfessional?.id) {
         targetMemberIdForOwner = assignedProfessional.id;
+      }
+
+      // Edit-flow safety net: when editing a booking whose client was
+      // NOT found in this.clients (e.g. the parent component loaded
+      // a filtered list), populateEditForm built a legacy stub. If
+      // the stub has a real-looking uuid we trust it as-is. If the
+      // stub has an email but its id is null/'new', or the email
+      // matches a different existing client, we attempt a DB lookup
+      // to grab the real client row. This is the fix for the
+      // duplicate-client bug: previously, every edit created a new
+      // client row whenever the booking's client was filtered out.
+      if (
+        this.eventToEdit &&
+        finalClient &&
+        (finalClient._legacyStub || !finalClient.id || finalClient.id === 'new') &&
+        (finalClient.email || finalClient.name)
+      ) {
+        try {
+          const companyId = this.authService.currentCompanyId();
+          if (companyId) {
+            let resolved: any = null;
+            if (finalClient.email) {
+              const { data } = await this.supabase
+                .getClient()
+                .from('clients')
+                .select('id, name, surname, email, phone')
+                .eq('company_id', companyId)
+                .ilike('email', finalClient.email)
+                .maybeSingle();
+              resolved = data;
+            }
+            if (!resolved && finalClient.name) {
+              // Strip the displayName suffix "(email)" if present so the
+              // name match compares against the stored name field only.
+              const bareName = finalClient.name
+                .replace(/\s*\([^()]*\)\s*$/, '')
+                .trim();
+              if (bareName) {
+                const { data } = await this.supabase
+                  .getClient()
+                  .from('clients')
+                  .select('id, name, surname, email, phone')
+                  .eq('company_id', companyId)
+                  .ilike('name', bareName)
+                  .maybeSingle();
+                resolved = data;
+              }
+            }
+            if (resolved?.id) {
+              // Replace the stub with the real client so the booking
+              // UPDATE uses the existing uuid and NO new row is created.
+              finalClient = {
+                id: resolved.id,
+                name: resolved.name,
+                surname: resolved.surname,
+                email: resolved.email,
+                phone: resolved.phone,
+                displayName: `${resolved.name || ''} ${resolved.surname || ''} (${resolved.email || ''})`.trim(),
+              };
+              this.form.patchValue(
+                { client: finalClient as any },
+                { emitEvent: false },
+              );
+            } else if (!finalClient.id || finalClient.id === 'new') {
+              // Truly no client exists — fall through to isNew auto-create
+              finalClient.isNew = true;
+            }
+            // Else: real uuid was on the stub but DB lookup didn't return
+            // a match (rare — could be a deleted client). Trust the uuid
+            // and keep isNew=false.
+          }
+        } catch (err) {
+          console.warn('[edit] legacy-stub client resolution failed, trusting stub:', err);
+          // Trust the stub; if it had a real uuid, the UPDATE will still succeed.
+        }
       }
 
       if (finalClient && finalClient.isNew) {
