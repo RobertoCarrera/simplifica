@@ -3181,15 +3181,21 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         '';
       const clientEmail = shared.clientEmail || shared.client_email || '';
       const displayName = clientName || `Cliente ${(clientId || 'new').toString().slice(0, 8)}`;
+      // CRITICAL: when the original clientId is null or 'new', we set
+      // isNew=true so the save flow's auto-create block kicks in and
+      // replaces this stub's id with a real uuid before the booking
+      // payload hits the DB. Without isNew here, the form's client.id
+      // would stay as 'new'/'null' and PostgREST would reject the
+      // UPDATE with 'invalid input syntax for type uuid'.
+      const isInvitationStub = !clientId || clientId === 'new';
       client = {
         id: clientId || 'new',
         name: displayName,
         displayName,
         email: clientEmail,
         phone: null,
-        // Mark as not in the active list — UI can show a small "(no está
-        // en tu lista)" hint, and the user can pick a real one to replace.
         isAvailable: false,
+        isNew: isInvitationStub,
         _legacyStub: true,
       } as any;
     }
