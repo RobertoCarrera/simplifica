@@ -126,9 +126,10 @@ async function handleGetServices(
     const { data: services, error: se } = await db
         .from('services')
         .select(`id, name, description, duration_minutes, base_price, booking_color,
-            professional_services ( professionals ( id, display_name, avatar_url ) )`)
+            professional_services ( professionals ( id, display_name, avatar_url, is_active ) )`)
         .eq('company_id', (company as any).id)
         .eq('is_bookable', true)
+        .eq('is_public', true)
         .eq('is_active', true);
     if (se) throw se;
 
@@ -139,6 +140,26 @@ async function handleGetServices(
         .eq('is_active', true);
     if (pe) throw pe;
 
+    // Resolve enabled filters from company_filter_visibility table.
+    // Defaults to all three visible when no rows exist.
+    // BFF uses service_role, so RLS doesn't apply.
+    let enabledFilters: string[] = ['services', 'professionals', 'duration'];
+    try {
+        const { data: visibility, error: visErr } = await db
+            .from('company_filter_visibility')
+            .select('filter_id, visible')
+            .eq('company_id', (company as any).id);
+        if (visErr) {
+            console.error('[booking-public] filter_visibility query failed:', visErr);
+        } else if (visibility && visibility.length > 0) {
+            enabledFilters = visibility
+                .filter((v: any) => v.visible === true)
+                .map((v: any) => v.filter_id);
+        }
+    } catch (visCatch) {
+        console.error('[booking-public] filter_visibility unexpected error:', visCatch);
+    }
+
     const branding = (company as any).settings?.branding ?? {};
     return json({
         company: {
@@ -146,6 +167,7 @@ async function handleGetServices(
             logo_url: (company as any).logo_url ?? null,
             primary_color: branding.primary_color ?? '#10B981',
             secondary_color: branding.secondary_color ?? null,
+            enabled_filters: enabledFilters,
         },
         services: (services ?? []).map((s: any) => ({
             id: s.id,
@@ -156,7 +178,7 @@ async function handleGetServices(
             color: s.booking_color,
             professionals: (s.professional_services ?? [])
                 .map((ps: any) => ps.professionals)
-                .filter((p: any) => p?.id && p?.display_name)
+                .filter((p: any) => p?.id && p?.display_name && p.is_active !== false)
                 .map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url ?? null })),
         })),
         professionals: (professionals ?? []).map((p: any) => ({
