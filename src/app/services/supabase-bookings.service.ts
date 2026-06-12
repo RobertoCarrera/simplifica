@@ -415,7 +415,15 @@ export class SupabaseBookingsService {
     return data;
   }
 
-  async deleteBooking(id: string): Promise<void> {
+  /**
+   * Soft helper: lets callers (e.g. booking-settings) say "I already notified
+   * the client via Google Calendar's native cancellation email, so don't
+   * dispatch the SES fallback". Defaults to false to preserve the original
+   * behaviour for any other call site.
+   */
+  async deleteBooking(id: string, opts: { skipCancellationEmail?: boolean } = {}): Promise<void> {
+    const { skipCancellationEmail = false } = opts;
+
     // Fetch full booking details before deleting. We need the client email,
     // service name, and dates to send the cancellation email directly.
     // The DB webhook that calls `booking-notifier` is configured for INSERT
@@ -444,10 +452,12 @@ export class SupabaseBookingsService {
     }
 
     // Dispatch the cancellation email directly to send-branded-email.
-    // Non-blocking: failures are logged but don't break the delete.
-    // We use the same data shape that the (broken) webhook→booking-notifier
-    // path used to build, so the resulting email is identical.
-    if (booking?.customer_email) {
+    // SKIPPED when the caller already sent a Google Calendar cancellation
+    // (sendUpdates=all on a PATCH with status='cancelled') — in that case the
+    // client got the notification from Google. The SES email acts as a
+    // fallback when GCal sync is disabled, the token is missing, or the
+    // PATCH failed upstream.
+    if (booking?.customer_email && !skipCancellationEmail) {
       // Supabase's `service:service_id(name)` join returns `service` as an
       // array (one entry per matching FK row). For a single FK it has
       // length 1, so flatten it for the method signature.
