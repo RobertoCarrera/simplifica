@@ -3647,6 +3647,13 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         // label stored in name, email='') AND the stub's bareName didn't
         // match the real client because the real name is split across
         // name/surname columns.
+        //
+        // IMPORTANT: must use a guard variable (not a `return`) because
+        // a `return` inside a try-catch only exits the try block; the
+        // createCustomer code below would still run. Setting
+        // skipCreate = true and gating the next block on it is the
+        // robust way to express "look first, create only if absent".
+        let skipCreate = false;
         try {
           const companyId = this.authService.currentCompanyId();
           if (finalClient.email && companyId) {
@@ -3667,38 +3674,43 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
                 displayName: `${realByEmail.name || ''} ${realByEmail.surname || ''} (${realByEmail.email || ''})`.trim(),
               };
               this.form.patchValue({ client: finalClient as any }, { emitEvent: false });
-              // Skip creation — we found a real client to link to.
-              return; // bail out of the save flow's client branch
+              // Mark the resolved real client so the create block is skipped
+              finalClient.isNew = false;
+              skipCreate = true;
             }
           }
         } catch (emailLookupErr) {
           console.warn('[event-form] last-line email lookup failed, proceeding to create:', emailLookupErr);
         }
 
-        try {
-          const newCustomerObj = {
-            name: finalClient.name,
-            surname: "",
-            dni: "",
-            phone: "",
-            email: finalClient.email,
-            client_type: "individual" as const,
-            status: "lead" as const, // Default for incomplete registered
-          } as any;
-          const createdClient = await firstValueFrom(
-            this.customersService.createCustomer(newCustomerObj, {
-              assignedMemberId: targetMemberIdForOwner,
-            }),
-          );
-          finalClient = createdClient;
-          // Important: Swap the form value so it has the real ID for description logic below
-          this.form.patchValue(
-            { client: createdClient as any },
-            { emitEvent: false },
-          );
-        } catch (err: any) {
-          console.error("Error auto-creating client:", err);
-          throw new Error("No se pudo crear el cliente para la invitación.");
+        if (skipCreate) {
+          // Already linked to a real client — do not create another row.
+        } else {
+          try {
+            const newCustomerObj = {
+              name: finalClient.name,
+              surname: "",
+              dni: "",
+              phone: "",
+              email: finalClient.email,
+              client_type: "individual" as const,
+              status: "lead" as const, // Default for incomplete registered
+            } as any;
+            const createdClient = await firstValueFrom(
+              this.customersService.createCustomer(newCustomerObj, {
+                assignedMemberId: targetMemberIdForOwner,
+              }),
+            );
+            finalClient = createdClient;
+            // Important: Swap the form value so it has the real ID for description logic below
+            this.form.patchValue(
+              { client: createdClient as any },
+              { emitEvent: false },
+            );
+          } catch (err: any) {
+            console.error("Error auto-creating client:", err);
+            throw new Error("No se pudo crear el cliente para la invitación.");
+          }
         }
       }
 
