@@ -3640,6 +3640,41 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
 
       if (finalClient && finalClient.isNew) {
+        // Last-line defence against the duplicate-client bug: even after
+        // the legacy-stub resolution path, do a final email lookup across
+        // the whole company before inserting. Catches the case where the
+        // booking's stored client_id pointed at a "ghost" row (display
+        // label stored in name, email='') AND the stub's bareName didn't
+        // match the real client because the real name is split across
+        // name/surname columns.
+        try {
+          const companyId = this.authService.currentCompanyId();
+          if (finalClient.email && companyId) {
+            const { data: realByEmail } = await this.supabase
+              .getClient()
+              .from('clients')
+              .select('id, name, surname, email, phone')
+              .eq('company_id', companyId)
+              .ilike('email', finalClient.email)
+              .maybeSingle();
+            if (realByEmail?.id) {
+              finalClient = {
+                id: realByEmail.id,
+                name: realByEmail.name,
+                surname: realByEmail.surname,
+                email: realByEmail.email,
+                phone: realByEmail.phone,
+                displayName: `${realByEmail.name || ''} ${realByEmail.surname || ''} (${realByEmail.email || ''})`.trim(),
+              };
+              this.form.patchValue({ client: finalClient as any }, { emitEvent: false });
+              // Skip creation — we found a real client to link to.
+              return; // bail out of the save flow's client branch
+            }
+          }
+        } catch (emailLookupErr) {
+          console.warn('[event-form] last-line email lookup failed, proceeding to create:', emailLookupErr);
+        }
+
         try {
           const newCustomerObj = {
             name: finalClient.name,
