@@ -3719,19 +3719,30 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         // matches ANY client already in the local list, abort creation.
         // The local list is the source of truth for what the user sees
         // in the dropdown.
-        if (!skipCreate && finalClient.email) {
-          const emailLower = finalClient.email.toLowerCase().trim();
+        if (!skipCreate) {
+          const emailLower = (finalClient.email || '').toLowerCase().trim();
           const nameLower = (finalClient.name || '').toLowerCase().trim();
+          const surnameLower = (finalClient.surname || '').toLowerCase().trim();
+          // Strip the displayName suffix "(email)" from the name to match
+          // against the stored name field.
+          const bareName = nameLower
+            .replace(/\s*\([^()]*\)\s*$/, '')
+            .trim();
           const existingInList = this.clients.find((c: any) => {
-            if (c.email && c.email.toLowerCase().trim() === emailLower) return true;
+            // Email exact match
+            if (emailLower && c.email && c.email.toLowerCase().trim() === emailLower) return true;
+            // DisplayName contains the email (e.g. "Roberto (roberto@x.com)")
             const cDisplay = (c.displayName || `${c.name || ''} ${c.surname || ''} (${c.email || ''})`).toLowerCase();
-            if (cDisplay.includes(`(${emailLower})`)) return true;
-            if (nameLower && c.name && c.name.toLowerCase().trim() === nameLower) return true;
+            if (emailLower && cDisplay.includes(`(${emailLower})`)) return true;
+            // Bare name matches the stored name field (case-insensitive)
+            if (bareName && c.name && c.name.toLowerCase().trim() === bareName) return true;
+            // Bare name matches the first token of the displayName
+            if (bareName && cDisplay.startsWith(bareName)) return true;
             return false;
           });
           if (existingInList) {
             this.debugLastSaveResult.set(
-              `local-list match HIT id=${existingInList.id} — aborting create`,
+              `local-list match HIT id=${existingInList.id} email='${existingInList.email}' — aborting create`,
             );
             finalClient = {
               id: existingInList.id,
@@ -3746,7 +3757,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
             skipCreate = true;
           } else {
             this.debugLastSaveResult.set(
-              `local-list match MISS for email='${finalClient.email}' name='${finalClient.name}' — will create`,
+              `local-list match MISS for email='${emailLower}' name='${bareName}' — will create`,
             );
           }
         }
@@ -3756,9 +3767,20 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         } else {
           try {
             this.debugLastSaveResult.set(`CREATING new client...`);
+            // Parse the input name into first + surname so the new client
+            // row mirrors the format of the real client. The DB stores
+            // name and surname separately, so storing a full display
+            // label in name would prevent future matches by name in the
+            // dedupe guard.
+            const fullName = (finalClient.name || '').trim();
+            const parts = fullName.split(/\s+/);
+            const parsedName = parts[0] || fullName;
+            const parsedSurname = parts.length > 1
+              ? parts.slice(1).join(' ').replace(/\s*\([^()]*\)\s*$/, '').trim()
+              : '';
             const newCustomerObj = {
-              name: finalClient.name,
-              surname: "",
+              name: parsedName,
+              surname: parsedSurname,
               dni: "",
               phone: "",
               email: finalClient.email,
