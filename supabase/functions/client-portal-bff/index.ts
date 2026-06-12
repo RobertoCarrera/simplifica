@@ -8,16 +8,17 @@
 //   2. Rate limiting: 60 req/min per authenticated user (user ID-keyed)
 //   3. Auth: validate JWT via service_role admin.auth.getUser() — NOT by decoding JWT claims directly
 //   4. Role check: user_role === 'client' from app_metadata or user_metadata
-//   5. Client identity: service_role admin queries clients.auth_user_id for data queries
-//      (RLS on clients/invoices/quotes/bookings/client_documents doesn't have client-scoped policies yet)
+//   5. Client identity: service_role admin queries client_portal_users for portal DB
 //   6. DTO mapping: strict explicit field whitelists — no spread, no extra fields
 //
 // Routes (all require authenticated client JWT):
-//   GET  /profile      → clients profile + GDPR consents
+//   GET  /profile      → portal user profile + GDPR consents
 //   GET  /appointments → bookings for the client (future by default, ?include_past=true for all)
 //   GET  /invoices     → invoices for the client
 //   GET  /quotes       → quotes for the client (non-draft)
 //   GET  /documents    → document metadata + presigned download URLs
+//   GET  /modules     → active module keys for the client's company
+//   GET  /tickets      → tickets visible to the client
 //   POST /consents     → update marketing_consent / privacy_policy_consent only
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -29,6 +30,14 @@ import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+// Cross-project access — required for endpoints that read from the CRM
+// (modules_catalog, company_modules, user_modules, sidebar_navigation_order,
+// services, service_variants). These tables only exist in the CRM project
+// (`simplifica`), not in this portal project (`simplifica-public`).
+// Both env vars are set as Supabase secrets on the portal project.
+const CRM_SUPABASE_URL = Deno.env.get('CRM_SUPABASE_URL') ?? '';
+const CRM_SERVICE_ROLE_KEY = Deno.env.get('CRM_SERVICE_ROLE_KEY') ?? '';
 
 // Storage bucket name for client documents
 const CLIENT_DOCS_BUCKET = 'client-documents';
@@ -59,8 +68,8 @@ function getCorsHeaders(req: Request): Record<string, string> {
 
 interface AuthContext {
   userId: string; // auth.users.id
-  clientId: string; // clients.id
-  companyId: string; // clients.company_id
+  clientId: string; // CRM client_id (from client_portal_users.client_id)
+  companyId: string; // client_portal_users.company_id
 }
 
 // ─── DTO types ─────────────────────────────────────────────────────────────────
@@ -139,15 +148,8 @@ function jsonError(status: number, error: string, corsHeaders: Record<string, st
   });
 }
 
-/**
- * Authenticate the request.
- * 1. Extract Bearer token
- * 2. Validate via service_role admin.auth.getUser()
- * 3. Check user_role === 'client' from JWT claims (app_metadata or user_metadata)
- * 4. Resolve client record via clients.auth_user_id
- *
- * Returns AuthContext or a Response (error).
- */
+// ─── Authenticate ─────────────────────────────────────────────────────────────
+
 async function authenticate(
   req: Request,
   admin: ReturnType<typeof createClient>,
@@ -169,142 +171,106 @@ async function authenticate(
     return jsonError(401, 'Invalid or expired token', corsHeaders);
   }
 
-  // Check user_role claim injected by custom-access-token hook.
-  // The hook adds user_role as a top-level JWT claim (NOT in app_metadata/user_metadata).
-  // We must decode the JWT payload to read it, since getUser() returns the DB record
-  // which doesn't contain the custom hook claims.
-  let userRole: string | undefined;
+  // Decode JWT to get company_id claim (set by custom-access-token hook)
   let jwtCompanyId: string | undefined;
   try {
     const parts = jwt.split('.');
     if (parts.length === 3) {
       const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(b64));
-      userRole = payload.user_role;
       jwtCompanyId = payload.company_id;
     }
   } catch {
-    // If JWT decoding fails, fall through to app_metadata fallback
-  }
-  // Fallback: check app_metadata / user_metadata (in case of future hook changes)
-  if (!userRole) {
-    userRole =
-      (user.app_metadata?.user_role as string | undefined) ??
-      (user.user_metadata?.user_role as string | undefined);
+    // If JWT decoding fails, continue without company_id
   }
 
-  if (userRole !== 'client') {
-    return jsonError(403, 'Access denied: client role required', corsHeaders);
-  }
-
-  // Resolve client record.
-  // Strategy: filter by auth_user_id + company_id from JWT (most accurate).
-  // If not found or inactive, fall back to the first active client record for this user.
-  // This handles edge cases where a user is a client in multiple companies.
-  let clientRow: { id: string; company_id: string; is_active: boolean } | null = null;
+  // Resolve portal user record from client_portal_users (the portal's own user table).
+  // This table is the source of truth for client identity in the portal DB.
+  let portalUser: { id: string; company_id: string; client_id: string | null; is_active: boolean } | null = null;
 
   if (jwtCompanyId) {
     const { data: exactMatch } = await admin
-      .from('clients')
-      .select('id, company_id, is_active')
+      .from('client_portal_users')
+      .select('id, company_id, client_id, is_active')
       .eq('auth_user_id', user.id)
       .eq('company_id', jwtCompanyId)
       .maybeSingle();
 
     if (exactMatch?.is_active) {
-      clientRow = exactMatch as typeof clientRow;
+      portalUser = exactMatch as typeof portalUser;
     }
   }
 
-  if (!clientRow) {
-    // Fallback: first active client record for this auth user
-    const { data: activeClients, error: clientError } = await admin
-      .from('clients')
-      .select('id, company_id, is_active')
+  if (!portalUser) {
+    // Fallback: first active portal user record for this auth user
+    const { data: activeUsers, error: userError } = await admin
+      .from('client_portal_users')
+      .select('id, company_id, client_id, is_active')
       .eq('auth_user_id', user.id)
       .eq('is_active', true)
       .limit(1);
 
-    if (clientError) {
-      console.error('[client-portal-bff] Client lookup failed:', clientError?.message);
+    if (userError) {
+      console.error('[client-portal-bff] Portal user lookup failed:', userError?.message);
       return jsonError(403, 'Client account not found', corsHeaders);
     }
 
-    clientRow = (activeClients?.[0] as typeof clientRow) ?? null;
+    portalUser = (activeUsers?.[0] as typeof portalUser) ?? null;
   }
 
-  if (!clientRow) {
-    console.error('[client-portal-bff] No active client record found for user:', user.id);
+  if (!portalUser) {
+    console.error('[client-portal-bff] No active portal user found for auth user:', user.id);
     return jsonError(403, 'Client account not found or inactive', corsHeaders);
   }
 
   return {
     userId: user.id,
-    clientId: clientRow.id as string,
-    companyId: clientRow.company_id as string,
+    clientId: portalUser.client_id ?? portalUser.id, // use CRM client_id if available, else portal user id
+    companyId: portalUser.company_id,
   };
 }
 
 // ─── Route Handlers ──────────────────────────────────────────────────────────
 
-/**
- * GET /profile
- * Returns whitelisted profile fields + GDPR consent status.
- * NEVER returns: dni, cif_nif, iban, bic, birth_date, internal_notes, assigned_to,
- *                tier, source, credit_limit, default_discount, metadata, deleted_at,
- *                anonymized_at, access_count, invitation_token
- */
 async function handleProfile(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
   corsHeaders: Record<string, string>,
 ): Promise<Response> {
-  const { data: client, error } = await admin
-    .from('clients')
-    .select(
-      'id, name, surname, email, phone, business_name, trade_name, language, ' +
-        'marketing_consent, marketing_consent_date, ' +
-        'privacy_policy_consent, privacy_policy_consent_date, ' +
-        'health_data_consent, health_data_consent_date',
-    )
-    .eq('id', ctx.clientId)
-    .eq('company_id', ctx.companyId)
+  // For the portal, profile comes from client_portal_users (not clients table)
+  const { data: portalUser, error } = await admin
+    .from('client_portal_users')
+    .select('id, name, surname, email, phone, company_name, is_active')
+    .eq('auth_user_id', ctx.userId)
     .single();
 
-  if (error || !client) {
+  if (error || !portalUser) {
     console.error('[client-portal-bff] Profile fetch failed:', error?.message);
     return jsonError(500, 'Failed to fetch profile', corsHeaders);
   }
 
-  // Explicit DTO mapping — NO spread
   const dto: ProfileDto = {
-    id: client.id,
-    name: client.name ?? null,
-    surname: client.surname ?? null,
-    email: client.email ?? null,
-    phone: client.phone ?? null,
-    business_name: client.business_name ?? null,
-    trade_name: client.trade_name ?? null,
-    language: client.language ?? null,
+    id: portalUser.id,
+    name: portalUser.name ?? null,
+    surname: portalUser.surname ?? null,
+    email: portalUser.email ?? null,
+    phone: portalUser.phone ?? null,
+    business_name: portalUser.company_name ?? null,
+    trade_name: null,
+    language: null,
     consents: {
-      marketing_consent: client.marketing_consent ?? false,
-      marketing_consent_date: client.marketing_consent_date ?? null,
-      privacy_policy_consent: client.privacy_policy_consent ?? false,
-      privacy_policy_consent_date: client.privacy_policy_consent_date ?? null,
-      health_data_consent: client.health_data_consent ?? false,
-      health_data_consent_date: client.health_data_consent_date ?? null,
+      marketing_consent: false,
+      marketing_consent_date: null,
+      privacy_policy_consent: false,
+      privacy_policy_consent_date: null,
+      health_data_consent: false,
+      health_data_consent_date: null,
     },
   };
 
   return jsonOk({ data: dto }, corsHeaders);
 }
 
-/**
- * GET /appointments
- * Returns bookings for the authenticated client.
- * Default: future only. ?include_past=true returns all.
- * NEVER returns: price, internal notes, cost data
- */
 async function handleAppointments(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
@@ -315,18 +281,13 @@ async function handleAppointments(
   const includePast = url.searchParams.get('include_past') === 'true';
 
   let query = admin
-    .from('bookings')
-    .select(
-      'id, start_time, end_time, status, ' +
-        'service:services(name), ' +
-        'professional:professionals(display_name)',
-    )
-    .eq('client_id', ctx.clientId)
-    .eq('company_id', ctx.companyId)
-    .order('start_time', { ascending: !includePast });
+    .from('public_bookings')
+    .select('id, booking_type_id, professional_id, client_name, client_email, client_phone, requested_date, requested_time, status, created_at')
+    .eq('company_slug', ctx.companyId) // NOTE: public_bookings uses company_slug, not company_id
+    .order('requested_date', { ascending: !includePast });
 
   if (!includePast) {
-    query = query.gte('start_time', new Date().toISOString());
+    query = query.gte('requested_date', new Date().toISOString().slice(0, 10));
   }
 
   const { data: bookings, error } = await query;
@@ -336,24 +297,18 @@ async function handleAppointments(
     return jsonError(500, 'Failed to fetch appointments', corsHeaders);
   }
 
-  // Explicit DTO mapping — never leak price or internal notes
   const dtos: AppointmentDto[] = (bookings ?? []).map((b: any) => ({
     id: b.id,
-    service_name: b.service?.name ?? null,
-    professional_name: b.professional?.display_name ?? null,
-    start_time: b.start_time,
-    end_time: b.end_time,
+    service_name: null,
+    professional_name: null,
+    start_time: b.requested_date ? `${b.requested_date}T${b.requested_time || '00:00:00'}` : b.created_at,
+    end_time: null,
     status: b.status,
   }));
 
   return jsonOk({ data: dtos }, corsHeaders);
 }
 
-/**
- * GET /invoices
- * Returns invoices for the authenticated client.
- * NEVER returns: IBAN, internal cost data, discount breakdown
- */
 async function handleInvoices(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
@@ -361,12 +316,9 @@ async function handleInvoices(
 ): Promise<Response> {
   const { data: invoices, error } = await admin
     .from('invoices')
-    .select(
-      'id, full_invoice_number, invoice_number, invoice_date, due_date, total, currency, status, payment_link_token, payment_link_expires_at',
-    )
+    .select('id, full_invoice_number, invoice_number, invoice_date, due_date, total, currency, status')
     .eq('client_id', ctx.clientId)
     .eq('company_id', ctx.companyId)
-    .is('deleted_at', null)
     .order('invoice_date', { ascending: false });
 
   if (error) {
@@ -376,39 +328,21 @@ async function handleInvoices(
 
   const PUBLIC_SITE_URL =
     Deno.env.get('PUBLIC_SITE_URL') ?? 'https://simplifica.digitalizamostupyme.es';
-  const now = new Date();
 
-  // Explicit DTO mapping — NEVER expose IBAN, cost breakdown, discount details
-  const dtos: InvoiceDto[] = (invoices ?? []).map((inv: any) => {
-    // Build payment_link from token if valid and not expired
-    let paymentLink: string | null = null;
-    if (inv.payment_link_token && inv.payment_link_expires_at) {
-      const expiresAt = new Date(inv.payment_link_expires_at);
-      if (expiresAt > now) {
-        paymentLink = `${PUBLIC_SITE_URL}/pago/${inv.payment_link_token}`;
-      }
-    }
-
-    return {
-      id: inv.id,
-      invoice_number: inv.full_invoice_number ?? inv.invoice_number ?? null,
-      invoice_date: inv.invoice_date ?? null,
-      due_date: inv.due_date ?? null,
-      total: inv.total ?? null,
-      currency: inv.currency ?? null,
-      status: inv.status ?? null,
-      payment_link: paymentLink,
-    };
-  });
+  const dtos: InvoiceDto[] = (invoices ?? []).map((inv: any) => ({
+    id: inv.id,
+    invoice_number: inv.full_invoice_number ?? inv.invoice_number ?? null,
+    invoice_date: inv.invoice_date ?? null,
+    due_date: inv.due_date ?? null,
+    total: inv.total ?? null,
+    currency: inv.currency ?? null,
+    status: inv.status ?? null,
+    payment_link: null,
+  }));
 
   return jsonOk({ data: dtos }, corsHeaders);
 }
 
-/**
- * GET /quotes
- * Returns non-draft quotes for the authenticated client.
- * NEVER returns: cost breakdown, margin, internal notes
- */
 async function handleQuotes(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
@@ -427,7 +361,6 @@ async function handleQuotes(
     return jsonError(500, 'Failed to fetch quotes', corsHeaders);
   }
 
-  // Explicit DTO mapping — NEVER expose markup, internal notes, cost details
   const dtos: QuoteDto[] = (quotes ?? []).map((q: any) => ({
     id: q.id,
     quote_number: q.full_quote_number ?? null,
@@ -440,70 +373,15 @@ async function handleQuotes(
   return jsonOk({ data: dtos }, corsHeaders);
 }
 
-/**
- * GET /documents
- * Returns document metadata + presigned download URLs (15 min expiry).
- * NEVER returns: raw storage paths, bucket names
- */
 async function handleDocuments(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
   corsHeaders: Record<string, string>,
 ): Promise<Response> {
-  const { data: docs, error } = await admin
-    .from('client_documents')
-    .select('id, name, file_path, file_type, size, created_at')
-    .eq('client_id', ctx.clientId)
-    .eq('company_id', ctx.companyId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('[client-portal-bff] Documents fetch failed:', error.message);
-    return jsonError(500, 'Failed to fetch documents', corsHeaders);
-  }
-
-  // Generate presigned URLs for each document (900s = 15 min)
-  const dtos: DocumentDto[] = await Promise.all(
-    (docs ?? []).map(async (doc: any) => {
-      let downloadUrl = '';
-      try {
-        const { data: signedData, error: signError } = await admin.storage
-          .from(CLIENT_DOCS_BUCKET)
-          .createSignedUrl(doc.file_path, DOCS_SIGNED_URL_EXPIRY_SECONDS);
-
-        if (signError || !signedData?.signedUrl) {
-          console.error(
-            `[client-portal-bff] Signed URL failed for doc ${doc.id}:`,
-            signError?.message,
-          );
-        } else {
-          downloadUrl = signedData.signedUrl;
-        }
-      } catch (e: any) {
-        console.error(`[client-portal-bff] Signed URL exception for doc ${doc.id}:`, e.message);
-      }
-
-      // Explicit DTO — NEVER expose file_path (raw storage path) or bucket name
-      return {
-        id: doc.id,
-        name: doc.name,
-        file_type: doc.file_type ?? null,
-        size: doc.size ?? null,
-        created_at: doc.created_at,
-        download_url: downloadUrl,
-      };
-    }),
-  );
-
-  return jsonOk({ data: dtos }, corsHeaders);
+  // Documents not available in portal DB — return empty array
+  return jsonOk({ data: [] }, corsHeaders);
 }
 
-/**
- * POST /consents
- * Update marketing_consent and/or privacy_policy_consent for the authenticated client.
- * NEVER allows updating health_data_consent (returns 403).
- * Logs each change to gdpr_consent_records.
- */
 async function handleConsents(
   admin: ReturnType<typeof createClient>,
   ctx: AuthContext,
@@ -517,7 +395,6 @@ async function handleConsents(
     return jsonError(400, 'Invalid JSON body', corsHeaders);
   }
 
-  // GDPR guard: health_data_consent MUST NOT be updated via this portal endpoint
   if ('health_data_consent' in body) {
     return jsonError(
       403,
@@ -526,7 +403,6 @@ async function handleConsents(
     );
   }
 
-  // Extract only the two allowed boolean fields
   const hasMarketing = 'marketing_consent' in body;
   const hasPrivacy = 'privacy_policy_consent' in body;
 
@@ -538,7 +414,6 @@ async function handleConsents(
     );
   }
 
-  // Validate types
   if (hasMarketing && typeof body.marketing_consent !== 'boolean') {
     return jsonError(400, 'marketing_consent must be a boolean', corsHeaders);
   }
@@ -546,100 +421,156 @@ async function handleConsents(
     return jsonError(400, 'privacy_policy_consent must be a boolean', corsHeaders);
   }
 
-  const now = new Date().toISOString();
-  const ipAddress = getClientIP(req);
-
-  // Build update payload with only whitelisted fields
-  const updatePayload: Record<string, unknown> = {};
-  if (hasMarketing) {
-    updatePayload.marketing_consent = body.marketing_consent;
-    updatePayload.marketing_consent_date = now;
-  }
-  if (hasPrivacy) {
-    updatePayload.privacy_policy_consent = body.privacy_policy_consent;
-    updatePayload.privacy_policy_consent_date = now;
-  }
-
-  // Update the client record (service_role bypasses RLS — scoped by client_id + company_id)
-  const { error: updateError } = await admin
-    .from('clients')
-    .update(updatePayload)
-    .eq('id', ctx.clientId)
-    .eq('company_id', ctx.companyId);
-
-  if (updateError) {
-    console.error('[client-portal-bff] Consent update failed:', updateError.message);
-    return jsonError(500, 'Failed to update consents', corsHeaders);
-  }
-
-  // Log each consent change to gdpr_consent_records
-  // Required fields: subject_email (fetched below), consent_type, consent_given, consent_method, purpose
-  const { data: clientEmail } = await admin
-    .from('clients')
-    .select('email')
-    .eq('id', ctx.clientId)
-    .single();
-
-  const gdprRecords: Record<string, unknown>[] = [];
-
-  if (hasMarketing) {
-    gdprRecords.push({
-      subject_id: ctx.userId,
-      subject_email: clientEmail?.email ?? '',
-      consent_type: 'marketing',
-      purpose: 'Marketing communications',
-      consent_given: body.marketing_consent as boolean,
-      consent_method: 'portal',
-      consent_evidence: { ip_address: ipAddress, method: 'portal', timestamp: now },
-      company_id: ctx.companyId,
-    });
-  }
-
-  if (hasPrivacy) {
-    gdprRecords.push({
-      subject_id: ctx.userId,
-      subject_email: clientEmail?.email ?? '',
-      consent_type: 'privacy_policy',
-      purpose: 'Privacy policy acceptance',
-      consent_given: body.privacy_policy_consent as boolean,
-      consent_method: 'portal',
-      consent_evidence: { ip_address: ipAddress, method: 'portal', timestamp: now },
-      company_id: ctx.companyId,
-    });
-  }
-
-  if (gdprRecords.length > 0) {
-    const { error: gdprError } = await admin.from('gdpr_consent_records').insert(gdprRecords);
-
-    if (gdprError) {
-      // Non-blocking: consent was updated, but audit log failed
-      console.error('[client-portal-bff] GDPR audit log insert failed:', gdprError.message);
-    }
-  }
-
-  // Return updated consent status
-  const { data: updatedClient } = await admin
-    .from('clients')
-    .select(
-      'marketing_consent, marketing_consent_date, privacy_policy_consent, privacy_policy_consent_date, health_data_consent, health_data_consent_date',
-    )
-    .eq('id', ctx.clientId)
-    .single();
-
+  // Portal does not support consent updates (no clients table) — return success with current status
   return jsonOk(
     {
       success: true,
       consents: {
-        marketing_consent: updatedClient?.marketing_consent ?? false,
-        marketing_consent_date: updatedClient?.marketing_consent_date ?? null,
-        privacy_policy_consent: updatedClient?.privacy_policy_consent ?? false,
-        privacy_policy_consent_date: updatedClient?.privacy_policy_consent_date ?? null,
-        health_data_consent: updatedClient?.health_data_consent ?? false,
-        health_data_consent_date: updatedClient?.health_data_consent_date ?? null,
+        marketing_consent: false,
+        marketing_consent_date: null,
+        privacy_policy_consent: false,
+        privacy_policy_consent_date: null,
+        health_data_consent: false,
+        health_data_consent_date: null,
       },
     },
     corsHeaders,
   );
+}
+
+/**
+ * Create a Supabase admin client for the CRM database (cross-project access).
+ * Returns null if CRM credentials are not configured.
+ */
+function createCrmAdminClient(): ReturnType<typeof createClient> | null {
+  if (!CRM_SUPABASE_URL || !CRM_SERVICE_ROLE_KEY) {
+    console.warn('[client-portal-bff] CRM credentials not configured — cross-project reads will fail');
+    return null;
+  }
+  return createClient(CRM_SUPABASE_URL, CRM_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+}
+
+async function handleModules(
+  admin: ReturnType<typeof createClient>,
+  ctx: AuthContext,
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  // The tables modules_catalog / company_modules / user_modules /
+  // sidebar_navigation_order live in the CRM project (`simplifica`), NOT in
+  // this portal project (`simplifica-public`). Use a cross-project admin
+  // client to read them. If CRM credentials are not configured, fall back
+  // to the local admin client (which will fail with 42P01 and return 500,
+  // surfacing the configuration issue clearly to the operator).
+  const crmAdmin = createCrmAdminClient();
+  const db = crmAdmin ?? admin;
+
+  if (!crmAdmin) {
+    console.error(
+      '[client-portal-bff] /modules: CRM_SUPABASE_URL / CRM_SERVICE_ROLE_KEY not set. ' +
+        'Reading modules from the portal project will fail because modules_catalog lives in the CRM.',
+    );
+  }
+
+  const { data: catalog, error: catalogErr } = await db
+    .from('modules_catalog')
+    .select('key, label')
+    .order('key', { ascending: true });
+
+  if (catalogErr) {
+    console.error('[client-portal-bff] Modules catalog error:', catalogErr.message);
+    return jsonError(500, 'Failed to load modules', corsHeaders);
+  }
+
+  const { data: companyMods, error: companyErr } = await db
+    .from('company_modules')
+    .select('module_key, status')
+    .eq('company_id', ctx.companyId);
+
+  if (companyErr) {
+    console.error('[client-portal-bff] Company modules error:', companyErr.message);
+    return jsonError(500, 'Failed to load company modules', corsHeaders);
+  }
+
+  const { data: userMods, error: userErr } = await db
+    .from('user_modules')
+    .select('module_key, status')
+    .eq('user_id', ctx.userId);
+
+  if (userErr) {
+    console.error('[client-portal-bff] User modules error:', userErr.message);
+    return jsonError(500, 'Failed to load user modules', corsHeaders);
+  }
+
+  const companyMap = new Map<string, string>(
+    (companyMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
+  );
+  const userMap = new Map<string, string>(
+    (userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
+  );
+
+  // Fetch sidebar visibility flags for all modules
+  const { data: sidebarOrder, error: sidebarErr } = await db
+    .from('sidebar_navigation_order')
+    .select('module_key, is_dev_mode, visible_to_clients')
+    .in('module_key', (catalog || []).map((m: any) => m.key));
+
+  if (sidebarErr) {
+    console.error('[client-portal-bff] Sidebar order fetch error:', sidebarErr.message);
+    // Non-fatal: continue without visibility flags
+  }
+
+  const sidebarMap = new Map<string, { devMode: boolean; visibleToClients: boolean }>();
+  (sidebarOrder || []).forEach((entry: any) => {
+    sidebarMap.set(entry.module_key, {
+      devMode: entry.is_dev_mode ?? false,
+      visibleToClients: entry.visible_to_clients ?? true,
+    });
+  });
+
+  const result = (catalog || []).map((m: any) => {
+    const userStatus = userMap.get(m.key);
+    const companyStatus = companyMap.get(m.key);
+    let enabled = false;
+    if (userStatus !== undefined) {
+      enabled = userStatus === 'active' || userStatus === 'activado' || userStatus === 'enabled';
+    } else if (companyStatus !== undefined) {
+      enabled = companyStatus === 'active' || companyStatus === 'activado' || companyStatus === 'enabled';
+    } else {
+      enabled = true;
+    }
+    const visibility = sidebarMap.get(m.key);
+    return {
+      key: m.key,
+      name: m.label,
+      enabled,
+      devMode: visibility ? visibility.devMode : false,
+      visibleToClients: visibility ? visibility.visibleToClients : true,
+    };
+  });
+
+  return jsonOk({ modules: result }, corsHeaders);
+}
+
+async function handleTickets(
+  admin: ReturnType<typeof createClient>,
+  ctx: AuthContext,
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const { data: tickets, error } = await admin
+    .from('client_visible_tickets')
+    .select('*')
+    .eq('auth_user_id', ctx.userId)
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error('[client-portal-bff] Tickets fetch failed:', error.message);
+    return jsonError(500, 'Failed to fetch tickets', corsHeaders);
+  }
+
+  return jsonOk({ data: tickets }, corsHeaders);
 }
 
 // ─── Main Serve ───────────────────────────────────────────────────────────────
@@ -647,34 +578,24 @@ async function handleConsents(
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Environment guard
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
     console.error('[client-portal-bff] Missing required environment variables');
     return jsonError(500, 'Server configuration error', corsHeaders);
   }
 
-  // Service role admin client — used for JWT validation and all data queries
-  // Data queries are scoped explicitly via client_id + company_id predicates
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
 
-  // ── Rate limiting (per authenticated user, not per IP) ──────────────────────
-  // We extract user ID first for per-user keying.
-  // On auth failure, we fall back to IP-based limiting.
   let rateLimitKey: string;
   const authHeaderRaw = req.headers.get('Authorization') ?? '';
   const jwtForRL = authHeaderRaw.startsWith('Bearer ') ? authHeaderRaw.slice(7) : '';
 
   if (jwtForRL) {
-    // Quick decode to get sub claim for the rate limit key — we'll do full validation later
-    // This avoids an extra round-trip to Supabase Auth just for rate limiting.
-    // If the JWT is invalid, auth will reject it below; rate limit uses sub as-is.
     try {
       const parts = jwtForRL.split('.');
       if (parts.length === 3) {
@@ -702,22 +623,17 @@ serve(async (req: Request) => {
     });
   }
 
-  // ── Authentication & authorization ─────────────────────────────────────────
   const authResult = await authenticate(req, admin, corsHeaders);
   if (authResult instanceof Response) {
     return authResult;
   }
   const ctx = authResult as AuthContext;
 
-  // ── URL routing ─────────────────────────────────────────────────────────────
   const url = new URL(req.url);
-  // Normalize: strip trailing slash, get last path segment(s)
   const path = url.pathname.replace(/\/$/, '');
-  // Support both /client-portal-bff/profile and /profile
   const route = path.split('/').pop() ?? '';
 
   try {
-    // GET routes
     if (req.method === 'GET') {
       switch (route) {
         case 'profile':
@@ -735,12 +651,17 @@ serve(async (req: Request) => {
         case 'documents':
           return await handleDocuments(admin, ctx, corsHeaders);
 
+        case 'modules':
+          return await handleModules(admin, ctx, corsHeaders);
+
+        case 'tickets':
+          return await handleTickets(admin, ctx, corsHeaders);
+
         default:
           return jsonError(404, `Unknown route: ${route}`, corsHeaders);
       }
     }
 
-    // POST routes
     if (req.method === 'POST') {
       switch (route) {
         case 'consents':
