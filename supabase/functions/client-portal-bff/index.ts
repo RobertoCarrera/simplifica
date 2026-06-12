@@ -23,8 +23,72 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+
+// Inlined helpers — the Supabase bundler does not resolve ../_shared
+// relative imports at deploy time, so we replicate the small set of
+// utilities we need inline. Keep these in sync with the canonical
+// implementations in supabase/functions/_shared/{rate-limiter,security}.ts.
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+  'Cache-Control': 'no-store',
+  'Content-Security-Policy': "default-src 'none'",
+};
+
+function withSecurityHeaders(headers: Record<string, string> = {}): Record<string, string> {
+  return { ...SECURITY_HEADERS, ...headers };
+}
+
+function getClientIP(req: Request): string {
+  const cf = req.headers.get('CF-Connecting-IP');
+  if (cf) return cf.trim();
+  const realIp = req.headers.get('X-Real-IP');
+  if (realIp) return realIp.trim();
+  const forwarded = req.headers.get('X-Forwarded-For');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return 'unknown';
+}
+
+// In-memory rate limiter (per-isolate). Best-effort — same trade-off as
+// the canonical implementation. For a global rate limit set
+// UPSTASH_REDIS_URL/UPSTASH_REDIS_TOKEN in this project's secrets.
+const _rlStore = new Map<string, { count: number; resetAt: number }>();
+
+async function checkRateLimit(
+  key: string,
+  limit: number = 60,
+  windowMs: number = 60_000,
+): Promise<{ allowed: boolean; remaining: number; resetAt: number; limit: number }> {
+  const now = Date.now();
+  const entry = _rlStore.get(key);
+  if (!entry || now >= entry.resetAt) {
+    const resetAt = now + windowMs;
+    _rlStore.set(key, { count: 1, resetAt });
+    return { allowed: true, remaining: limit - 1, resetAt, limit };
+  }
+  entry.count++;
+  const allowed = entry.count <= limit;
+  return {
+    allowed,
+    remaining: Math.max(0, limit - entry.count),
+    resetAt: entry.resetAt,
+    limit,
+  };
+}
+
+function getRateLimitHeaders(r: { limit: number; remaining: number; resetAt: number }): Record<string, string> {
+  return {
+    'X-RateLimit-Limit': r.limit.toString(),
+    'X-RateLimit-Remaining': r.remaining.toString(),
+    'X-RateLimit-Reset': new Date(r.resetAt).toISOString(),
+    'Retry-After': Math.ceil(Math.max(0, r.resetAt - Date.now()) / 1000).toString(),
+  };
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
