@@ -1501,49 +1501,70 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   /**
    * Performs the actual deletion. Steps (must keep calendar email + cancellation
    * notification intact):
-   *   1. Delete local booking → triggers `bookings` DELETE which fires the
-   *      `booking-notifier` DB webhook → cancellation email to the client
-   *      (and waitlist promotion if applicable).
-   *   2. Delete the Google Calendar event via the `google-auth` Edge Function
-   *      so the operator's calendar stays in sync — SKIPPED if the company
-   *      has `booking_google_calendar_enabled=false` in notification settings.
+   *   1. Mark the Google Calendar event as `status: 'cancelled'` (PATCH, NOT
+   *      DELETE) so the operator's calendar keeps a strikethrough record AND
+   *      Google sends its own native cancellation email to attendees
+   *      (sendUpdates=all on the PATCH). SKIPPED when the company has
+   *      `booking_google_calendar_enabled=false`. The boolean result tells
+   *      step 2 whether the SES fallback needs to fire.
+   *   2. Delete the local booking row → fires the `bookings` DELETE which
+   *      promotes the waitlist. We pass `skipCancellationEmail` so the
+   *      `SupabaseBookingsService` does NOT also send the Simplifica-branded
+   *      SES cancellation email when GCal already handled it. If step 1
+   *      failed, we leave skipCancellationEmail=false and the SES email is
+   *      sent as fallback.
    *   3. Refresh local UI state.
    */
   async deleteEvent(event: any) {
     this.isDeletingEvent.set(true);
+    let gcalNotified = false;
     try {
       const calendarId = this.googleIntegration()?.metadata?.calendar_id_appointments;
       // Target the calendar ID used for this event, fallback to integration default
       const targetCalendarId = event.extendedProps?.shared?.professionalCalendarId || calendarId;
 
-      // 1. Delete Local Booking if exists — this is what fires the
-      //    booking-notifier webhook (cancellation email + waitlist promotion).
-      const localBookingId = event.localBookingId || (event.isLocal ? event.id : null);
-      if (localBookingId) {
-        await this.bookingsService.deleteBooking(localBookingId);
-        // Local booking deleted → cancellation email already dispatched by webhook
-      }
-
-      // 2. Delete Google Event if exists — keeps operator's calendar in sync
-      //    and sends a Google Calendar cancellation to attendees.
-      //    SKIPPED when the company has disabled Google Calendar sync.
+      // 1. PATCH the Google Calendar event to status='cancelled' FIRST.
+      //    Doing this before the local DELETE preserves the event id we
+      //    need and lets Google send its native cancellation email while
+      //    we still own the event from the operator's side.
       const googleEventId = event.googleEventId || (event.isGoogle ? event.id : null);
       if (
         googleEventId &&
         targetCalendarId &&
         this.googleCalendarSyncEnabled()
       ) {
+        const cancelledEvent: any = {
+          id: googleEventId,
+          status: 'cancelled',
+        };
         const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
-          body: { action: 'delete-event', calendarId: targetCalendarId, eventId: googleEventId },
+          body: {
+            action: 'update-event',
+            calendarId: targetCalendarId,
+            event: cancelledEvent,
+          },
         });
 
         if (error || !data?.success) {
-          console.error('Delete google event error:', error || data);
+          console.error('Cancel google event error:', error || data);
           this.toastService.error(
             'Aviso',
-            'Se eliminó la reserva local, pero podría haber un problema sincronizando con Google Calendar.',
+            'No se pudo sincronizar la cancelación con Google Calendar; se enviará un correo de respaldo.',
           );
+          // gcalNotified stays false → SES fallback will fire in step 2.
+        } else {
+          gcalNotified = true;
         }
+      }
+
+      // 2. Delete Local Booking if exists. Pass skipCancellationEmail only
+      //    when GCal successfully sent its own notification; otherwise the
+      //    SES fallback path inside SupabaseBookingsService handles it.
+      const localBookingId = event.localBookingId || (event.isLocal ? event.id : null);
+      if (localBookingId) {
+        await this.bookingsService.deleteBooking(localBookingId, {
+          skipCancellationEmail: gcalNotified,
+        });
       }
 
       this.toastService.success('Evento eliminado', 'El evento ha sido eliminado correctamente.');
