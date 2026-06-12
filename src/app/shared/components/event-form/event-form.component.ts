@@ -2620,11 +2620,33 @@ export class EventFormComponent implements OnInit, OnChanges {
     const term = this.clientSearchTerm()?.toLowerCase() || "";
     const clients = this.clients;
 
+    // Dedupe by email+name to avoid showing ghost clients (rows where the
+    // full display label "name (email)" was stored in the `name` field
+    // with email='' — the legacy duplicate-client bug created these).
+    // Keep the canonical row: prefer the one with a real email and is_active=true.
+    const seen = new Map<string, any>();
+    for (const c of clients) {
+      const key = (c.email && c.email.trim().toLowerCase())
+        || `name:${(c.name || '').trim().toLowerCase()}|${(c.surname || '').trim().toLowerCase()}`;
+      const prev = seen.get(key);
+      if (!prev) {
+        seen.set(key, c);
+        continue;
+      }
+      // Prefer the row with a real email; if both have email, prefer active.
+      if ((!prev.email || prev.email === '') && c.email && c.email !== '') {
+        seen.set(key, c);
+      } else if (prev.is_active === false && c.is_active !== false) {
+        seen.set(key, c);
+      }
+    }
+    const deduped = Array.from(seen.values());
+
     if (!term) {
-      this._filteredClientsResult.set(clients.slice(0, 50));
+      this._filteredClientsResult.set(deduped.slice(0, 50));
     } else {
       this._filteredClientsResult.set(
-        clients.filter(c =>
+        deduped.filter(c =>
           (c.displayName && c.displayName.toLowerCase().includes(term)) ||
           (c.email && c.email.toLowerCase().includes(term)) ||
           (c.name && c.name.toLowerCase().includes(term)) ||
@@ -2660,9 +2682,15 @@ export class EventFormComponent implements OnInit, OnChanges {
     // Also block if the client has email='' and their name field happens
     // to contain the same string (the leftover duplicate created by
     // this bug had email='' and name='roberto carrera santa maria (...)').
+    // Also block if any client has a name/surname whose displayName
+    // contains the typed email — catches the "ghost" rows where the
+    // display label was stored in the name field.
     const exactMatch = this.clients.some((c) => {
       if (c.email && c.email.toLowerCase() === emailToCheck) return true;
       if (c.name && c.name.toLowerCase() === emailToCheck) return true;
+      // Ghost row: name = "firstName lastName (email)"
+      const cDisplay = c.displayName || `${c.name || ''} ${c.surname || ''} (${c.email || ''})`;
+      if (cDisplay.toLowerCase().includes(`(${emailToCheck})`)) return true;
       return false;
     });
     return !exactMatch;
@@ -3571,8 +3599,35 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
                 { emitEvent: false },
               );
             } else if (!finalClient.id || finalClient.id === 'new') {
-              // Truly no client exists — fall through to isNew auto-create
-              finalClient.isNew = true;
+              // Last-line defence: even if the email lookup returned nothing,
+              // check whether `this.clients` already has a client whose
+              // name/email matches what the user has typed. This catches
+              // ghost rows (email='' and name contains the display label)
+              // and stops the duplicate-client bug.
+              const typedEmail = (finalClient.email || '').toLowerCase();
+              const typedName = (finalClient.name || '').replace(/\s*\([^()]*\)\s*$/, '').trim().toLowerCase();
+              const existingInList = this.clients.find((c: any) => {
+                if (typedEmail && c.email && c.email.toLowerCase() === typedEmail) return true;
+                if (typedName && c.name && c.name.toLowerCase() === typedName) return true;
+                const cDisplay = (c.displayName || `${c.name || ''} ${c.surname || ''} (${c.email || ''})`).toLowerCase();
+                if (typedEmail && cDisplay.includes(`(${typedEmail})`)) return true;
+                return false;
+              });
+              if (existingInList) {
+                finalClient = {
+                  id: existingInList.id,
+                  name: existingInList.name,
+                  surname: existingInList.surname,
+                  email: existingInList.email,
+                  phone: existingInList.phone,
+                  displayName: existingInList.displayName || `${existingInList.name || ''} ${existingInList.surname || ''} (${existingInList.email || ''})`.trim(),
+                };
+                this.form.patchValue({ client: finalClient as any }, { emitEvent: false });
+                // isNew stays false → no INSERT
+              } else {
+                // Truly no client exists — fall through to isNew auto-create
+                finalClient.isNew = true;
+              }
             }
             // Else: real uuid was on the stub but DB lookup didn't return
             // a match (rare — could be a deleted client). Trust the uuid
