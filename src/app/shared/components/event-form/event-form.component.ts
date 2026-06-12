@@ -180,16 +180,9 @@ import { firstValueFrom, take } from "rxjs";
                      ></app-custom-select>
                    </div>
                  </div>
-               </section>
+                </section>
 
-                <!-- DEBUG: trace of the duplicate-client bug -->
-                <div style="position:fixed;top:5px;right:5px;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-width:560px;border:2px solid #0f0;white-space:pre-wrap;line-height:1.3;">
-🔍 DEBUG CLIENT RESOLUTION
-clients count: {{ clients.length }}
-lastSaveResult: {{ debugLastSaveResult() }}
-                </div>
-
-              <!-- Section 3: Client -->
+               <!-- Section 3: Client -->
               @if (!isClient()) {
                 <section class="evf-section">
                   <h4 class="evf-section-title">
@@ -404,10 +397,16 @@ lastSaveResult: {{ debugLastSaveResult() }}
                 {{ serviceName }}
               </span>
               @if (isAlreadyPaid()) {
-                <span class="evf-footer-paid-badge" [attr.title]="'Pagado con ' + currentPaymentMethodLabel()">
+                <button
+                  type="button"
+                  (click)="paymentMethodDialogRef?.open()"
+                  class="evf-footer-paid-badge evf-footer-paid-badge--button"
+                  [attr.title]="'Cambiar método de pago (actual: ' + currentPaymentMethodLabel() + ')'"
+                >
                   <i class="fas fa-check-circle"></i>
                   Pagado · {{ currentPaymentMethodLabel() }}
-                </span>
+                  <i class="fas fa-pen evf-footer-paid-edit-icon"></i>
+                </button>
               }
             </div>
 
@@ -432,6 +431,20 @@ lastSaveResult: {{ debugLastSaveResult() }}
                   >
                     <i class="fas fa-coins text-sm"></i>
                     <span>Crear y marcar como pagado</span>
+                  </button>
+                } @else if (isAlreadyPaid()) {
+                  <!-- Edit-mode: change the payment method. The choice
+                       is stored in pendingPaymentMethod and persisted
+                       on "Guardar Cambios" (see onPaymentMethodChosen). -->
+                  <button
+                    type="button"
+                    [disabled]="loading"
+                    (click)="paymentMethodDialogRef?.open()"
+                    class="evf-btn-paid"
+                    title="Cambiar el método de pago de esta reserva"
+                  >
+                    <i class="fas fa-coins text-sm"></i>
+                    <span>Cambiar método de pago</span>
                   </button>
                 }
 
@@ -1664,6 +1677,34 @@ lastSaveResult: {{ debugLastSaveResult() }}
     .evf-footer-paid-badge i {
       font-size: 0.7rem;
     }
+    /* When the badge is rendered as a button (edit-mode "click to
+       change payment method"), make it interactive: cursor pointer +
+       subtle hover + show a tiny pen icon on hover to hint that it's
+       clickable. The text + green colour stay identical. */
+    .evf-footer-paid-badge--button {
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .evf-footer-paid-badge--button:hover {
+      background: rgb(187 247 208);
+    }
+    .evf-footer-paid-badge--button:active {
+      transform: scale(0.97);
+    }
+    .evf-footer-paid-edit-icon {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      margin-left: 0.15rem;
+    }
+    .evf-footer-paid-badge--button:hover .evf-footer-paid-edit-icon {
+      opacity: 0.7;
+    }
+    :host-context(.dark) .evf-footer-paid-badge--button:hover,
+    .dark .evf-footer-paid-badge--button:hover {
+      background: rgb(20 83 45 / 0.5);
+    }
     :host-context(.dark) .evf-footer-paid-badge,
     .dark .evf-footer-paid-badge {
       background: rgb(20 83 45 / 0.3);
@@ -1866,12 +1907,32 @@ export class EventFormComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Called by the dialog when the user picks a method. Store the choice
-   * and re-run onSubmit with the method passed through.
+   * Called by the dialog when the user picks a method. Behavior depends
+   * on whether we're creating a new booking or editing an existing one:
+   *   - Create: persist the choice and immediately submit (the "Crear y
+   *     marcar como pagado" flow).
+   *   - Edit: persist the choice in pendingPaymentMethod so the next
+   *     "Guardar Cambios" click updates payment_status + payment_method.
+   *     Do NOT auto-submit — the user may still want to edit other
+   *     fields before saving.
    */
   onPaymentMethodChosen(selection: { method: PaymentMethodChoice }): void {
     this.pendingPaymentMethod = selection.method;
-    this.onSubmit();
+    if (!this.eventToEdit) {
+      this.onSubmit();
+    } else {
+      // Edit path: update the in-memory state so the footer-meta badge
+      // reflects the new method immediately, then wait for the user to
+      // click "Guardar Cambios" to persist.
+      const shared = (this.eventToEdit?.extendedProps?.shared ?? {}) as Record<string, any>;
+      this.eventToEdit = {
+        ...this.eventToEdit,
+        extendedProps: {
+          ...this.eventToEdit?.extendedProps,
+          shared: { ...shared, paymentMethod: selection.method, paymentStatus: 'paid' },
+        },
+      };
+    }
   }
 
   /**
