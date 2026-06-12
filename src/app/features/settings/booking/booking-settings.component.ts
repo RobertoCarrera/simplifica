@@ -1524,20 +1524,20 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   openResendInviteDialog(): void {
     const event = this.selectedEventDetails;
     if (!event) return;
-    const attendees = (event.attendees ?? []).filter(
-      (a: any) => a?.email,
-    );
-    if (attendees.length === 0) {
-      this.toastService.warning(
-        'Sin asistentes',
-        'Esta reserva no tiene asistentes a los que enviar la invitación.',
-      );
-      return;
-    }
+    // Attendees can be on the event directly (Google event shape) or
+    // nested under extendedProps.shared (when the event was constructed
+    // by mapBookingToEvent in this same component). Cover both.
+    const rawAttendees = (event.attendees ??
+      event.extendedProps?.shared?.attendees ??
+      []) as Array<{ email: string }>;
+    const attendees = rawAttendees.filter((a: any) => a?.email);
     this.resendInviteDialog = {
       isOpen: true,
       title: 'Reenviar invitación de Google Calendar',
-      message: `Vas a enviar la invitación por email a ${attendees.length} asistente${attendees.length === 1 ? '' : 's'}. ¿Continuar?`,
+      message:
+        attendees.length === 0
+          ? 'Esta reserva no tiene asistentes registrados. La invitación se reenviará solo a los asistentes que figuren en Google Calendar.'
+          : `Vas a enviar la invitación por email a ${attendees.length} asistente${attendees.length === 1 ? '' : 's'}. ¿Continuar?`,
       attendees,
     };
   }
