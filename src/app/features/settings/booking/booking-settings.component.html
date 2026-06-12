@@ -835,8 +835,11 @@
                 </p>
                 @if (
                   selectedEventDetails.isLocal &&
-                  selectedEventDetails.calendarId &&
-                  selectedEventDetails.attendees?.length
+                  (
+                    selectedEventDetails.googleEventId ||
+                    selectedEventDetails.extendedProps?.shared?.googleEventId ||
+                    (selectedEventDetails.isGoogle && selectedEventDetails.id)
+                  )
                 ) {
                   <button
                     type="button"
