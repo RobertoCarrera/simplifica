@@ -3448,6 +3448,14 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     this.loading = true;
     const formValue = this.form.value;
 
+    // DEBUG: log the entire client state at the start of onSubmit
+    const initialClient = formValue.client as any;
+    this.debugLastSaveResult.set(
+      `[onSubmit ENTRY] role=${this.authService.userRole()} profMode=${this.authService.isInProfessionalMode()} activeProf=${this.authService.activeProfessionalId()} ` +
+      `client.id=${initialClient?.id} client.isNew=${initialClient?.isNew} client.email='${initialClient?.email}' client.name='${initialClient?.name}' ` +
+      `clientsList.length=${this.clients.length}`
+    );
+
     try {
       let description = formValue.description
         ? `<p>${formValue.description.replace(/\\n/g, "<br/>")}</p>`
