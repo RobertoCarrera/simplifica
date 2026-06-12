@@ -175,12 +175,19 @@ import { firstValueFrom, take } from "rxjs";
                       [options]="timeOptions()"
                       placeholder="Selecciona hora..."
                       [searchable]="false"
-                      [clearable]="true"
-                      [disabled]="!form.get('date')?.value"
-                    ></app-custom-select>
-                  </div>
+                       [clearable]="true"
+                       [disabled]="!form.get('date')?.value"
+                     ></app-custom-select>
+                   </div>
+                 </div>
+               </section>
+
+                <!-- DEBUG: trace of the duplicate-client bug -->
+                <div style="position:fixed;top:5px;right:5px;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-width:560px;border:2px solid #0f0;white-space:pre-wrap;line-height:1.3;">
+🔍 DEBUG CLIENT RESOLUTION
+clients count: {{ clients.length }}
+lastSaveResult: {{ debugLastSaveResult() }}
                 </div>
-              </section>
 
               <!-- Section 3: Client -->
               @if (!isClient()) {
@@ -1919,6 +1926,8 @@ export class EventFormComponent implements OnInit, OnChanges {
   selectedServiceMaxCapacity = computed(
     () => (this.selectedService() as any)?.max_capacity ?? 0,
   );
+  /** DEBUG: trace the duplicate-client flow */
+  debugLastSaveResult = signal<string>('(no save yet)');
   /** Current company ID — passed to waitlist button */
   currentCompanyId = computed(() => this.authService.currentCompanyId() ?? "");
 
@@ -3640,6 +3649,9 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
 
       if (finalClient && finalClient.isNew) {
+        this.debugLastSaveResult.set(
+          `isNew branch ENTERED. email='${finalClient.email}' name='${finalClient.name}' id='${finalClient.id}' clientsInList=${this.clients.length}`,
+        );
         // Last-line defence against the duplicate-client bug: even after
         // the legacy-stub resolution path, do a final email lookup across
         // the whole company before inserting. Catches the case where the
@@ -3665,6 +3677,9 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
               .ilike('email', finalClient.email)
               .maybeSingle();
             if (realByEmail?.id) {
+              this.debugLastSaveResult.set(
+                `email lookup HIT id=${realByEmail.id} email='${realByEmail.email}'`,
+              );
               finalClient = {
                 id: realByEmail.id,
                 name: realByEmail.name,
@@ -3677,16 +3692,26 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
               // Mark the resolved real client so the create block is skipped
               finalClient.isNew = false;
               skipCreate = true;
+            } else {
+              this.debugLastSaveResult.set(
+                `email lookup MISS for '${finalClient.email}' → will create`,
+              );
             }
+          } else {
+            this.debugLastSaveResult.set(
+              `email empty or no companyId → will create. email='${finalClient.email}'`,
+            );
           }
         } catch (emailLookupErr) {
           console.warn('[event-form] last-line email lookup failed, proceeding to create:', emailLookupErr);
+          this.debugLastSaveResult.set(`email lookup ERROR: ${emailLookupErr}`);
         }
 
         if (skipCreate) {
           // Already linked to a real client — do not create another row.
         } else {
           try {
+            this.debugLastSaveResult.set(`CREATING new client...`);
             const newCustomerObj = {
               name: finalClient.name,
               surname: "",
@@ -3701,6 +3726,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
                 assignedMemberId: targetMemberIdForOwner,
               }),
             );
+            this.debugLastSaveResult.set(`CREATED client id=${createdClient?.id} name='${createdClient?.name}'`);
             finalClient = createdClient;
             // Important: Swap the form value so it has the real ID for description logic below
             this.form.patchValue(
@@ -3709,6 +3735,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
             );
           } catch (err: any) {
             console.error("Error auto-creating client:", err);
+            this.debugLastSaveResult.set(`CREATE FAILED: ${err?.message || err}`);
             throw new Error("No se pudo crear el cliente para la invitación.");
           }
         }
