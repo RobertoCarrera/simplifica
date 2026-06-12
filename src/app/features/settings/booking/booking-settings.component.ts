@@ -424,6 +424,24 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   selectedEventDetails: any | null = null;
   isDeletingEvent = signal(false);
   isUpdatingPayment = signal(false);
+  /** Loading state for the "Reenviar invitación GCal" CTA. */
+  isResendingInvite = signal(false);
+  /**
+   * State for the styled "are you sure?" dialog before re-sending the
+   * GCal invite. The styled dialog replaces native confirm() so the
+   * user has to actively read the warning before clicking.
+   */
+  resendInviteDialog: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    attendees: Array<{ email: string }>;
+  } = {
+    isOpen: false,
+    title: '',
+    message: '',
+    attendees: [],
+  };
 
   // State for the styled delete-confirmation dialog (replaces native confirm()).
   // The event being considered for deletion is stored on the dialog object so
@@ -1496,6 +1514,143 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   onDeleteEventCancel(): void {
     this.deleteEventDialog.isOpen = false;
     this.deleteEventDialog.event = null;
+  }
+
+  /**
+   * Open the styled "are you sure?" dialog before re-sending the Google
+   * Calendar invite. The dialog lists every attendee about to be
+   * emailed and warns that this is a one-shot spam risk.
+   */
+  openResendInviteDialog(): void {
+    const event = this.selectedEventDetails;
+    if (!event) return;
+    const attendees = (event.attendees ?? []).filter(
+      (a: any) => a?.email,
+    );
+    if (attendees.length === 0) {
+      this.toastService.warning(
+        'Sin asistentes',
+        'Esta reserva no tiene asistentes a los que enviar la invitación.',
+      );
+      return;
+    }
+    this.resendInviteDialog = {
+      isOpen: true,
+      title: 'Reenviar invitación de Google Calendar',
+      message: `Vas a enviar la invitación por email a ${attendees.length} asistente${attendees.length === 1 ? '' : 's'}. ¿Continuar?`,
+      attendees,
+    };
+  }
+
+  onResendInviteCancel(): void {
+    this.resendInviteDialog.isOpen = false;
+  }
+
+  /**
+   * Re-send the GCal invite by PATCHing the existing event with the
+   * SAME body but `sendUpdates=all` (the backend google-auth `update-event`
+   * action always passes sendUpdates=all, so attendees receive a fresh
+   * invitation email even though nothing about the event itself changed).
+   *
+   * If the booking has no googleEventId yet (i.e. it was created in the
+   * CRM but never synced to GCal), we can't re-send the invite — the
+   * user must edit + save the booking first so the calendar sync runs.
+   */
+  async onResendInviteConfirm(): Promise<void> {
+    const event = this.selectedEventDetails;
+    this.resendInviteDialog.isOpen = false;
+    if (!event) return;
+
+    const googleEventId: string | null =
+      event.googleEventId ||
+      event.extendedProps?.shared?.googleEventId ||
+      (event.isGoogle ? event.id : null);
+    if (!googleEventId) {
+      this.toastService.warning(
+        'Sin evento en Google Calendar',
+        'Esta reserva no está sincronizada con Google Calendar. Edita y guarda la reserva para forzar la primera sincronización, y luego podrás reenviar la invitación.',
+      );
+      return;
+    }
+
+    // Resolve the calendarId. Prefer the event's own calendarId; fall
+    // back to the company-wide default.
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+    let calendarId: string | null =
+      event.calendarId ||
+      this.googleIntegration()?.metadata?.calendar_id_appointments ||
+      null;
+    if (!calendarId) {
+      // Fetch the integration to get a calendarId when the event
+      // doesn't carry one in extendedProps.
+      try {
+        const { data: integration } = await this.supabase
+          .getClient()
+          .from('integrations')
+          .select('metadata')
+          .eq('company_id', companyId)
+          .eq('provider', 'google_calendar')
+          .maybeSingle();
+        calendarId = (integration as any)?.metadata?.calendar_id_appointments ?? null;
+      } catch (e) {
+        // ignore — error surfaced below
+      }
+    }
+    if (!calendarId) {
+      this.toastService.error(
+        'Sin calendario configurado',
+        'No se encontró un calendario de Google asociado a esta empresa.',
+      );
+      return;
+    }
+
+    this.isResendingInvite.set(true);
+    try {
+      // Build a minimal event body with the SAME attendees so Google's
+      // update-event endpoint re-sends invites without altering the
+      // event. summary/start/end are echoed back so the PATCH is a
+      // no-op semantically, but the backend still triggers
+      // sendUpdates=all.
+      const eventBody: any = {
+        id: googleEventId,
+        summary: event.title,
+        start: { dateTime: new Date(event.start).toISOString() },
+        end: { dateTime: new Date(event.end).toISOString() },
+        attendees: (event.attendees ?? []).filter((a: any) => a?.email),
+      };
+      const { data, error } = await this.supabase
+        .getClient()
+        .functions.invoke('google-auth', {
+          body: {
+            action: 'update-event',
+            calendarId,
+            event: eventBody,
+          },
+        });
+      if (error) {
+        console.error('Resend invite error:', error);
+        this.toastService.error(
+          'Error al reenviar',
+          'No se pudo reenviar la invitación. Revisa los logs.',
+        );
+        return;
+      }
+      if (data?.error) {
+        console.error('Backend resend invite error:', data.error);
+        this.toastService.error(
+          'Error al reenviar',
+          data.error.message ?? 'Error desconocido del backend.',
+        );
+        return;
+      }
+      this.toastService.success(
+        'Invitación reenviada',
+        `Se ha enviado la invitación a ${(event.attendees ?? []).length} asistente${(event.attendees ?? []).length === 1 ? '' : 's'}.`,
+      );
+    } finally {
+      this.isResendingInvite.set(false);
+    }
   }
 
   /**
