@@ -827,11 +827,28 @@
 
             <!-- Attendees -->
             <div>
-              <p
-                class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2"
-              >
-                Asistentes e Invitados
-              </p>
+              <div class="flex items-center justify-between mb-2 gap-2">
+                <p
+                  class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
+                  Asistentes e Invitados
+                </p>
+                @if (
+                  selectedEventDetails.isLocal &&
+                  selectedEventDetails.calendarId &&
+                  selectedEventDetails.attendees?.length
+                ) {
+                  <button
+                    type="button"
+                    (click)="openResendInviteDialog()"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/50 rounded-md transition-colors"
+                    title="Forzar el reenvío de la invitación de Google Calendar a todos los asistentes"
+                  >
+                    <i class="fas fa-paper-plane text-[10px]"></i>
+                    <span>Reenviar invitación</span>
+                  </button>
+                }
+              </div>
               <div class="flex flex-wrap gap-2">
                 <!-- Professional -->
                 @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
@@ -1096,4 +1113,58 @@
     (cancelled)="markAsPaidDialogRef?.close()"
     #markAsPaidDialogRef
   ></app-payment-method-dialog>
+
+  <!-- Resend GCal invite confirmation dialog. Re-uses the shared
+       ConfirmDialogComponent but with a custom rich body that
+       shows the attendees about to be re-notified, and a
+       warning callout explaining that Google will email each
+       attendee (so accidental clicks are loud). -->
+  <app-confirm-dialog
+    [isOpen]="resendInviteDialog.isOpen"
+    [title]="resendInviteDialog.title"
+    [message]="resendInviteDialog.message"
+    type="warning"
+    confirmText="Sí, reenviar invitación"
+    cancelText="Cancelar"
+    (confirm)="onResendInviteConfirm()"
+    (cancel)="onResendInviteCancel()"
+  >
+    <div class="space-y-4">
+      <!-- Rich body: list of attendees about to be re-notified -->
+      <div
+        class="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 overflow-hidden"
+      >
+        <div class="px-4 py-3 border-b border-amber-200/70 dark:border-amber-900/40">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-700/80 dark:text-amber-300/80">
+            Asistentes que recibirán la invitación
+          </p>
+        </div>
+        <ul class="divide-y divide-amber-200/70 dark:divide-amber-900/40">
+          @for (attendee of resendInviteDialog.attendees; track attendee.email) {
+            <li class="flex items-center gap-2 px-4 py-2 text-sm">
+              <i class="fas fa-envelope text-amber-500 shrink-0"></i>
+              <span class="text-gray-700 dark:text-gray-300 font-medium truncate">
+                {{ attendee.email }}
+              </span>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <!-- Side-effects callout — make the spam risk explicit -->
+      <div
+        class="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2"
+      >
+        <i class="fas fa-circle-info mt-0.5 shrink-0"></i>
+        <div class="leading-relaxed">
+          Al confirmar:
+          <ul class="mt-1 list-disc list-inside space-y-0.5">
+            <li>Google Calendar enviará un email de invitación a cada asistente listado arriba.</li>
+            <li>Esta acción no se puede deshacer ni revertir desde el CRM.</li>
+            <li>No la uses como recordatorio masivo: los destinatarios reciben un correo por asistente.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </app-confirm-dialog>
 </div>
