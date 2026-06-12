@@ -3715,6 +3715,42 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           this.debugLastSaveResult.set(`email lookup ERROR: ${emailLookupErr}`);
         }
 
+        // HARD GUARD #2: even after the DB lookup, if the email/name
+        // matches ANY client already in the local list, abort creation.
+        // The local list is the source of truth for what the user sees
+        // in the dropdown.
+        if (!skipCreate && finalClient.email) {
+          const emailLower = finalClient.email.toLowerCase().trim();
+          const nameLower = (finalClient.name || '').toLowerCase().trim();
+          const existingInList = this.clients.find((c: any) => {
+            if (c.email && c.email.toLowerCase().trim() === emailLower) return true;
+            const cDisplay = (c.displayName || `${c.name || ''} ${c.surname || ''} (${c.email || ''})`).toLowerCase();
+            if (cDisplay.includes(`(${emailLower})`)) return true;
+            if (nameLower && c.name && c.name.toLowerCase().trim() === nameLower) return true;
+            return false;
+          });
+          if (existingInList) {
+            this.debugLastSaveResult.set(
+              `local-list match HIT id=${existingInList.id} — aborting create`,
+            );
+            finalClient = {
+              id: existingInList.id,
+              name: existingInList.name,
+              surname: existingInList.surname,
+              email: existingInList.email,
+              phone: existingInList.phone,
+              displayName: existingInList.displayName || `${existingInList.name || ''} ${existingInList.surname || ''} (${existingInList.email || ''})`.trim(),
+            };
+            this.form.patchValue({ client: finalClient as any }, { emitEvent: false });
+            finalClient.isNew = false;
+            skipCreate = true;
+          } else {
+            this.debugLastSaveResult.set(
+              `local-list match MISS for email='${finalClient.email}' name='${finalClient.name}' — will create`,
+            );
+          }
+        }
+
         if (skipCreate) {
           // Already linked to a real client — do not create another row.
         } else {
