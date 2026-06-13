@@ -33,7 +33,7 @@ const STORAGE_KEY = 'docs-sidebar-expanded';
   imports: [CommonModule, RouterLink, TranslocoPipe, LucideAngularModule],
   template: `
     <aside
-      class="docs-sidebar h-full overflow-y-auto py-4 pr-2"
+      class="docs-sidebar block w-full h-full overflow-y-auto py-4 pr-2"
       [attr.aria-label]="'docs.sidebar.label' | transloco"
     >
       @if (store.loading() && store.sidebarTree().length === 0) {
@@ -100,6 +100,11 @@ const STORAGE_KEY = 'docs-sidebar-expanded';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
       .docs-sidebar-link {
         display: flex;
         align-items: center;

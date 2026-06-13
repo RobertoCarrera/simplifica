@@ -62,6 +62,11 @@ interface TocEntry {
   `,
   styles: [
     `
+      :host {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
       .docs-toc {
         position: sticky;
         top: 5rem;

@@ -14,6 +14,10 @@ import { DocsArticleComponent } from './docs-article.component';
  *  - `:category`         → category-filtered article list
  *  - `:category/:slug`   → single article
  *
+ * Editing is done IN-PLACE via the `EditModeService` (a header toggle
+ * injects an editor into the same components when the user is a
+ * superadmin). There is no separate `/docs/admin` route anymore.
+ *
  * Auth is enforced by the parent route in app.routes.ts (StaffGuard).
  */
 export const docsRoutes: Routes = [
