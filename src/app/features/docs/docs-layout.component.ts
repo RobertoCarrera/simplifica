@@ -108,19 +108,21 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
         }
       </header>
 
-      <!-- Mobile tabs: Índice | Artículo (only < 3xl / 1100px) -->
+      <!-- Mobile tabs: Índice | Artículo (only < md / 768px) -->
       <app-docs-mobile-tabs
-        class="3xl:hidden"
+        class="md:hidden"
         [activeTab]="mobileActive()"
         (select)="onMobileSelect($event)"
       ></app-docs-mobile-tabs>
 
-      <!-- Main grid: 3 columns only at 3xl (>=1100px); below that, only
-           the main column renders (sidebar + ToC hidden, mobile tabs own
-           the index/panel switch). -->
-      <div class="w-full px-4 md:px-6 py-4 md:py-6 grid 3xl:grid-cols-[240px_minmax(0,1fr)_220px] gap-6">
-        <!-- LEFT: Sidebar (only desktop >= 1100px) -->
-        <div class="hidden 3xl:block min-w-0">
+      <!-- Main grid (responsive, from compact to wide):
+           - mobile: 1 col, no sidebar, no ToC
+           - md (>=768px): 2 cols (sidebar + main), no ToC
+           - xl (>=1280px): 3 cols, ToC angosto (180px)
+           - 3xl (>=1100px custom, sits below xl): 3 cols anchas (240/220) -->
+      <div class="w-full px-4 md:px-6 py-4 md:py-6 grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_180px] 3xl:grid-cols-[240px_minmax(0,1fr)_220px] gap-4 md:gap-6">
+        <!-- LEFT: Sidebar appears at md. Sticky so it follows scroll. -->
+        <div class="hidden md:block min-w-0">
           <div class="sticky top-20 max-h-[calc(100vh-6rem)] w-full">
             <app-docs-sidebar></app-docs-sidebar>
           </div>
@@ -180,17 +182,21 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
           }
         </main>
 
-        <!-- RIGHT: ToC (only desktop >= 1100px) -->
-        <div class="hidden 3xl:block min-w-0">
-          <app-docs-toc [contentRef]="contentRef()"></app-docs-toc>
-        </div>
+        <!-- RIGHT: ToC — only rendered on the article view (where there
+             are headings to show). On the category index the right column
+             would be empty and waste 220px. -->
+        @if (activeArticleSlug()) {
+          <div class="hidden xl:block min-w-0">
+            <app-docs-toc [contentRef]="contentRef()"></app-docs-toc>
+          </div>
+        }
       </div>
 
       <!-- Mobile panel: show the sidebar as a fullscreen overlay below
            3xl (1100px) when the user taps the "Índice" tab. The article
            panel replaces it via the routed outlet. -->
       @if (mobileActive() === 'index') {
-        <div class="3xl:hidden fixed inset-x-0 bottom-0 top-[7.5rem] z-10 bg-white dark:bg-gray-900 overflow-y-auto px-4 pb-6">
+        <div class="md:hidden fixed inset-x-0 bottom-0 top-[7.5rem] z-10 bg-white dark:bg-gray-900 overflow-y-auto px-4 pb-6">
           <app-docs-sidebar></app-docs-sidebar>
         </div>
       }

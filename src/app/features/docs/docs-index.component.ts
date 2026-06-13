@@ -55,7 +55,7 @@ import { EditModeService } from './edit-mode.service';
         </header>
 
         @if (loading()) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
             @for (i of [1,2,3,4,5,6]; track i) {
               <div class="h-32 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
             }
@@ -77,15 +77,55 @@ import { EditModeService } from './edit-mode.service';
           </div>
         }
 
-        <!-- EDIT MODE: empty state with a single big + button -->
+        <!-- EDIT MODE: empty state with the new-category form INLINE -->
         @if (editing() && !loading() && !error() && categories().length === 0) {
-          <div class="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 p-12 text-center bg-amber-50/30 dark:bg-amber-900/10">
-            <lucide-icon [name]="BookOpenIcon" [size]="32" class="mx-auto text-amber-500 mb-3"></lucide-icon>
-            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">No hay categorías. Empezá creando la primera.</p>
-            <button type="button" (click)="startNewCategory()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-amber-500 text-white text-sm font-medium hover:bg-amber-600" data-testid="add-first-category">
-              <lucide-icon [name]="PlusIcon" [size]="14"></lucide-icon>
-              <span>Crear primera categoría</span>
-            </button>
+          <div class="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 p-8 text-center bg-amber-50/30 dark:bg-amber-900/10">
+            @if (newCategorySlot() !== null) {
+              <div class="text-left max-w-md mx-auto">
+                <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">Creá la primera categoría. Después vas a poder agregarle artículos.</p>
+                <input
+                  type="text"
+                  class="w-full mb-2 px-3 py-2 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded"
+                  [ngModel]="newCategoryName()"
+                  (ngModelChange)="onNewCategoryNameChange($event)"
+                  placeholder="Nombre de la categoría"
+                  data-testid="new-category-name-first"
+                  autofocus
+                />
+                <input
+                  type="text"
+                  class="w-full mb-2 px-3 py-1.5 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500"
+                  [ngModel]="newCategorySlug()"
+                  (ngModelChange)="newCategorySlug.set($event)"
+                  placeholder="slug"
+                />
+                <textarea
+                  class="w-full mb-3 px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
+                  [ngModel]="newCategoryDescription()"
+                  (ngModelChange)="newCategoryDescription.set($event)"
+                  placeholder="Descripción (opcional)"
+                  rows="2"
+                ></textarea>
+                <div class="flex items-center gap-2">
+                  <button type="button" (click)="submitNewCategory()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" data-testid="create-first-category">
+                    <lucide-icon [name]="PlusIcon" [size]="14"></lucide-icon>
+                    <span>Crear categoría</span>
+                  </button>
+                  <button type="button" (click)="cancelNewCategory()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <lucide-icon [name]="XIcon" [size]="14"></lucide-icon>
+                    <span>Cancelar</span>
+                  </button>
+                </div>
+                @if (newCategoryError()) { <span class="block mt-2 text-xs text-red-600">{{ newCategoryError() }}</span> }
+              </div>
+            } @else {
+              <lucide-icon [name]="BookOpenIcon" [size]="32" class="mx-auto text-amber-500 mb-3"></lucide-icon>
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">No hay categorías. Empezá creando la primera.</p>
+              <button type="button" (click)="startNewCategory()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-amber-500 text-white text-sm font-medium hover:bg-amber-600" data-testid="add-first-category">
+                <lucide-icon [name]="PlusIcon" [size]="14"></lucide-icon>
+                <span>Crear primera categoría</span>
+              </button>
+            }
           </div>
         }
 
@@ -101,16 +141,20 @@ import { EditModeService } from './edit-mode.service';
             </div>
           }
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
             @for (cat of categories(); track cat.id; let i = $index) {
               <div
-                class="docs-card-wrapper group relative"
+                class="docs-card-wrapper group relative transition-all duration-150"
                 [class.docs-card-wrapper--editing]="editing()"
                 [class.docs-card-wrapper--archived]="!!cat.archived_at"
+                [class.docs-card-wrapper--dragging]="draggingCategoryId() === cat.id"
+                [class.docs-card-wrapper--drag-over]="dragOverCategoryId() === cat.id && draggingCategoryId() !== cat.id"
                 [attr.data-testid]="'card-' + cat.slug"
                 [attr.draggable]="editing()"
                 (dragstart)="onDragStartCategory($event, cat.id)"
-                (dragover)="onDragOver($event)"
+                (dragover)="onDragOver($event, cat.id)"
+                (dragleave)="onDragLeave(cat.id)"
+                (dragend)="onDragEnd()"
                 (drop)="onDropCategory($event, cat.id)"
               >
                 <!-- Edit-mode handle + actions -->
@@ -299,11 +343,14 @@ import { EditModeService } from './edit-mode.service';
           <ul class="space-y-2">
             @for (art of articlesInCategory(); track art.id; let i = $index) {
               <li
-                class="docs-article-row group"
+                class="docs-article-row group transition-all duration-150"
                 [class.docs-article-row--editing]="editing()"
+                [class.docs-article-row--drag-over]="dragOverArticleId() === art.id && draggingArticleId() !== art.id"
                 [attr.draggable]="editing()"
                 (dragstart)="onDragStartArticle($event, art.id)"
-                (dragover)="onDragOver($event)"
+                (dragover)="onDragOverArticle($event, art.id)"
+                (dragleave)="onDragLeaveArticle(art.id)"
+                (dragend)="onDragEndArticle()"
                 (drop)="onDropArticle($event, art.id)"
                 [attr.data-testid]="'article-row-' + art.slug"
               >
@@ -419,6 +466,15 @@ import { EditModeService } from './edit-mode.service';
       .docs-card-wrapper--editing.docs-card-wrapper--archived a { opacity: 0.6; }
       .docs-card-wrapper--editing[draggable="true"] { cursor: grab; }
       .docs-card-wrapper--editing[draggable="true"]:active { cursor: grabbing; }
+      /* Drag visual feedback: the card being dragged fades slightly;
+         the target card gets a thick amber ring so the user knows
+         where it will land. */
+      .docs-card-wrapper--dragging { opacity: 0.4; transform: scale(0.98); }
+      .docs-card-wrapper--drag-over { transform: scale(1.03); }
+      .docs-card-wrapper--drag-over > a,
+      .docs-card-wrapper--drag-over > .docs-new-cat-form {
+        box-shadow: 0 0 0 3px rgb(245 158 11), 0 8px 24px rgba(0,0,0,0.12);
+      }
     `,
   ],
 })
@@ -487,9 +543,8 @@ export class DocsIndexComponent implements OnInit {
   readonly newCategoryDescription = signal('');
   readonly newCategoryError = signal<string | null>(null);
 
-  private draggingCategoryId: string | null = null;
-
   constructor() {
+    // Keep the article list in sync with the URL.
     effect(() => {
       const slug = this.activeCategorySlug();
       this.shellStore.ensureLoaded();
@@ -499,8 +554,7 @@ export class DocsIndexComponent implements OnInit {
     });
 
     // Whenever edit mode toggles, reload categories (so we see archived ones)
-    // or reload the read set (so we hide them again). Also reload the
-    // article list of the active category so drafts/archived show up.
+    // and the article list (so drafts/archived show up).
     effect(() => {
       const isEditing = this.editing();
       void isEditing;
@@ -554,7 +608,21 @@ export class DocsIndexComponent implements OnInit {
     }
   }
 
-  // ── Category editing ────────────────────────────────────────────────
+  // ── New category inline form ────────────────────────────────────────
+
+  startNewCategory(): void {
+    this.newCategorySlot.set(this.categories().length);
+    this.newCategoryName.set('');
+    this.newCategorySlug.set('');
+    this.newCategoryDescription.set('');
+    this.newCategoryError.set(null);
+  }
+
+  cancelNewCategory(): void {
+    this.newCategorySlot.set(null);
+  }
+
+  // ── Category editing (inline rename + archive + hard delete) ─────
 
   startEditCategory(c: DocsCategory): void {
     this.editingCategoryId.set(c.id);
@@ -606,9 +674,7 @@ export class DocsIndexComponent implements OnInit {
   }
 
   async askDeleteCategory(c: DocsCategory): Promise<void> {
-    const typed = prompt(
-      `Para confirmar, escribí "${c.name}":`,
-    );
+    const typed = prompt(`Para confirmar, escribí "${c.name}":`);
     if (typed !== c.name) return;
     try {
       await this.adminService.deleteCategory(c.id);
@@ -616,20 +682,6 @@ export class DocsIndexComponent implements OnInit {
     } catch (e: any) {
       this.error.set(e?.message ?? 'No se pudo eliminar (¿tiene artículos?)');
     }
-  }
-
-  // ── New category inline form ────────────────────────────────────────
-
-  startNewCategory(): void {
-    this.newCategorySlot.set(this.categories().length);
-    this.newCategoryName.set('');
-    this.newCategorySlug.set('');
-    this.newCategoryDescription.set('');
-    this.newCategoryError.set(null);
-  }
-
-  cancelNewCategory(): void {
-    this.newCategorySlot.set(null);
   }
 
   onNewCategoryNameChange(name: string): void {
@@ -662,21 +714,39 @@ export class DocsIndexComponent implements OnInit {
 
   // ── Drag & drop reordering ─────────────────────────────────────────
 
+  /** Which card is currently being dragged. */
+  readonly draggingCategoryId = signal<string | null>(null);
+  /** Which card has the drag indicator on it (drop preview). */
+  readonly dragOverCategoryId = signal<string | null>(null);
+
   onDragStartCategory(ev: DragEvent, id: string): void {
-    this.draggingCategoryId = id;
+    this.draggingCategoryId.set(id);
     ev.dataTransfer?.setData('text/plain', id);
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
   }
 
-  onDragOver(ev: DragEvent): void {
+  onDragOver(ev: DragEvent, targetId: string): void {
     ev.preventDefault();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+    this.dragOverCategoryId.set(targetId);
+  }
+
+  onDragLeave(targetId: string): void {
+    if (this.dragOverCategoryId() === targetId) {
+      this.dragOverCategoryId.set(null);
+    }
+  }
+
+  onDragEnd(): void {
+    this.draggingCategoryId.set(null);
+    this.dragOverCategoryId.set(null);
   }
 
   async onDropCategory(ev: DragEvent, targetId: string): Promise<void> {
     ev.preventDefault();
-    const sourceId = this.draggingCategoryId ?? ev.dataTransfer?.getData('text/plain');
-    this.draggingCategoryId = null;
+    const sourceId = this.draggingCategoryId() ?? ev.dataTransfer?.getData('text/plain');
+    this.draggingCategoryId.set(null);
+    this.dragOverCategoryId.set(null);
     if (!sourceId || sourceId === targetId) return;
     const arr = [...this.categories()];
     const from = arr.findIndex((c) => c.id === sourceId);
@@ -695,18 +765,37 @@ export class DocsIndexComponent implements OnInit {
 
   // ── Article drag&drop + new-article inline form ─────────────────────
 
-  private draggingArticleId: string | null = null;
+  readonly draggingArticleId = signal<string | null>(null);
+  readonly dragOverArticleId = signal<string | null>(null);
 
   onDragStartArticle(ev: DragEvent, id: string): void {
-    this.draggingArticleId = id;
+    this.draggingArticleId.set(id);
     ev.dataTransfer?.setData('text/plain', id);
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
   }
 
+  onDragOverArticle(ev: DragEvent, targetId: string): void {
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+    this.dragOverArticleId.set(targetId);
+  }
+
+  onDragLeaveArticle(targetId: string): void {
+    if (this.dragOverArticleId() === targetId) {
+      this.dragOverArticleId.set(null);
+    }
+  }
+
+  onDragEndArticle(): void {
+    this.draggingArticleId.set(null);
+    this.dragOverArticleId.set(null);
+  }
+
   async onDropArticle(ev: DragEvent, targetId: string): Promise<void> {
     ev.preventDefault();
-    const sourceId = this.draggingArticleId ?? ev.dataTransfer?.getData('text/plain');
-    this.draggingArticleId = null;
+    const sourceId = this.draggingArticleId() ?? ev.dataTransfer?.getData('text/plain');
+    this.draggingArticleId.set(null);
+    this.dragOverArticleId.set(null);
     if (!sourceId || sourceId === targetId) return;
     const arr = [...this.articlesByCategory()];
     const from = arr.findIndex((a) => a.id === sourceId);
