@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Project, ProjectPermissions } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
 import { AuthService } from '../../../../services/auth.service';
+import { ToastService } from '../../../../services/toast.service';
 
 @Component({
   selector: 'app-project-card',
@@ -223,6 +224,7 @@ export class ProjectCardComponent implements OnInit {
   @Output() approve = new EventEmitter<void>();
   private projectsService = inject(ProjectsService);
   private authService = inject(AuthService);
+  private toast = inject(ToastService);
   unreadCount = signal(0);
   currentUser: any = null;
 
@@ -435,13 +437,16 @@ export class ProjectCardComponent implements OnInit {
     this.projectsService.updateTask(task.id, { is_completed: task.is_completed }).subscribe({
       error: (err) => {
         console.error('Error toggling task', err);
-        // Revert on error
+        // Revert optimistic update
         task.is_completed = !task.is_completed;
         if (task.is_completed) {
           this.project.completed_tasks_count = (this.project.completed_tasks_count || 0) + 1;
         } else {
           this.project.completed_tasks_count = (this.project.completed_tasks_count || 0) - 1;
         }
+        // Show user-facing feedback — silent console.error was a UX bug
+        const message = err?.message || 'No se pudo actualizar la tarea. Inténtalo de nuevo.';
+        this.toast.error('Error al guardar la tarea', message);
       },
     });
   }

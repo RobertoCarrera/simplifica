@@ -106,7 +106,7 @@ import { TiptapEditorComponent } from '../../shared/ui/tiptap-editor/tiptap-edit
               <div class="space-y-3 mb-4" data-testid="article-edit-meta">
                 <input
                   type="text"
-                  class="w-full text-3xl font-bold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1"
+                  class="w-full text-3xl font-bold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1 text-gray-900 dark:text-white"
                   [ngModel]="editTitle()"
                   (ngModelChange)="editTitle.set($event)"
                   placeholder="Título"
@@ -120,7 +120,7 @@ import { TiptapEditorComponent } from '../../shared/ui/tiptap-editor/tiptap-edit
                   } @else {
                     <input
                       type="text"
-                      class="flex-1 text-sm font-mono bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1"
+                      class="flex-1 text-sm font-mono bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1 text-gray-900 dark:text-white"
                       [ngModel]="editSlug()"
                       (ngModelChange)="editSlug.set($event)"
                       placeholder="slug"
@@ -129,7 +129,7 @@ import { TiptapEditorComponent } from '../../shared/ui/tiptap-editor/tiptap-edit
                   }
                 </div>
                 <textarea
-                  class="w-full text-base bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1"
+                  class="w-full text-base bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1 text-gray-900 dark:text-white"
                   [ngModel]="editSummary()"
                   (ngModelChange)="editSummary.set($event)"
                   placeholder="Resumen (opcional)"

@@ -120,7 +120,13 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
            - md (>=768px): 2 cols (sidebar + main), no ToC
            - xl (>=1280px): 3 cols, ToC angosto (180px)
            - 3xl (>=1100px custom, sits below xl): 3 cols anchas (240/220) -->
-      <div class="w-full px-4 md:px-6 py-4 md:py-6 grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_180px] 3xl:grid-cols-[240px_minmax(0,1fr)_220px] gap-4 md:gap-6">
+      <!-- Main grid: 3 cols only when on the article view (where the
+           ToC has content). On the index/category view the grid
+           stays at 2 cols so the empty 3rd column doesn't waste space. -->
+      <div
+        class="w-full px-4 md:px-6 py-4 md:py-6 grid gap-4 md:gap-6"
+        [class]="gridColsClass()"
+      >
         <!-- LEFT: Sidebar appears at md. Sticky so it follows scroll. -->
         <div class="hidden md:block min-w-0">
           <div class="sticky top-20 max-h-[calc(100vh-6rem)] w-full">
@@ -266,6 +272,20 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
   readonly mobileActive = signal<'index' | 'article'>('article');
 
   /**
+   * Grid columns class, computed from whether we're on the article
+   * view (3 cols, with ToC) or the index/category view (2 cols,
+   * no ToC column wasted).
+   */
+  readonly gridColsClass = computed(() => {
+    if (this.activeArticleSlug()) {
+      // Article view: 3 cols. Sidebar angosto en md, ancho en 3xl.
+      return 'grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_180px] 3xl:grid-cols-[240px_minmax(0,1fr)_220px]';
+    }
+    // Index or category view: 2 cols. Sidebar aparece a md, sin ToC.
+    return 'grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] 3xl:grid-cols-[240px_minmax(0,1fr)]';
+  });
+
+  /**
    * Track the deepest child route so we can read its params. We use
    * the router URL directly because child components own the data
    * loading and re-render on every route change.
@@ -293,7 +313,14 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
 
   activeArticleSlug = computed(() => {
     const m = this.url().match(/^\/docs\/([^/]+)\/([^/]+)/);
-    return m ? m[2] : null;
+    if (!m) return null;
+    // Reserved top-level segments that aren't real article slugs.
+    // The docs route tree only defines `:category` and `:category/:slug`,
+    // so a non-empty match is always a real article — but we keep this
+    // guard so a future sub-route like `/docs/admin/foo` doesn't leak
+    // through and render an empty ToC slot.
+    if (m[1] === 'admin' || m[1] === 'categorias' || m[1] === 'index') return null;
+    return m[2];
   });
 
   activeArticleTitle = computed(() => {
