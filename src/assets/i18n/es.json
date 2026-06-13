@@ -2492,6 +2492,57 @@
       "noHaHabidoEjecucion": "No ha habido ejecución"
     }
   },
+  "clinicalImport": {
+    "title": "Importar Historial Clínico",
+    "subtitle": "Importa notas clínicas encriptadas desde un CSV de un sistema legacy",
+    "close": "Cerrar",
+    "mfaRequired": {
+      "title": "Verificación MFA requerida",
+      "description": "Por seguridad, acceder al Historial Clínico requiere una verificación adicional con tu segundo factor. Te redirigiremos a la pantalla de verificación y volverás automáticamente al terminar.",
+      "acknowledge": "Verificar ahora"
+    },
+    "resolution": {
+      "title": "Resolución de coincidencias",
+      "description": "Revisá las filas antes de importar. Las filas ambiguas (varios clientes con el mismo nombre) requieren que elijas uno. Las filas sin coincidencia pueden crear un cliente nuevo o saltarse.",
+      "candidates": "candidatos",
+      "skip": "Saltar",
+      "createClient": "Crear cliente",
+      "confirmCreate": "Crear",
+      "cancel": "Cancelar",
+      "consentWarning": "El cliente se creará con consentimiento de datos de salud = false. La importación fallará para sus filas hasta que otorgue consentimiento.",
+      "assigned": "Asignado",
+      "willSkip": "Se omitirá",
+      "willImport": "Se importarán",
+      "notes": "notas",
+      "confirm": "Confirmar e importar"
+    },
+    "importing": {
+      "title": "Importando notas clínicas",
+      "processed": "Procesadas",
+      "abort": "Abortar"
+    },
+    "status": {
+      "matched": "Coincide",
+      "ambiguous": "Ambiguo",
+      "unresolved": "Sin coincidencia",
+      "missingEpisode": "Episodio no encontrado",
+      "skipped": "Omitida",
+      "consentNotGranted": "Sin consentimiento"
+    },
+    "summary": {
+      "titleComplete": "Importación completada",
+      "titlePartial": "Importación completada con errores",
+      "elapsed": "Tiempo total",
+      "new": "Nuevas",
+      "deduped": "Re-omitidas",
+      "attempted": "Procesadas",
+      "failed": "Fallidas",
+      "failuresTitle": "Filas con error",
+      "downloadFailures": "Descargar reporte (CSV)",
+      "close": "Cerrar",
+      "securityNote": "Las notas fueron encriptadas en el servidor. El reporte de fallos no contiene el contenido de las notas, solo el motivo del error."
+    }
+  },
   "gdpr": {
     "title": "RGPD",
     "subtitle": "Configuración del RGPD",

@@ -14,11 +14,12 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { LucideAngularModule, ChevronLeft, ChevronRight, BookOpen } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, ChevronRight, BookOpen, Pencil, Eye, Save, X } from 'lucide-angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { DocsShellStore } from './docs-shell.store';
+import { EditModeService } from './edit-mode.service';
 import { DocsBreadcrumbsComponent } from './components/docs-breadcrumbs.component';
 import { DocsSearchComponent } from './components/docs-search.component';
 import { DocsSidebarComponent } from './components/docs-sidebar.component';
@@ -62,11 +63,11 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
   ],
   template: `
     <div class="docs-shell min-h-full">
-      <!-- Header strip: breadcrumbs + search -->
+      <!-- Header strip: breadcrumbs + search + edit-mode toggle -->
       <header
-        class="sticky top-0 z-20 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-gray-900/60"
+        class="sticky top-0 z-20 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-gray-900/60 w-full"
       >
-        <div class="max-w-[1400px] mx-auto px-4 md:px-6 h-14 flex items-center gap-4">
+        <div class="w-full px-4 md:px-6 h-14 flex items-center gap-4">
           <div class="flex-1 min-w-0">
             <app-docs-breadcrumbs
               [categorySlug]="activeCategory()"
@@ -74,10 +75,37 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
               [articleTitleInput]="activeArticleTitle()"
             ></app-docs-breadcrumbs>
           </div>
-          <div class="shrink-0">
+          <div class="shrink-0 flex items-center gap-2">
             <app-docs-search></app-docs-search>
+            @if (editModeSvc.canEdit()) {
+              <button
+                type="button"
+                (click)="editModeSvc.toggle()"
+                class="docs-edit-toggle inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors"
+                [class.docs-edit-toggle--active]="editModeSvc.editMode()"
+                [attr.aria-pressed]="editModeSvc.editMode()"
+                data-testid="docs-edit-toggle"
+              >
+                @if (editModeSvc.editMode()) {
+                  <lucide-icon [name]="EyeIcon" [size]="14"></lucide-icon>
+                  <span>Salir de edición</span>
+                } @else {
+                  <lucide-icon [name]="PencilIcon" [size]="14"></lucide-icon>
+                  <span>Editar documentación</span>
+                }
+              </button>
+            }
           </div>
         </div>
+        @if (editModeSvc.editMode()) {
+          <div
+            class="w-full px-4 md:px-6 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2"
+            data-testid="docs-edit-banner"
+          >
+            <lucide-icon [name]="PencilIcon" [size]="12"></lucide-icon>
+            <span>Modo edición activo. Los cambios se guardan al pulsar <kbd class="px-1 rounded bg-amber-100 dark:bg-amber-900/40">Ctrl+S</kbd> o el botón Listo.</span>
+          </div>
+        }
       </header>
 
       <!-- Mobile tabs: Índice | Artículo (only < 3xl / 1100px) -->
@@ -90,17 +118,17 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
       <!-- Main grid: 3 columns only at 3xl (>=1100px); below that, only
            the main column renders (sidebar + ToC hidden, mobile tabs own
            the index/panel switch). -->
-      <div class="max-w-[1400px] mx-auto px-4 md:px-6 py-4 md:py-6 grid 3xl:grid-cols-[240px_1fr_220px] gap-6">
+      <div class="w-full px-4 md:px-6 py-4 md:py-6 grid 3xl:grid-cols-[240px_minmax(0,1fr)_220px] gap-6">
         <!-- LEFT: Sidebar (only desktop >= 1100px) -->
-        <div class="hidden 3xl:block">
-          <div class="sticky top-20 max-h-[calc(100vh-6rem)]">
+        <div class="hidden 3xl:block min-w-0">
+          <div class="sticky top-20 max-h-[calc(100vh-6rem)] w-full">
             <app-docs-sidebar></app-docs-sidebar>
           </div>
         </div>
 
         <!-- CENTER: Main content (router-outlet, with prev/next footer) -->
-        <main class="min-w-0">
-          <div #contentHost>
+        <main class="min-w-0 overflow-hidden">
+          <div #contentHost class="min-w-0">
             <router-outlet></router-outlet>
           </div>
 
@@ -153,7 +181,7 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
         </main>
 
         <!-- RIGHT: ToC (only desktop >= 1100px) -->
-        <div class="hidden 3xl:block">
+        <div class="hidden 3xl:block min-w-0">
           <app-docs-toc [contentRef]="contentRef()"></app-docs-toc>
         </div>
       </div>
@@ -173,11 +201,41 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
       :host {
         display: block;
       }
+      .docs-edit-toggle {
+        background: transparent;
+        border-color: rgb(229 231 235);
+        color: rgb(75 85 99);
+      }
+      :host-context(.dark) .docs-edit-toggle {
+        border-color: rgb(55 65 81);
+        color: rgb(209 213 219);
+      }
+      .docs-edit-toggle:hover {
+        background: rgb(243 244 246);
+      }
+      :host-context(.dark) .docs-edit-toggle:hover {
+        background: rgb(31 41 55);
+      }
+      .docs-edit-toggle--active {
+        background: rgb(254 243 199) !important;
+        border-color: rgb(245 158 11) !important;
+        color: rgb(146 64 14) !important;
+      }
+      :host-context(.dark) .docs-edit-toggle--active {
+        background: rgba(245, 158, 11, 0.15) !important;
+        border-color: rgb(245 158 11) !important;
+        color: rgb(252 211 77) !important;
+      }
+      kbd {
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 0.7rem;
+      }
     `,
   ],
 })
 export class DocsLayoutComponent implements OnInit, AfterViewInit {
   readonly store = inject(DocsShellStore);
+  readonly editModeSvc = inject(EditModeService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
@@ -185,6 +243,10 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
   readonly ChevronLeftIcon = ChevronLeft;
   readonly ChevronRightIcon = ChevronRight;
   readonly BookOpenIcon = BookOpen;
+  readonly PencilIcon = Pencil;
+  readonly EyeIcon = Eye;
+  readonly SaveIcon = Save;
+  readonly XIcon = X;
 
   /** ElementRef of the main content area — passed to the ToC.
    *  In Angular 21 `@ViewChild` returns the native element directly

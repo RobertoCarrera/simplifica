@@ -5,6 +5,11 @@ import { AuthService } from '../../services/auth.service';
 /**
  * Shape of a documentation category as exposed by docs_categories.
  * Phase 3 ships the read model; Phase 6 will layer FTS on top.
+ *
+ * `archived_at` is OPTIONAL because the public read query does not
+ * select it — only the admin service does. Components that need to
+ * distinguish archived rows widen the type or just use the optional
+ * property accessor.
  */
 export interface DocsCategory {
   id: string;
@@ -14,6 +19,7 @@ export interface DocsCategory {
   icon: string | null;
   sort_order: number;
   parent_id: string | null;
+  archived_at?: string | null;
 }
 
 /**
