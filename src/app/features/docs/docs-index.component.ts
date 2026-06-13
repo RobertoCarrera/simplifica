@@ -85,7 +85,7 @@ import { EditModeService } from './edit-mode.service';
                 <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">Creá la primera categoría. Después vas a poder agregarle artículos.</p>
                 <input
                   type="text"
-                  class="w-full mb-2 px-3 py-2 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded"
+                  class="w-full mb-2 px-3 py-2 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   [ngModel]="newCategoryName()"
                   (ngModelChange)="onNewCategoryNameChange($event)"
                   placeholder="Nombre de la categoría"
@@ -94,13 +94,13 @@ import { EditModeService } from './edit-mode.service';
                 />
                 <input
                   type="text"
-                  class="w-full mb-2 px-3 py-1.5 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500"
+                  class="w-full mb-2 px-3 py-1.5 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400"
                   [ngModel]="newCategorySlug()"
                   (ngModelChange)="newCategorySlug.set($event)"
                   placeholder="slug"
                 />
                 <textarea
-                  class="w-full mb-3 px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
+                  class="w-full mb-3 px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   [ngModel]="newCategoryDescription()"
                   (ngModelChange)="newCategoryDescription.set($event)"
                   placeholder="Descripción (opcional)"
@@ -160,9 +160,14 @@ import { EditModeService } from './edit-mode.service';
                 <!-- Edit-mode handle + actions -->
                 @if (editing()) {
                   <div class="absolute top-2 left-2 z-10 flex items-center gap-1">
-                    <span class="cursor-grab text-gray-400 hover:text-gray-600" title="Arrastrá para reordenar">
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors cursor-grab active:cursor-grabbing"
+                      title="Arrastrá para reordenar"
+                      aria-label="Reordenar categoría"
+                    >
                       <lucide-icon [name]="GripVerticalIcon" [size]="14"></lucide-icon>
-                    </span>
+                    </button>
                     @if (cat.archived_at) {
                       <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Archivada</span>
                     }
@@ -191,7 +196,7 @@ import { EditModeService } from './edit-mode.service';
                   <div class="block rounded-xl border-2 border-amber-400 dark:border-amber-600 bg-amber-50/30 dark:bg-amber-900/10 p-5">
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1.5 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded"
+                      class="w-full mb-2 px-2 py-1.5 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="editingCategoryName()"
                       (ngModelChange)="editingCategoryName.set($event)"
                       placeholder="Nombre"
@@ -199,13 +204,13 @@ import { EditModeService } from './edit-mode.service';
                     />
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500"
+                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400"
                       [ngModel]="editingCategorySlug()"
                       (ngModelChange)="editingCategorySlug.set($event)"
                       placeholder="slug"
                     />
                     <textarea
-                      class="w-full mb-3 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
+                      class="w-full mb-3 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="editingCategoryDescription()"
                       (ngModelChange)="editingCategoryDescription.set($event)"
                       placeholder="Descripción (opcional)"
@@ -228,7 +233,7 @@ import { EditModeService } from './edit-mode.service';
                   <div class="block rounded-xl border-2 border-dashed border-amber-400 bg-amber-50/40 dark:bg-amber-900/10 p-5">
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1.5 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded"
+                      class="w-full mb-2 px-2 py-1.5 text-base font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="newCategoryName()"
                       (ngModelChange)="onNewCategoryNameChange($event)"
                       placeholder="Nombre"
@@ -237,13 +242,13 @@ import { EditModeService } from './edit-mode.service';
                     />
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500"
+                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400"
                       [ngModel]="newCategorySlug()"
                       (ngModelChange)="newCategorySlug.set($event)"
                       placeholder="slug"
                     />
                     <textarea
-                      class="w-full mb-3 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
+                      class="w-full mb-3 px-2 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="newCategoryDescription()"
                       (ngModelChange)="newCategoryDescription.set($event)"
                       placeholder="Descripción (opcional)"
@@ -355,9 +360,14 @@ import { EditModeService } from './edit-mode.service';
                 [attr.data-testid]="'article-row-' + art.slug"
               >
                 @if (editing()) {
-                  <span class="docs-article-grip cursor-grab text-gray-400 mt-1" title="Arrastrá para reordenar">
+                  <button
+                    type="button"
+                    class="docs-article-grip inline-flex items-center justify-center w-6 h-6 mt-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors cursor-grab active:cursor-grabbing shrink-0"
+                    title="Arrastrá para reordenar"
+                    aria-label="Reordenar artículo"
+                  >
                     <lucide-icon [name]="GripVerticalIcon" [size]="14"></lucide-icon>
-                  </span>
+                  </button>
                 }
                 <a
                   [routerLink]="['/docs', catSlug, art.slug]"
@@ -390,7 +400,7 @@ import { EditModeService } from './edit-mode.service';
                   <div class="docs-new-article-slot mt-1 ml-6 p-4 rounded-lg border-2 border-dashed border-amber-400 bg-amber-50/30 dark:bg-amber-900/10" data-testid="new-article-slot">
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1.5 text-sm font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded"
+                      class="w-full mb-2 px-2 py-1.5 text-sm font-semibold bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="newArticleTitle()"
                       (ngModelChange)="onNewArticleTitleChange($event)"
                       placeholder="Título"
@@ -399,13 +409,13 @@ import { EditModeService } from './edit-mode.service';
                     />
                     <input
                       type="text"
-                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500"
+                      class="w-full mb-2 px-2 py-1 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400"
                       [ngModel]="newArticleSlug()"
                       (ngModelChange)="newArticleSlug.set($event)"
                       placeholder="slug"
                     />
                     <textarea
-                      class="w-full mb-3 px-2 py-1.5 text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
+                      class="w-full mb-3 px-2 py-1.5 text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       [ngModel]="newArticleSummary()"
                       (ngModelChange)="newArticleSummary.set($event)"
                       placeholder="Resumen (opcional)"
@@ -464,16 +474,31 @@ import { EditModeService } from './edit-mode.service';
     `
       .docs-card-wrapper--editing { padding-top: 1.75rem; }
       .docs-card-wrapper--editing.docs-card-wrapper--archived a { opacity: 0.6; }
-      .docs-card-wrapper--editing[draggable="true"] { cursor: grab; }
+      .docs-card-wrapper--editing[draggable="true"] { cursor: grab; user-select: none; }
       .docs-card-wrapper--editing[draggable="true"]:active { cursor: grabbing; }
-      /* Drag visual feedback: the card being dragged fades slightly;
-         the target card gets a thick amber ring so the user knows
-         where it will land. */
-      .docs-card-wrapper--dragging { opacity: 0.4; transform: scale(0.98); }
-      .docs-card-wrapper--drag-over { transform: scale(1.03); }
+      /* Drag visual feedback: source fades + tilts + lifts (kanban feel),
+         target gets a thick amber ring + slight scale. */
+      .docs-card-wrapper--dragging {
+        opacity: 0.5;
+        transform: rotate(-1.5deg) scale(0.97);
+        box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.18), 0 4px 10px -2px rgba(0, 0, 0, 0.08);
+        transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms;
+      }
+      .docs-card-wrapper--drag-over {
+        transform: scale(1.04);
+        transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
+      }
       .docs-card-wrapper--drag-over > a,
       .docs-card-wrapper--drag-over > .docs-new-cat-form {
-        box-shadow: 0 0 0 3px rgb(245 158 11), 0 8px 24px rgba(0,0,0,0.12);
+        box-shadow: 0 0 0 3px rgb(245 158 11), 0 12px 28px -4px rgba(245, 158, 11, 0.25);
+      }
+      /* Article row drag polish */
+      .docs-article-row--editing[draggable="true"] { cursor: grab; user-select: none; }
+      .docs-article-row--editing[draggable="true"]:active { cursor: grabbing; }
+      .docs-article-row--drag-over > a {
+        box-shadow: 0 0 0 3px rgb(245 158 11), 0 12px 28px -4px rgba(245, 158, 11, 0.25);
+        transform: scale(1.02);
+        transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
       }
     `,
   ],
