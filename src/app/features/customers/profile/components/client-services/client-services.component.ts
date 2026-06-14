@@ -51,7 +51,7 @@ export interface AvailableService {
 @Component({
   selector: 'app-client-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslocoPipe],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
