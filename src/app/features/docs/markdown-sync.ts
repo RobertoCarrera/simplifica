@@ -51,6 +51,9 @@ function renderBlock(el: HTMLElement): string | null {
     case 'h1': return `# ${textOf(el)}`;
     case 'h2': return `## ${textOf(el)}`;
     case 'h3': return `### ${textOf(el)}`;
+    case 'h4': return `#### ${textOf(el)}`;
+    case 'h5': return `##### ${textOf(el)}`;
+    case 'h6': return `###### ${textOf(el)}`;
     case 'p': {
       const t = renderInline(el).trim();
       return t === '' ? null : t;
@@ -192,6 +195,9 @@ function renderBlockToHtml(el: HTMLElement): string | null {
     case 'h1': return `<h1>${renderInlineToHtml(el)}</h1>`;
     case 'h2': return `<h2>${renderInlineToHtml(el)}</h2>`;
     case 'h3': return `<h3>${renderInlineToHtml(el)}</h3>`;
+    case 'h4': return `<h4>${renderInlineToHtml(el)}</h4>`;
+    case 'h5': return `<h5>${renderInlineToHtml(el)}</h5>`;
+    case 'h6': return `<h6>${renderInlineToHtml(el)}</h6>`;
     case 'p': {
       const t = renderInlineToHtml(el).trim();
       return t === '' ? null : `<p>${t}</p>`;

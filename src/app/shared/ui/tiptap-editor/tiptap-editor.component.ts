@@ -377,7 +377,7 @@ export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
   setParagraph() {
     this.editor?.chain().focus().setParagraph().run();
   }
-  setHeading(level: 1 | 2 | 3) {
+  setHeading(level: 1 | 2 | 3 | 4 | 5 | 6) {
     this.editor?.chain().focus().toggleHeading({ level }).run();
   }
 

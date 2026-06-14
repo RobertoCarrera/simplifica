@@ -44,6 +44,38 @@
       >
         <i class="fas fa-heading"></i>2
       </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 3 })"
+        (click)="setHeading(3)"
+        title="H3"
+      >
+        <i class="fas fa-heading"></i>3
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 4 })"
+        (click)="setHeading(4)"
+        title="H4"
+      >
+        <i class="fas fa-heading"></i>4
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 5 })"
+        (click)="setHeading(5)"
+        title="H5"
+      >
+        <i class="fas fa-heading"></i>5
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 6 })"
+        (click)="setHeading(6)"
+        title="H6"
+      >
+        <i class="fas fa-heading"></i>6
+      </button>
       <div class="separator"></div>
       <!-- Lists -->
       <button
@@ -330,7 +362,7 @@
                   <div class="flex flex-col items-center justify-center pt-5 pb-6">
                     <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      Hacé clic o arrastrá una imagen acá
+                      Haz click o arrastr una imagen aquí
                     </p>
                     <p class="text-xs text-gray-400 mt-1">PNG, JPEG, WebP, GIF — máximo 50MB</p>
                   </div>
@@ -352,7 +384,7 @@
                   <div class="flex flex-col items-center justify-center pt-3 pb-3">
                     <i class="fas fa-video text-xl text-gray-400 mb-1"></i>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      O subí un video corto
+                      O sube un video corto
                     </p>
                     <p class="text-xs text-gray-400 mt-0.5">MP4, WebM — máximo 50MB</p>
                   </div>
@@ -397,7 +429,7 @@
               }
               <div class="flex items-center gap-3 my-1">
                 <span class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
-                <span class="text-[10px] uppercase tracking-wider text-gray-400">o pegá una URL de video</span>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400">o pega una URL de vídeo</span>
                 <span class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
               </div>
               <input
