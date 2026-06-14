@@ -413,6 +413,99 @@ async function handleStages(ctx, corsHeaders) {
   return jsonOk({ stages: data ?? [] }, corsHeaders);
 }
 
+/**
+ * List the company's services that are visible to clients (is_public = true
+ * AND is_bookable = true) plus the services already contracted by this
+ * client. Returns two parallel arrays: `available` and `contracted`.
+ */
+async function handleServicesList(ctx, req, corsHeaders) {
+  // 1. Available services for this company
+  const availableRes = await crmFetch(
+    'services',
+    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants&display_price,display_price_label,display_price_from_variants&display_hours&display_hourly_rate,company_id,created_at,updated_at` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&is_active=eq.true` +
+    `&is_public=eq.true` +
+    `&is_bookable=eq.true` +
+    `&order=name.asc`,
+  );
+  if (availableRes.error) {
+    return jsonError(500, `Available services: ${availableRes.error}`, corsHeaders);
+  }
+
+  // 2. Services already contracted by this client (active only)
+  const contractedRes = await crmFetch(
+    'contracted_services',
+    `select=id,client_id,company_id,name,description,price,currency,start_date,status,recurrence_type,recurrence_day,recurrence_start,recurrence_end,created_at,updated_at` +
+    `&client_id=eq.${encodeURIComponent(ctx.clientId)}` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&deleted_at=is.null` +
+    `&order=created_at.desc`,
+  );
+  if (contractedRes.error) {
+    return jsonError(500, `Contracted services: ${contractedRes.error}`, corsHeaders);
+  }
+
+  return jsonOk({
+    available: availableRes.data ?? [],
+    contracted: contractedRes.data ?? [],
+  }, corsHeaders);
+}
+
+/**
+ * Contract a service for the current client. Validates that:
+ *  - the service belongs to the user's company
+ *  - the service is allow_direct_contracting = true
+ * Inserts a new row in `contracted_services` with the user's client_id.
+ */
+async function handleServiceContract(ctx, req, corsHeaders) {
+  let body;
+  try { body = await req.json(); } catch { return jsonError(400, 'Invalid JSON body', corsHeaders); }
+  const serviceId = (body?.service_id ?? '').toString().trim();
+  if (!serviceId) return jsonError(400, 'service_id is required', corsHeaders);
+
+  // Verify the service is from the user's company AND is directly contractable
+  const svcRes = await crmFetch(
+    'services',
+    `select=id,name,description,base_price,is_active,is_public,is_bookable,allow_direct_contracting,company_id,tax_rate,currency` +
+    `&id=eq.${encodeURIComponent(serviceId)}` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&is_active=eq.true` +
+    `&is_public=eq.true` +
+    `&is_bookable=eq.true` +
+    `&allow_direct_contracting=eq.true` +
+    `&limit=1`,
+  );
+  if (svcRes.error) return jsonError(500, `Service lookup: ${svcRes.error}`, corsHeaders);
+  const service = svcRes.data?.[0];
+  if (!service) return jsonError(404, 'Service not found or not contractable', corsHeaders);
+
+  const startDate = body?.start_date || new Date().toISOString().slice(0, 10);
+  const recurrenceType = body?.recurrence_type || null;
+  const recurrenceDay = body?.recurrence_day ?? null;
+  const recurrenceStart = body?.recurrence_start || (recurrenceType ? startDate : null);
+  const recurrenceEnd = body?.recurrence_end || null;
+  const price = body?.price ?? service.base_price ?? 0;
+  const currency = body?.currency || 'EUR';
+
+  const insRes = await crmSend('contracted_services', 'POST', {
+    client_id: ctx.clientId,
+    company_id: ctx.companyId,
+    name: service.name,
+    description: service.description ?? null,
+    price,
+    currency,
+    start_date: startDate,
+    status: 'active',
+    recurrence_type: recurrenceType,
+    recurrence_day: recurrenceDay,
+    recurrence_start: recurrenceStart,
+    recurrence_end: recurrenceEnd,
+  });
+  if (insRes.error) return jsonError(500, `Contract insert: ${insRes.error}`, corsHeaders);
+  return jsonOk({ data: insRes.data?.[0] ?? null }, corsHeaders);
+}
+
 async function handleProjectsList(ctx, req, corsHeaders) {
   const url = new URL(req.url);
   const search = url.searchParams.get('q')?.trim();
@@ -749,12 +842,22 @@ serve(async (req) => {
     } else if (tail.length === 2 && tail[1] === 'comments') {
       route = 'project-comments-create';
       projectIdSegment = tail[0];
-    } else if (tail.length === 3 && tail[1] === 'tasks') {
+    } else     if (tail.length === 3 && tail[1] === 'tasks') {
       route = 'project-tasks-update';
       projectIdSegment = tail[0];
       taskIdSegment = tail[2];
     }
   }
+
+  // /services/contract → service-contract (POST)
+  const servicesIdx = segments.indexOf('services');
+  if (servicesIdx >= 0) {
+    const sTail = segments.slice(servicesIdx + 1);
+    if (sTail.length === 1 && sTail[0] === 'contract' && req.method === 'POST') {
+      route = 'service-contract';
+    }
+  }
+
 
   try {
     if (req.method === 'GET') {
@@ -767,6 +870,7 @@ serve(async (req) => {
         case 'quotes': return await handleQuotes(portalAdmin, ctx, corsHeaders);
         case 'tickets': return await handleTickets(portalAdmin, ctx, corsHeaders);
         case 'stages': return await handleStages(ctx, corsHeaders);
+        case 'services': return await handleServicesList(ctx, req, corsHeaders);
         case 'permissions': return await handlePermissions(ctx, corsHeaders);
         case 'projects':
           if (projectIdSegment) {
@@ -780,6 +884,7 @@ serve(async (req) => {
       switch (route) {
         case 'select-company': return await handleSelectCompany(portalAdmin, ctx, req, corsHeaders);
         case 'consents': return await handleConsents(portalAdmin, ctx, req, corsHeaders);
+        case 'service-contract': return await handleServiceContract(ctx, req, corsHeaders);
         case 'projects': return await handleProjectCreate(ctx, req, corsHeaders);
         case 'project-tasks-create': return await handleTaskCreate(ctx, projectIdSegment, req, corsHeaders);
         case 'project-comments-create': return await handleCommentCreate(ctx, projectIdSegment, req, corsHeaders);
