@@ -276,13 +276,26 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
    * view (3 cols, with ToC) or the index/category view (2 cols,
    * no ToC column wasted).
    */
+  /**
+   * Grid columns class, computed from whether we're on the article
+   * view (3 cols, with ToC) or the index/category view (2 cols,
+   * no ToC column wasted).
+   *
+   * The sidebar / ToC track sizes use `clamp()` so they grow
+   * smoothly with the viewport instead of jumping at a breakpoint:
+   *   - Sidebar: 180px (mobile-md) → 260px (3xl) via 18vw.
+   *   - ToC:     160px (xl)        → 220px (3xl) via 16vw.
+   * The middle (main content) is `minmax(0, 1fr)` so it always
+   * fills the remaining space and the inner card grid (e.g.
+   * `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`) has room to breathe.
+   */
   readonly gridColsClass = computed(() => {
     if (this.activeArticleSlug()) {
-      // Article view: 3 cols. Sidebar angosto en md, ancho en 3xl.
-      return 'grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_180px] 3xl:grid-cols-[240px_minmax(0,1fr)_220px]';
+      // Article view: 3 cols (sidebar + main + ToC).
+      return 'grid-cols-1 md:grid-cols-[clamp(180px,18vw,260px)_minmax(0,1fr)] xl:grid-cols-[clamp(180px,18vw,260px)_minmax(0,1fr)_clamp(160px,16vw,220px)]';
     }
-    // Index or category view: 2 cols. Sidebar aparece a md, sin ToC.
-    return 'grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] 3xl:grid-cols-[240px_minmax(0,1fr)]';
+    // Index or category view: 2 cols (sidebar + main, no ToC).
+    return 'grid-cols-1 md:grid-cols-[clamp(180px,18vw,240px)_minmax(0,1fr)]';
   });
 
   /**
