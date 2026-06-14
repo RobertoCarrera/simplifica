@@ -1,0 +1,55 @@
+<div [class]="wrapperClass()">
+  <input
+    type="text"
+    [class]="nameInputClass()"
+    [ngModel]="name()"
+    (ngModelChange)="onNameChange($event)"
+    [placeholder]="namePlaceholder"
+    [attr.aria-label]="nameLabel"
+    data-testid="new-entity-name"
+    [attr.autofocus]="autofocus ? '' : null"
+  />
+  <input
+    type="text"
+    [class]="slugInputClass()"
+    [ngModel]="slug()"
+    (ngModelChange)="slug.set($event)"
+    [placeholder]="slugPlaceholder"
+    aria-label="slug"
+  />
+  <textarea
+    [class]="descriptionInputClass()"
+    [ngModel]="description()"
+    (ngModelChange)="description.set($event)"
+    [placeholder]="descriptionPlaceholder"
+    [attr.aria-label]="descriptionLabel"
+    [attr.rows]="descriptionRows"
+  ></textarea>
+  <div class="flex items-center gap-2">
+    <button
+      type="button"
+      (click)="onSubmit()"
+      [class]="submitButtonClass()"
+      data-testid="new-entity-submit"
+    >
+      @if (isCreate) {
+        <lucide-icon [name]="CheckIcon" [size]="12"></lucide-icon>
+      } @else {
+        <lucide-icon [name]="PlusIcon" [size]="12"></lucide-icon>
+      }
+      <span>{{ submitLabel }}</span>
+    </button>
+    @if (showCancel) {
+      <button
+        type="button"
+        (click)="cancel.emit()"
+        [class]="cancelButtonClass()"
+        data-testid="new-entity-cancel"
+      >
+        <lucide-icon [name]="XIcon" [size]="12"></lucide-icon>
+        <span>Cancelar</span>
+      </button>
+    }
+    @if (error) { <span class="text-xs text-red-600">{{ error }}</span> }
+  </div>
+</div>

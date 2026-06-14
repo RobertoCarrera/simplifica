@@ -1,0 +1,3 @@
+/* The form uses Tailwind utilities exclusively. Kept as a separate
+   file so future tweaks (e.g. error animation, focus ring) have
+   a place to live without polluting the global stylesheet. */

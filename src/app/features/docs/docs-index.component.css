@@ -1,0 +1,9 @@
+/* The docs-index.component.html uses Tailwind utilities for the
+   grid, card, and row layout. The drag/kanban visual feedback
+   (rotation, shadow, amber ring) lives in the per-card and per-row
+   components so it's encapsulated where it belongs.
+
+   This file is kept as the host for any index-level styles that
+   don't belong to a specific subcomponent (e.g. animations on the
+   "add" button, focus ring polish, etc.) so future tweaks have a
+   place to live. */
