@@ -1,0 +1,95 @@
+<div
+  [class]="wrapperClasses"
+  [attr.data-testid]="'card-' + (isNewSlot ? 'new' : category.slug)"
+  [attr.draggable]="editing && !isNewSlot ? true : null"
+  (dragstart)="dragStart.emit($event)"
+  (dragover)="dragOver.emit($event)"
+  (dragleave)="dragLeave.emit()"
+  (dragend)="dragEnd.emit()"
+  (drop)="drop.emit($event)"
+>
+  <!-- Edit-mode handle + actions -->
+  @if (editing && !isNewSlot && category) {
+    <div class="absolute top-2 left-2 z-10 flex items-center gap-1">
+      <button
+        type="button"
+        class="inline-flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors cursor-grab active:cursor-grabbing"
+        title="Arrastrá para reordenar"
+        aria-label="Reordenar categoría"
+      >
+        <lucide-icon [name]="GripVerticalIcon" [size]="14"></lucide-icon>
+      </button>
+      @if (category.archived_at) {
+        <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Archivada</span>
+      }
+    </div>
+    <div class="absolute top-2 right-2 z-10 flex items-center gap-1">
+      <button type="button" (click)="edit.emit()" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Renombrar" data-testid="card-rename">
+        <lucide-icon [name]="Edit3Icon" [size]="12"></lucide-icon>
+      </button>
+      @if (category.archived_at) {
+        <button type="button" (click)="restore.emit()" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Restaurar">
+          <lucide-icon [name]="ArchiveRestoreIcon" [size]="12"></lucide-icon>
+        </button>
+        <button type="button" (click)="deleteReq.emit()" class="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600" title="Eliminar definitivamente">
+          <lucide-icon [name]="Trash2Icon" [size]="12"></lucide-icon>
+        </button>
+      } @else {
+        <button type="button" (click)="archive.emit()" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Archivar">
+          <lucide-icon [name]="ArchiveIcon" [size]="12"></lucide-icon>
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Card body: view OR edit OR new-slot -->
+  @if (isEditingThis) {
+    <app-docs-new-entity-form
+      [variant]="variant"
+      [initialName]="initialName"
+      [initialSlug]="initialSlug"
+      [initialDescription]="initialDescription"
+      [error]="error"
+      [submitLabel]="submitLabel"
+      [isCreate]="false"
+      [wrapInCentered]="false"
+      (nameChange)="onNameChange($event)"
+      (submit)="onFormSubmit($event)"
+      (cancel)="onFormCancel()"
+    ></app-docs-new-entity-form>
+  } @else if (isNewSlot) {
+    <app-docs-new-entity-form
+      [variant]="variant"
+      [initialName]="initialName"
+      [initialSlug]="initialSlug"
+      [initialDescription]="initialDescription"
+      [error]="error"
+      [submitLabel]="submitLabel"
+      [isCreate]="true"
+      [wrapInCentered]="true"
+      (nameChange)="onNameChange($event)"
+      (submit)="onFormSubmit($event)"
+      (cancel)="onFormCancel()"
+    ></app-docs-new-entity-form>
+  } @else if (category) {
+    <a
+      [routerLink]="['/docs', category.slug]"
+      class="block rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 hover:border-blue-500/50 transition-colors h-full"
+      [class.opacity-60]="!!category.archived_at"
+    >
+      <div class="flex items-start gap-3 mb-3">
+        <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+          <lucide-icon [name]="FileTextIcon" [size]="16"></lucide-icon>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">{{ category.name }}</h3>
+      </div>
+      @if (category.description) {
+        <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{{ category.description }}</p>
+      }
+      <div class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+        Ver artículos
+        <lucide-icon [name]="ChevronRightIcon" [size]="12"></lucide-icon>
+      </div>
+    </a>
+  }
+</div>

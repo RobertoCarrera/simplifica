@@ -1,0 +1,4 @@
+/* docs-article styles live alongside the component. The article
+   view currently has no scoped styles (prose + tailwind utilities
+   handle the layout). This file is kept so future tweaks have a
+   home and so Angular's `styleUrl` resolves. */

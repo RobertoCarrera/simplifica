@@ -8,7 +8,6 @@ import {
   ElementRef,
   AfterViewInit,
   effect,
-  HostListener,
   PLATFORM_ID,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -61,189 +60,8 @@ import { DocsMobileTabsComponent } from './components/docs-mobile-tabs.component
     DocsTocComponent,
     DocsMobileTabsComponent,
   ],
-  template: `
-    <div class="docs-shell min-h-full">
-      <!-- Header strip: breadcrumbs + search + edit-mode toggle -->
-      <header
-        class="sticky top-0 z-20 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-gray-900/60 w-full"
-      >
-        <div class="w-full px-4 md:px-6 h-14 flex items-center gap-4">
-          <div class="flex-1 min-w-0">
-            <app-docs-breadcrumbs
-              [categorySlug]="activeCategory()"
-              [articleSlug]="activeArticleSlug()"
-              [articleTitleInput]="activeArticleTitle()"
-            ></app-docs-breadcrumbs>
-          </div>
-          <div class="shrink-0 flex items-center gap-2">
-            <app-docs-search></app-docs-search>
-            @if (editModeSvc.canEdit()) {
-              <button
-                type="button"
-                (click)="editModeSvc.toggle()"
-                class="docs-edit-toggle inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors"
-                [class.docs-edit-toggle--active]="editModeSvc.editMode()"
-                [attr.aria-pressed]="editModeSvc.editMode()"
-                data-testid="docs-edit-toggle"
-              >
-                @if (editModeSvc.editMode()) {
-                  <lucide-icon [name]="EyeIcon" [size]="14"></lucide-icon>
-                  <span>Salir de edición</span>
-                } @else {
-                  <lucide-icon [name]="PencilIcon" [size]="14"></lucide-icon>
-                  <span>Editar documentación</span>
-                }
-              </button>
-            }
-          </div>
-        </div>
-        @if (editModeSvc.editMode()) {
-          <div
-            class="w-full px-4 md:px-6 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2"
-            data-testid="docs-edit-banner"
-          >
-            <lucide-icon [name]="PencilIcon" [size]="12"></lucide-icon>
-            <span>Modo edición activo. Los cambios se guardan al pulsar <kbd class="px-1 rounded bg-amber-100 dark:bg-amber-900/40">Ctrl+S</kbd> o el botón Listo.</span>
-          </div>
-        }
-      </header>
-
-      <!-- Mobile tabs: Índice | Artículo (only < md / 768px) -->
-      <app-docs-mobile-tabs
-        class="md:hidden"
-        [activeTab]="mobileActive()"
-        (select)="onMobileSelect($event)"
-      ></app-docs-mobile-tabs>
-
-      <!-- Main grid (responsive, from compact to wide):
-           - mobile: 1 col, no sidebar, no ToC
-           - md (>=768px): 2 cols (sidebar + main), no ToC
-           - xl (>=1280px): 3 cols, ToC angosto (180px)
-           - 3xl (>=1100px custom, sits below xl): 3 cols anchas (240/220) -->
-      <!-- Main grid: 3 cols only when on the article view (where the
-           ToC has content). On the index/category view the grid
-           stays at 2 cols so the empty 3rd column doesn't waste space. -->
-      <div
-        class="w-full px-4 md:px-6 py-4 md:py-6 grid gap-4 md:gap-6"
-        [class]="gridColsClass()"
-      >
-        <!-- LEFT: Sidebar appears at md. Sticky so it follows scroll. -->
-        <div class="hidden md:block min-w-0">
-          <div class="sticky top-20 max-h-[calc(100vh-6rem)] w-full">
-            <app-docs-sidebar></app-docs-sidebar>
-          </div>
-        </div>
-
-        <!-- CENTER: Main content (router-outlet, with prev/next footer) -->
-        <main class="min-w-0 overflow-hidden">
-          <div #contentHost class="min-w-0">
-            <router-outlet></router-outlet>
-          </div>
-
-          @if (activeCategory() && activeArticleSlug() && (neighbours().prev || neighbours().next)) {
-            <nav
-              class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700 flex items-stretch justify-between gap-3"
-              [attr.aria-label]="'docs.footerNav.label' | transloco"
-            >
-              @if (neighbours().prev; as p) {
-                <a
-                  [routerLink]="['/docs', p.category.slug, p.article.slug]"
-                  class="group flex-1 min-w-0 max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:border-blue-500/50 transition-colors"
-                >
-                  <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    <lucide-icon [name]="ChevronLeftIcon" [size]="12"></lucide-icon>
-                    {{ 'docs.footerNav.previous' | transloco }}
-                  </span>
-                  <span class="mt-1 block text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {{ p.article.title }}
-                  </span>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {{ p.category.name }}
-                  </span>
-                </a>
-              } @else {
-                <span class="flex-1"></span>
-              }
-
-              @if (neighbours().next; as n) {
-                <a
-                  [routerLink]="['/docs', n.category.slug, n.article.slug]"
-                  class="group flex-1 min-w-0 max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-right hover:border-blue-500/50 transition-colors"
-                >
-                  <span class="flex items-center justify-end gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ 'docs.footerNav.next' | transloco }}
-                    <lucide-icon [name]="ChevronRightIcon" [size]="12"></lucide-icon>
-                  </span>
-                  <span class="mt-1 block text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {{ n.article.title }}
-                  </span>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {{ n.category.name }}
-                  </span>
-                </a>
-              } @else {
-                <span class="flex-1"></span>
-              }
-            </nav>
-          }
-        </main>
-
-        <!-- RIGHT: ToC — only rendered on the article view (where there
-             are headings to show). On the category index the right column
-             would be empty and waste 220px. -->
-        @if (activeArticleSlug()) {
-          <div class="hidden xl:block min-w-0">
-            <app-docs-toc [contentRef]="contentRef()"></app-docs-toc>
-          </div>
-        }
-      </div>
-
-      <!-- Mobile panel: show the sidebar as a fullscreen overlay below
-           3xl (1100px) when the user taps the "Índice" tab. The article
-           panel replaces it via the routed outlet. -->
-      @if (mobileActive() === 'index') {
-        <div class="md:hidden fixed inset-x-0 bottom-0 top-[7.5rem] z-10 bg-white dark:bg-gray-900 overflow-y-auto px-4 pb-6">
-          <app-docs-sidebar></app-docs-sidebar>
-        </div>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      :host {
-        display: block;
-      }
-      .docs-edit-toggle {
-        background: transparent;
-        border-color: rgb(229 231 235);
-        color: rgb(75 85 99);
-      }
-      :host-context(.dark) .docs-edit-toggle {
-        border-color: rgb(55 65 81);
-        color: rgb(209 213 219);
-      }
-      .docs-edit-toggle:hover {
-        background: rgb(243 244 246);
-      }
-      :host-context(.dark) .docs-edit-toggle:hover {
-        background: rgb(31 41 55);
-      }
-      .docs-edit-toggle--active {
-        background: rgb(254 243 199) !important;
-        border-color: rgb(245 158 11) !important;
-        color: rgb(146 64 14) !important;
-      }
-      :host-context(.dark) .docs-edit-toggle--active {
-        background: rgba(245, 158, 11, 0.15) !important;
-        border-color: rgb(245 158 11) !important;
-        color: rgb(252 211 77) !important;
-      }
-      kbd {
-        font-family: ui-monospace, SFMono-Regular, monospace;
-        font-size: 0.7rem;
-      }
-    `,
-  ],
+  templateUrl: './docs-layout.component.html',
+  styleUrl: './docs-layout.component.css',
 })
 export class DocsLayoutComponent implements OnInit, AfterViewInit {
   readonly store = inject(DocsShellStore);
@@ -271,11 +89,6 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
   /** Mobile panel selector. */
   readonly mobileActive = signal<'index' | 'article'>('article');
 
-  /**
-   * Grid columns class, computed from whether we're on the article
-   * view (3 cols, with ToC) or the index/category view (2 cols,
-   * no ToC column wasted).
-   */
   /**
    * Grid columns class, computed from whether we're on the article
    * view (3 cols, with ToC) or the index/category view (2 cols,

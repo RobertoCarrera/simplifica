@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+.docs-edit-toggle {
+  background: transparent;
+  border-color: rgb(229 231 235);
+  color: rgb(75 85 99);
+}
+
+:host-context(.dark) .docs-edit-toggle {
+  border-color: rgb(55 65 81);
+  color: rgb(209 213 219);
+}
+
+.docs-edit-toggle:hover {
+  background: rgb(243 244 246);
+}
+
+:host-context(.dark) .docs-edit-toggle:hover {
+  background: rgb(31 41 55);
+}
+
+.docs-edit-toggle--active {
+  background: rgb(254 243 199) !important;
+  border-color: rgb(245 158 11) !important;
+  color: rgb(146 64 14) !important;
+}
+
+:host-context(.dark) .docs-edit-toggle--active {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgb(245 158 11) !important;
+  color: rgb(252 211 77) !important;
+}
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.7rem;
+}

@@ -1,0 +1,73 @@
+<li
+  [class]="wrapperClasses"
+  [attr.data-testid]="'article-row-' + (isNewSlot ? 'new' : article.slug)"
+  [attr.draggable]="editing && !isNewSlot ? true : null"
+  (dragstart)="dragStart.emit($event)"
+  (dragover)="dragOver.emit($event)"
+  (dragleave)="dragLeave.emit()"
+  (dragend)="dragEnd.emit()"
+  (drop)="drop.emit($event)"
+>
+  @if (editing && !isNewSlot) {
+    <button
+      type="button"
+      class="docs-article-grip inline-flex items-center justify-center w-6 h-6 mt-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors cursor-grab active:cursor-grabbing shrink-0"
+      title="Arrastrá para reordenar"
+      aria-label="Reordenar artículo"
+    >
+      <lucide-icon [name]="GripVerticalIcon" [size]="14"></lucide-icon>
+    </button>
+  }
+
+  @if (isNewSlot) {
+    <div class="docs-new-article-slot flex-1 min-w-0 mt-1 ml-6 p-4 rounded-lg border-2 border-dashed border-amber-400 bg-amber-50/30 dark:bg-amber-900/10" data-testid="new-article-slot">
+      <app-docs-new-entity-form
+        [variant]="variant"
+        nameLabel="Título"
+        namePlaceholder="Título"
+        slugPlaceholder="slug"
+        descriptionLabel="Resumen"
+        descriptionPlaceholder="Resumen (opcional)"
+        [initialName]="initialTitle"
+        [initialSlug]="initialSlug"
+        [initialDescription]="initialSummary"
+        [error]="error"
+        [submitLabel]="submitLabel"
+        [isCreate]="true"
+        [wrapInCentered]="false"
+        (nameChange)="onTitleChange($event)"
+        (submit)="onFormSubmit($event)"
+        (cancel)="onFormCancel()"
+      ></app-docs-new-entity-form>
+    </div>
+  } @else if (article) {
+    <a
+      [routerLink]="['/docs', categorySlug, article.slug]"
+      class="flex-1 min-w-0 flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 hover:border-blue-500/50 transition-colors"
+    >
+      <div class="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+        <lucide-icon [name]="FileTextIcon" [size]="14"></lucide-icon>
+      </div>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400">
+          {{ article.title }}
+        </h3>
+        @if (article.summary) {
+          <p class="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{{ article.summary }}</p>
+        }
+      </div>
+      <span
+        class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-1"
+        [class.bg-green-100]="article.status === 'published'"
+        [class.text-green-700]="article.status === 'published'"
+        [class.bg-yellow-100]="article.status === 'draft'"
+        [class.text-yellow-700]="article.status === 'draft'"
+        [class.bg-gray-100]="article.status === 'archived'"
+        [class.text-gray-600]="article.status === 'archived'"
+      >
+        {{ article.status }}
+      </span>
+      <lucide-icon [name]="ChevronRightIcon" [size]="16" class="text-gray-400 group-hover:text-blue-500 shrink-0 mt-1.5"></lucide-icon>
+    </a>
+  }
+</li>
