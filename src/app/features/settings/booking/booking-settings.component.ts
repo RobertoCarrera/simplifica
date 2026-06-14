@@ -1607,17 +1607,43 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     this.isResendingInvite.set(true);
     try {
-      // Build a minimal event body with the SAME attendees so Google's
-      // update-event endpoint re-sends invites without altering the
-      // event. summary/start/end are echoed back so the PATCH is a
-      // no-op semantically, but the backend still triggers
+      // Resolve the attendees. Prefer the GCal attendees (with response
+      // status), fall back to building a minimal attendee list from
+      // shared.customer_email and the resource's google_calendar_id
+      // (matching the create-event flow in event-form).
+      const shared = event.extendedProps?.shared ?? {};
+      const attendees: { email: string }[] = [];
+      const seenEmails = new Set<string>();
+      const pushEmail = (e: string | null | undefined) => {
+        if (!e) return;
+        const k = e.toLowerCase();
+        if (seenEmails.has(k)) return;
+        seenEmails.add(k);
+        attendees.push({ email: e });
+      };
+      (event.attendees ?? []).forEach((a: any) => pushEmail(a?.email));
+      pushEmail(shared.customerEmail);
+      pushEmail(shared.customer_email);
+      // The room's GCal id (if any) is also an attendee in our model
+      // (it receives the room events). Look it up from availableResources.
+      const resource = (this.availableResources() ?? []).find(
+        (r: any) => r.id === shared.resourceId,
+      );
+      if (resource?.google_calendar_id) {
+        pushEmail(resource.google_calendar_id);
+      }
+
+      // Build a minimal event body with the resolved attendees so
+      // Google's update-event endpoint re-sends invites without
+      // altering the event. summary/start/end are echoed back so the
+      // PATCH is a no-op semantically, but the backend still triggers
       // sendUpdates=all.
       const eventBody: any = {
         id: googleEventId,
         summary: event.title,
         start: { dateTime: new Date(event.start).toISOString() },
         end: { dateTime: new Date(event.end).toISOString() },
-        attendees: (event.attendees ?? []).filter((a: any) => a?.email),
+        attendees,
       };
       const { data, error } = await this.supabase
         .getClient()
@@ -1646,7 +1672,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       }
       this.toastService.success(
         'Invitación reenviada',
-        `Se ha enviado la invitación a ${(event.attendees ?? []).length} asistente${(event.attendees ?? []).length === 1 ? '' : 's'}.`,
+        `Se ha enviado la invitación a ${attendees.length} asistente${attendees.length === 1 ? '' : 's'}.`,
       );
     } finally {
       this.isResendingInvite.set(false);

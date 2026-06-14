@@ -834,12 +834,9 @@
                   Asistentes e Invitados
                 </p>
                 @if (
-                  selectedEventDetails.isLocal &&
-                  (
-                    selectedEventDetails.googleEventId ||
-                    selectedEventDetails.extendedProps?.shared?.googleEventId ||
-                    (selectedEventDetails.isGoogle && selectedEventDetails.id)
-                  )
+                  selectedEventDetails.attendees?.length ||
+                  selectedEventDetails.isLocal ||
+                  selectedEventDetails.isGoogle
                 ) {
                   <button
                     type="button"
