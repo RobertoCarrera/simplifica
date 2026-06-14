@@ -14,6 +14,7 @@ import { EditModeService } from './edit-mode.service';
 import { DocsCategoryCardComponent } from './components/docs-category-card.component';
 import { DocsArticleRowComponent } from './components/docs-article-row.component';
 import { DocsNewEntityFormComponent } from './components/docs-new-entity-form.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 /**
  * `/docs` landing + category article list.
@@ -48,6 +49,7 @@ import { DocsNewEntityFormComponent } from './components/docs-new-entity-form.co
     DocsCategoryCardComponent,
     DocsArticleRowComponent,
     DocsNewEntityFormComponent,
+    ConfirmDialogComponent,
   ],
   templateUrl: './docs-index.component.html',
   styleUrl: './docs-index.component.css',
@@ -121,6 +123,16 @@ export class DocsIndexComponent implements OnInit {
   readonly newArticleSlug = signal('');
   readonly newArticleSummary = signal('');
   readonly newArticleError = signal<string | null>(null);
+
+  // ── Delete-category confirm dialog state ───────────────────────────
+  readonly deleteDialog = signal<{ isOpen: boolean; category: DocsCategory | null }>({
+    isOpen: false,
+    category: null,
+  });
+  readonly deleteDialogMessage = computed(() => {
+    const name = this.deleteDialog().category?.name ?? '';
+    return `Esta acción no se puede deshacer. Se eliminará la categoría "${name}" y todos sus artículos.`;
+  });
 
   // ── Drag state ──────────────────────────────────────────────────────
   readonly draggingCategoryId = signal<string | null>(null);
@@ -266,15 +278,24 @@ export class DocsIndexComponent implements OnInit {
     }
   }
 
-  async askDeleteCategory(c: DocsCategory): Promise<void> {
-    const typed = prompt(`Para confirmar, escribí "${c.name}":`);
-    if (typed !== c.name) return;
+  askDeleteCategory(c: DocsCategory): void {
+    this.deleteDialog.set({ isOpen: true, category: c });
+  }
+
+  async confirmDeleteCategory(): Promise<void> {
+    const c = this.deleteDialog().category;
+    this.deleteDialog.set({ isOpen: false, category: null });
+    if (!c) return;
     try {
       await this.adminService.deleteCategory(c.id);
       await this.load();
     } catch (e: any) {
       this.error.set(e?.message ?? 'No se pudo eliminar (¿tiene artículos?)');
     }
+  }
+
+  cancelDeleteCategory(): void {
+    this.deleteDialog.set({ isOpen: false, category: null });
   }
 
   onNewCategoryNameChange(name: string): void {

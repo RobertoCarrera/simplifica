@@ -229,3 +229,19 @@
     </article>
   }
 </div>
+
+<!-- Hard-delete article confirmation dialog. Replaces the native
+     prompt() that asked the user to type the article title. -->
+<app-confirm-dialog
+  [isOpen]="deleteDialog()"
+  title="Eliminar artículo definitivamente"
+  [message]="deleteDialogMessage()"
+  confirmText="Eliminar definitivamente"
+  cancelText="Cancelar"
+  type="danger"
+  [requireTextInput]="article()?.title ?? null"
+  requireTextInputLabel="Para confirmar, escribí el título exacto del artículo:"
+  [requireTextInputPlaceholder]="article()?.title ?? ''"
+  (confirm)="confirmHardDelete()"
+  (cancel)="cancelHardDelete()"
+></app-confirm-dialog>
