@@ -32,6 +32,7 @@ import { EditModeService } from './edit-mode.service';
 import { MarkdownService, MarkdownHeading } from './markdown.service';
 import { tiptapHtmlToMarkdown, markdownToTiptapHtml } from './markdown-sync';
 import { TiptapEditorComponent } from '../../shared/ui/tiptap-editor/tiptap-editor.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 /**
  * Article view for /docs/:category/:slug.
@@ -45,7 +46,7 @@ import { TiptapEditorComponent } from '../../shared/ui/tiptap-editor/tiptap-edit
 @Component({
   selector: 'app-docs-article',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, LucideAngularModule, TiptapEditorComponent],
+  imports: [CommonModule, FormsModule, RouterLink, LucideAngularModule, TiptapEditorComponent, ConfirmDialogComponent],
   templateUrl: './docs-article.component.html',
   styleUrl: './docs-article.component.css',
 })
@@ -316,11 +317,21 @@ export class DocsArticleComponent implements OnInit, AfterViewChecked, OnDestroy
     }
   }
 
-  async hardDelete(): Promise<void> {
+  // ── Delete-article confirm dialog state ─────────────────────────────
+  readonly deleteDialog = signal<boolean>(false);
+  readonly deleteDialogMessage = computed(() => {
+    const title = this.article()?.title ?? '';
+    return `Esta acción no se puede deshacer. Se eliminará el artículo "${title}" y todo su contenido.`;
+  });
+
+  hardDelete(): void {
+    this.deleteDialog.set(true);
+  }
+
+  async confirmHardDelete(): Promise<void> {
     const a = this.article();
+    this.deleteDialog.set(false);
     if (!a) return;
-    const typed = prompt(`Para confirmar, escribí "${a.title}":`);
-    if (typed !== a.title) return;
     try {
       await this.adminService.deleteArticle(a.id);
       // Navigate back to the category index after a hard delete.
@@ -328,6 +339,10 @@ export class DocsArticleComponent implements OnInit, AfterViewChecked, OnDestroy
     } catch (e: any) {
       this.articleEditError.set(e?.message ?? 'No se pudo eliminar');
     }
+  }
+
+  cancelHardDelete(): void {
+    this.deleteDialog.set(false);
   }
 
   /**

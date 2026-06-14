@@ -236,3 +236,19 @@
     }
   }
 </div>
+
+<!-- Delete-category confirmation dialog. Replaces the native
+     prompt() that asked the user to type the category name. -->
+<app-confirm-dialog
+  [isOpen]="deleteDialog().isOpen"
+  title="Eliminar categoría definitivamente"
+  [message]="deleteDialogMessage()"
+  confirmText="Eliminar definitivamente"
+  cancelText="Cancelar"
+  type="danger"
+  [requireTextInput]="deleteDialog().category?.name ?? null"
+  requireTextInputLabel="Para confirmar, escribí el nombre exacto de la categoría:"
+  [requireTextInputPlaceholder]="deleteDialog().category?.name ?? ''"
+  (confirm)="confirmDeleteCategory()"
+  (cancel)="cancelDeleteCategory()"
+></app-confirm-dialog>

@@ -1,17 +1,20 @@
-import { Component, EventEmitter, Input, Output, AfterContentInit, ContentChild } from '@angular/core';
+import { Component, EventEmitter, Input, Output, AfterContentInit, ContentChild, signal, OnChanges, SimpleChanges, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     @if (isOpen) {
       <div
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+        (click)="onCancel()"
       >
         <div
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in border border-gray-100 dark:border-gray-700"
+          (click)="$event.stopPropagation()"
         >
           <!-- Icon/Header -->
           <div class="mb-4 flex items-center gap-3">
@@ -78,22 +81,53 @@ import { CommonModule } from '@angular/common';
             <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ title }}</h3>
           </div>
           <!-- Body: prefer projected content (rich layout), fall back to message string -->
-          <div class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+          <div class="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
             <ng-content></ng-content>
             @if (!hasProjectedContent) {
               <p>{{ message }}</p>
             }
           </div>
+          <!-- Optional text-input confirmation (destructive actions).
+               Shown only when requireTextInput is set. The user must
+               type the exact value to enable the confirm button. -->
+          @if (requireTextInput) {
+            <div class="mb-6">
+              @if (requireTextInputLabel) {
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >{{ requireTextInputLabel }}</label>
+              }
+              <input
+                type="text"
+                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
+                [ngModel]="typedValue()"
+                (ngModelChange)="typedValue.set($event)"
+                [placeholder]="requireTextInputPlaceholder"
+                data-testid="confirm-dialog-text-input"
+                autofocus
+              />
+              @if (requireTextInput && typedValue().length > 0 && !matchesRequired()) {
+                <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">
+                  El texto no coincide. Escribí exactamente: {{ requireTextInput }}
+                </p>
+              }
+            </div>
+          } @else {
+            <div class="mb-6"></div>
+          }
           <!-- Actions -->
           <div class="flex justify-end gap-3">
             <button
+              type="button"
               (click)="onCancel()"
               class="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium"
             >
               {{ cancelText }}
             </button>
             <button
+              type="button"
               (click)="onConfirm()"
+              [disabled]="!canConfirm()"
               [ngClass]="{
                 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/30': type === 'danger',
                 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30': type === 'info',
@@ -102,7 +136,8 @@ import { CommonModule } from '@angular/common';
                 'bg-green-600 hover:bg-green-700 text-white shadow-green-500/30':
                   type === 'success',
               }"
-              class="px-4 py-2 rounded-lg shadow-lg transition-all font-medium flex items-center gap-2"
+              class="px-4 py-2 rounded-lg shadow-lg transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 disabled:hover:bg-blue-600 disabled:hover:bg-amber-600 disabled:hover:bg-green-600"
+              data-testid="confirm-dialog-confirm"
             >
               {{ confirmText }}
             </button>
@@ -140,13 +175,28 @@ import { CommonModule } from '@angular/common';
     `,
   ],
 })
-export class ConfirmDialogComponent implements AfterContentInit {
+export class ConfirmDialogComponent implements AfterContentInit, OnChanges {
   @Input() isOpen = false;
   @Input() title = 'Confirmar acción';
   @Input() message = '¿Estás seguro de que deseas continuar?';
   @Input() confirmText = 'Confirmar';
   @Input() cancelText = 'Cancelar';
   @Input() type: 'danger' | 'info' | 'warning' | 'success' = 'danger';
+
+  /**
+   * If set to a non-empty string, the user must type this exact value
+   * into a confirmation input before the confirm button enables. Used
+   * for destructive actions (delete category, delete article) where
+   * the consumer wants a "type the name to confirm" UX similar to
+   * GitHub's repo delete dialog.
+   *
+   * When null/empty, the dialog behaves as a simple confirm (no input
+   * shown, button always enabled) — this preserves backwards
+   * compatibility with the 5+ existing consumers.
+   */
+  @Input() requireTextInput: string | null = null;
+  @Input() requireTextInputPlaceholder: string = '';
+  @Input() requireTextInputLabel: string = '';
 
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
@@ -165,6 +215,18 @@ export class ConfirmDialogComponent implements AfterContentInit {
    */
   hasProjectedContent = false;
 
+  /** Local state of the text-input confirmation. */
+  readonly typedValue = signal('');
+
+  /** True when the typed value matches the required text (or no input is required). */
+  readonly matchesRequired = computed(() => {
+    if (!this.requireTextInput) return true;
+    return this.typedValue() === this.requireTextInput;
+  });
+
+  /** Whether the confirm button should be enabled. */
+  readonly canConfirm = computed(() => this.matchesRequired());
+
   ngAfterContentInit(): void {
     // AfterContentInit fires once the projected DOM is available. We treat
     // any non-empty projection as "consumer provided custom content" and
@@ -173,11 +235,28 @@ export class ConfirmDialogComponent implements AfterContentInit {
     this.hasProjectedContent = !!this.contentChildRef;
   }
 
-  onConfirm() {
+  ngOnChanges(changes: SimpleChanges): void {
+    // Reset the typed value whenever the dialog re-opens, so each
+    // confirmation session starts with a clean input. We also reset
+    // when `requireTextInput` changes (e.g. user opens delete on a
+    // different category).
+    if (changes['isOpen'] && changes['isOpen'].currentValue === true) {
+      this.typedValue.set('');
+    }
+    if (changes['requireTextInput'] && !changes['requireTextInput'].firstChange) {
+      this.typedValue.set('');
+    }
+  }
+
+  onConfirm(): void {
+    // Defense in depth: the button is disabled when the typed value
+    // doesn't match, but we double-check here in case the consumer
+    // calls onConfirm() programmatically.
+    if (!this.canConfirm()) return;
     this.confirm.emit();
   }
 
-  onCancel() {
+  onCancel(): void {
     this.cancel.emit();
   }
 }
