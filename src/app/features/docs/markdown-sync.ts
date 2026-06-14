@@ -121,6 +121,35 @@ function renderInline(el: HTMLElement): string {
         out += `![${alt}](${src})`;
         break;
       }
+      case 'video': {
+        // Video tags don't have a native Markdown equivalent. We
+        // round-trip them as raw HTML inside the markdown source so
+        // the original markup is preserved (Tiptap can read raw
+        // video tags on the way back). Marked passes raw HTML through
+        // unchanged when it sits on its own line.
+        const src = child.getAttribute('src') ?? '';
+        const poster = child.getAttribute('poster') ?? '';
+        const controls = child.hasAttribute('controls') ? ' controls' : '';
+        const preload = child.getAttribute('preload') ?? 'metadata';
+        const attrs = `src="${escapeAttr(src)}" preload="${preload}"${controls}`;
+        // Pull the first <source> child if any, for richer video tags.
+        const source = child.querySelector('source');
+        if (source) {
+          const sSrc = source.getAttribute('src') ?? '';
+          const sType = source.getAttribute('type') ?? '';
+          const inner = `<source src="${escapeAttr(sSrc)}" type="${escapeAttr(sType)}" />`;
+          if (poster) {
+            out += `<video ${attrs} poster="${escapeAttr(poster)}">${inner}</video>`;
+          } else {
+            out += `<video ${attrs}>${inner}</video>`;
+          }
+        } else if (src) {
+          out += poster
+            ? `<video ${attrs} poster="${escapeAttr(poster)}"></video>`
+            : `<video ${attrs}></video>`;
+        }
+        break;
+      }
       case 'br':
         out += '\n';
         break;
@@ -227,6 +256,26 @@ function renderInlineToHtml(el: HTMLElement): string {
         const src = child.getAttribute('src') ?? '';
         const alt = child.getAttribute('alt') ?? '';
         out += `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" />`;
+        break;
+      }
+      case 'video': {
+        // Pass through whatever video markup marked produced. We
+        // don't try to canonicalise the attribute order — we just
+        // re-serialise the attributes we care about and pass
+        // through any <source> children so the player works.
+        const src = child.getAttribute('src') ?? '';
+        const poster = child.getAttribute('poster') ?? '';
+        const controls = child.hasAttribute('controls') ? ' controls' : '';
+        const preload = child.getAttribute('preload') ?? 'metadata';
+        const playsinline = child.hasAttribute('playsinline') ? ' playsinline' : '';
+        const attrs = `src="${escapeAttr(src)}" preload="${escapeAttr(preload)}"${controls}${playsinline}`;
+        const sourceEl = child.querySelector('source');
+        const sourceStr = sourceEl
+          ? `<source src="${escapeAttr(sourceEl.getAttribute('src') ?? '')}" type="${escapeAttr(sourceEl.getAttribute('type') ?? '')}" />`
+          : '';
+        out += poster
+          ? `<video ${attrs} poster="${escapeAttr(poster)}">${sourceStr}</video>`
+          : `<video ${attrs}>${sourceStr}</video>`;
         break;
       }
       case 'br':

@@ -288,7 +288,7 @@
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-4"
           (click)="$event.stopPropagation()"
         >
-          <h4 class="m-0 text-lg font-semibold text-slate-900 dark:text-slate-100">Insertar imagen</h4>
+          <h4 class="m-0 text-lg font-semibold text-slate-900 dark:text-slate-100">Insertar medio</h4>
 
           <!-- Tabs -->
           <div class="flex border-b border-gray-200 dark:border-gray-700">
@@ -330,9 +330,9 @@
                   <div class="flex flex-col items-center justify-center pt-5 pb-6">
                     <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      Haz clic o arrastra una imagen aquí
+                      Hacé clic o arrastrá una imagen acá
                     </p>
-                    <p class="text-xs text-gray-400 mt-1">PNG, JPEG, WebP, GIF — máximo 10MB</p>
+                    <p class="text-xs text-gray-400 mt-1">PNG, JPEG, WebP, GIF — máximo 50MB</p>
                   </div>
                   <input
                     type="file"
@@ -342,10 +342,32 @@
                   />
                 </label>
               </div>
+              <!-- Video upload (separate input so the accept attr drives
+                   the validation in the TS without needing a "kind"
+                   selector UI in the modal). -->
+              <div class="flex items-center justify-center w-full">
+                <label
+                  class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
+                >
+                  <div class="flex flex-col items-center justify-center pt-3 pb-3">
+                    <i class="fas fa-video text-xl text-gray-400 mb-1"></i>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      O subí un video corto
+                    </p>
+                    <p class="text-xs text-gray-400 mt-0.5">MP4, WebM — máximo 50MB</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm"
+                    class="hidden"
+                    (change)="onVideoFileSelected($event)"
+                  />
+                </label>
+              </div>
               @if (imageUploadProgress) {
                 <div class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
                   <i class="fas fa-spinner fa-spin"></i>
-                  <span>Subiendo imagen...</span>
+                  <span>Subiendo archivo...</span>
                 </div>
               }
               @if (imageUploadError) {
@@ -373,6 +395,24 @@
                   <span class="truncate">{{ imageUrlInput }}</span>
                 </div>
               }
+              <div class="flex items-center gap-3 my-1">
+                <span class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400">o pegá una URL de video</span>
+                <span class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
+              </div>
+              <input
+                type="url"
+                [(ngModel)]="videoUrlInput"
+                placeholder="https://example.com/demo.mp4"
+                (keyup.enter)="confirmVideoUrl()"
+                class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+              @if (videoUrlInput) {
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <i class="fas fa-video"></i>
+                  <span class="truncate">{{ videoUrlInput }}</span>
+                </div>
+              }
             </div>
           }
 
@@ -385,8 +425,9 @@
             </button>
             @if (imageModalTab === 'url') {
               <button
-                class="px-4 py-2 rounded-xl text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm"
-                (click)="confirmImageUrl()"
+                class="px-4 py-2 rounded-xl text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                (click)="confirmImageOrVideoUrl()"
+                [disabled]="!imageUrlInput.trim() && !videoUrlInput.trim()"
               >
                 <i class="fas fa-check"></i> Insertar
               </button>

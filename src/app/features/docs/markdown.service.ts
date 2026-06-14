@@ -40,6 +40,14 @@ export interface MarkdownRenderResult {
  * `safeHtml` pipe — we don't need forms, inputs, or inline style
  * attributes here, and `target` / `rel` are force-rewritten below
  * for external links.
+ *
+ * `<video>` and `<source>` are allowed so superadmin-authored demos
+ * (mp4/webm uploaded to the `docs-media` storage bucket) can be
+ * embedded. We allow `controls`, `preload`, `muted`, `playsinline`,
+ * `loop`, `poster`, `width`, `height` — the bare minimum for a
+ * usable native HTML5 video player. We do NOT allow `autoplay`
+ * (UX/abuse surface) and we do NOT allow inline event handlers
+ * (covered by FORBID_ATTR below).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PURIFY_CONFIG: any = {
@@ -50,6 +58,7 @@ const PURIFY_CONFIG: any = {
     'blockquote', 'pre', 'code',
     'strong', 'em', 'b', 'i', 'del',
     'a', 'img',
+    'video', 'source',
     'table', 'thead', 'tbody', 'tr', 'th', 'td',
     'div', 'span', 'input',
   ],
@@ -57,12 +66,16 @@ const PURIFY_CONFIG: any = {
     'href', 'title', 'alt', 'src', 'class', 'id',
     'target', 'rel', 'type', 'checked', 'disabled',
     'loading',
+    // Video attributes
+    'controls', 'preload', 'poster', 'width', 'height',
+    'muted', 'playsinline', 'loop',
   ],
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'style', 'link'],
   FORBID_ATTR: [
     'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur',
     'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onkeypress',
+    'autoplay', // disabled at the sanitiser level for UX/abuse reasons
   ],
 };
 
@@ -247,6 +260,11 @@ export class MarkdownService {
    *    (so JS injection via `target` is impossible: we set the value
    *    ourselves and let DOMPurify keep it on the allowlist).
    *  - ensure every `<img>` has `loading="lazy"`.
+   *  - ensure every `<video>` has `controls` and `preload="metadata"` so
+   *    the native HTML5 player is usable without a click and videos
+   *    don't preload the full file (saves bandwidth on long articles).
+   *    `playsinline` is added so iOS Safari plays inline rather than
+   *    going fullscreen, which is the expected UX inside an article.
    *
    * The walk is regex-based because the input is well-formed HTML
    * (we control it via marked + DOMPurify downstream) and a full
@@ -278,6 +296,26 @@ export class MarkdownService {
           return full;
         }
         return `<img${attrs} loading="lazy">`;
+      },
+    );
+
+    // Videos: ensure controls, preload="metadata", and playsinline.
+    // We only inject the attribute if the author didn't supply one —
+    // we don't want to clobber a deliberate choice (e.g. muted loop).
+    out = out.replace(
+      /<video\b([^>]*?)>/gi,
+      (_full, attrs: string) => {
+        let next = attrs;
+        if (!/\bcontrols\b/i.test(next)) {
+          next += ' controls';
+        }
+        if (!/\bpreload\s*=/i.test(next)) {
+          next += ' preload="metadata"';
+        }
+        if (!/\bplaysinline\b/i.test(next)) {
+          next += ' playsinline';
+        }
+        return `<video${next}>`;
       },
     );
 
