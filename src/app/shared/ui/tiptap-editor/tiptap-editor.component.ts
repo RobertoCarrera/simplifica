@@ -14,6 +14,7 @@ import {
 
 import { FormsModule } from '@angular/forms';
 import { Editor } from '@tiptap/core';
+import { Node } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
@@ -27,6 +28,57 @@ interface VariableOption {
   label: string;
   description: string;
 }
+
+/**
+ * Inline Tiptap node for HTML5 <video> embeds. Modelled after the
+ * official @tiptap/extension-video but defined inline so we don't
+ * pull a new dependency. We support the attributes we actually
+ * whitelist at render time (controls / preload / poster / muted /
+ * playsinline / loop / width / height) plus a <source> child for
+ * multi-format videos.
+ *
+ * We intentionally do NOT support `autoplay` (UX/abuse) or inline
+ * event handlers (XSS surface). The renderer's DOMPurify pass
+ * strips anything not in its allowlist, so even if a malicious
+ * payload gets through here it would be cleaned downstream.
+ */
+const DocsVideo = Node.create({
+  name: 'video',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      src: { default: null },
+      poster: { default: null },
+      controls: { default: true, parseHTML: (el) => el.hasAttribute('controls') },
+      preload: { default: 'metadata' },
+      muted: { default: false, parseHTML: (el) => el.hasAttribute('muted') },
+      playsinline: { default: true, parseHTML: (el) => el.hasAttribute('playsinline') },
+      loop: { default: false, parseHTML: (el) => el.hasAttribute('loop') },
+      width: { default: null },
+      height: { default: null },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'video' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    const attrs: string[] = [];
+    const ha = HTMLAttributes as Record<string, unknown>;
+    if (ha['src']) attrs.push(`src="${ha['src']}"`);
+    if (ha['poster']) attrs.push(`poster="${ha['poster']}"`);
+    if (ha['controls'] !== false) attrs.push('controls');
+    if (ha['preload']) attrs.push(`preload="${ha['preload']}"`);
+    if (ha['muted']) attrs.push('muted');
+    if (ha['playsinline'] !== false) attrs.push('playsinline');
+    if (ha['loop']) attrs.push('loop');
+    if (ha['width']) attrs.push(`width="${ha['width']}"`);
+    if (ha['height']) attrs.push(`height="${ha['height']}"`);
+    return ['video', attrs.join(' ').trim()];
+  },
+});
 
 @Component({
   selector: 'app-tiptap-editor',
@@ -53,6 +105,7 @@ export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
   showImageModal = false;
   imageModalTab: 'upload' | 'url' = 'upload';
   imageUrlInput = '';
+  videoUrlInput = '';
   imageUploadProgress = false;
   imageUploadError = '';
   fileInput: HTMLInputElement | null = null;
@@ -277,13 +330,14 @@ export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
           openOnClick: false,
         }),
         Image,
+        DocsVideo,
       ],
       content: this.content,
       onUpdate: ({ editor }) => {
         const rawHtml = editor.getHTML();
         const html = DOMPurify.sanitize(rawHtml, {
-          ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'img', 'strong', 'em', 's', 'code', 'blockquote', 'span', 'div'],
-          ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel'],
+          ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'img', 'strong', 'em', 's', 'code', 'blockquote', 'span', 'div', 'video', 'source'],
+          ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel', 'controls', 'preload', 'poster', 'muted', 'playsinline', 'loop', 'width', 'height', 'type'],
           ALLOW_DATA_ATTR: false,
         });
         setTimeout(() => {
@@ -371,6 +425,7 @@ export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
   closeImageModal() {
     this.showImageModal = false;
     this.imageUrlInput = '';
+    this.videoUrlInput = '';
     this.imageUploadError = '';
     this.imageUploadProgress = false;
   }
@@ -396,49 +451,125 @@ export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
     this.closeImageModal();
   }
 
+  /**
+   * Insert whichever URL the user filled in (image OR video).
+   * The two inputs in the URL tab are mutually exclusive in practice —
+   * if both are filled, the image wins (it was the first input).
+   */
+  confirmImageOrVideoUrl() {
+    if (this.videoUrlInput.trim() && !this.imageUrlInput.trim()) {
+      this.addVideoFromUrl(this.videoUrlInput);
+    } else if (this.imageUrlInput.trim()) {
+      this.confirmImageUrl();
+      return;
+    }
+    this.closeImageModal();
+  }
+
+  confirmVideoUrl() {
+    if (this.videoUrlInput.trim()) {
+      this.addVideoFromUrl(this.videoUrlInput);
+    }
+    this.closeImageModal();
+  }
+
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
+    this.uploadAndInsertMedia(file, 'image');
+  }
 
-    // Validate MIME type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+  /**
+   * Insert a video from a hosted URL (no upload). The docs render
+   * whitelist allows mp4 / webm; this is the no-upload equivalent
+   * of confirmImageUrl but for the video toolbar button.
+   */
+  addVideoFromUrl(url: string): void {
+    if (!url.trim()) return;
+    this.editor?.chain().focus().insertContent({
+      type: 'video',
+      attrs: { src: url.trim(), controls: true, preload: 'metadata' },
+    }).run();
+  }
+
+  /**
+   * Open a file picker for a video upload. Click handler for the
+   * "Subir video" button on the toolbar.
+   */
+  onVideoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    this.uploadAndInsertMedia(input.files[0], 'video');
+    // Reset the input so the same file can be re-selected later.
+    input.value = '';
+  }
+
+  /**
+   * Shared upload pipeline for image OR video. Validates the file
+   * against the docs-media bucket allowlist, uploads it, gets the
+   * public URL, and inserts the matching Tiptap node.
+   */
+  private uploadAndInsertMedia(
+    file: File,
+    kind: 'image' | 'video',
+  ): void {
+    const allowedTypes =
+      kind === 'image'
+        ? ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+        : ['video/mp4', 'video/webm'];
+    const maxBytes = 50 * 1024 * 1024; // 50 MB; bucket policy mirrors this.
+
     if (!allowedTypes.includes(file.type)) {
-      this.imageUploadError = 'Tipo de archivo no permitido. Usa PNG, JPEG, WebP o GIF.';
+      this.imageUploadError =
+        kind === 'image'
+          ? 'Tipo de archivo no permitido. Usa PNG, JPEG, WebP o GIF.'
+          : 'Tipo de video no permitido. Usa MP4 o WebM.';
       return;
     }
-
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      this.imageUploadError = 'La imagen es demasiado grande. Máximo 10MB.';
+    if (file.size > maxBytes) {
+      this.imageUploadError =
+        kind === 'image'
+          ? 'La imagen es demasiado grande. Máximo 50 MB.'
+          : 'El video es demasiado grande. Máximo 50 MB.';
       return;
     }
 
     this.imageUploadProgress = true;
     this.imageUploadError = '';
 
-    const folder = this.companyId || 'unknown';
-    const subfolder = this.campaignId || 'draft';
-    const fileName = `${folder}/${subfolder}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const folder = this.companyId || this.campaignId || 'shared';
+    // Prefix the path with the kind so the bucket is easier to scan
+    // (and so RLS-style bucket policies can target one kind at a time
+    // if we ever need to).
+    const fileName = `${folder}/${kind}/${Date.now()}-${safeName}`;
 
     this.sb.instance.storage
-      .from('marketing-campaign-images')
+      .from('docs-media')
       .upload(fileName, file, { contentType: file.type })
       .then(({ data, error }) => {
         if (error) {
-          this.imageUploadError = 'Error al subir la imagen. Intenta de nuevo.';
+          this.imageUploadError = `Error al subir el ${kind === 'image' ? 'archivo' : 'video'}. Intentá de nuevo.`;
           this.imageUploadProgress = false;
           return;
         }
         const { data: urlData } = this.sb.instance.storage
-          .from('marketing-campaign-images')
+          .from('docs-media')
           .getPublicUrl(fileName);
-        this.editor?.chain().focus().setImage({ src: urlData.publicUrl }).run();
+        if (kind === 'image') {
+          this.editor?.chain().focus().setImage({ src: urlData.publicUrl }).run();
+        } else {
+          this.editor?.chain().focus().insertContent({
+            type: 'video',
+            attrs: { src: urlData.publicUrl, controls: true, preload: 'metadata' },
+          }).run();
+        }
         this.imageUploadProgress = false;
         this.closeImageModal();
       })
       .catch(() => {
-        this.imageUploadError = 'Error al subir la imagen. Intenta de nuevo.';
+        this.imageUploadError = `Error al subir el ${kind === 'image' ? 'archivo' : 'video'}.`;
         this.imageUploadProgress = false;
       });
   }
