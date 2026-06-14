@@ -11,6 +11,7 @@ import { ClientBookingsComponent } from './components/client-bookings/client-boo
 import { ClientBillingComponent } from './components/client-billing/client-billing.component';
 import { ClientDocumentsComponent } from './components/client-documents/client-documents.component';
 import { ClientTeamAccessComponent } from './components/client-team-access/client-team-access.component';
+import { ClientServicesComponent } from './components/client-services/client-services.component';
 import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
@@ -30,6 +31,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
     ClientBillingComponent,
     ClientDocumentsComponent,
     ClientTeamAccessComponent,
+    ClientServicesComponent,
     TranslocoPipe,
     ConfirmModalComponent,
   ],
@@ -248,6 +250,19 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                     [class.text-slate-500]="activeTab() !== 'documents'"
                   >
                     <i class="fas fa-folder mr-2"></i> {{ 'clients.tabDocumentos' | transloco }}
+                  </button>
+                }
+                @if (isOwner()) {
+                  <button
+                    (click)="setActiveTab('servicios')"
+                    class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                    [class.border-teal-500]="activeTab() === 'servicios'"
+                    [class.text-teal-600]="activeTab() === 'servicios'"
+                    [class.dark:text-teal-400]="activeTab() === 'servicios'"
+                    [class.border-transparent]="activeTab() !== 'servicios'"
+                    [class.text-slate-500]="activeTab() !== 'servicios'"
+                  >
+                    <i class="fas fa-wrench mr-2"></i> Servicios
                   </button>
                 }
                 @if (canManageTeam()) {
@@ -740,6 +755,11 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                   <app-client-team-access [clientId]="customer()!.id" [companyId]="customer()!.usuario_id"></app-client-team-access>
                 </div>
               }
+              @if (activeTab() === 'servicios' && isOwner()) {
+                <div class="animate-fade-in">
+                  <app-client-services [clientId]="customer()!.id" [companyId]="customer()!.usuario_id"></app-client-services>
+                </div>
+              }
             </div>
           </main>
         </div>
@@ -862,7 +882,7 @@ export class ClientProfileComponent implements OnInit {
 
   customer = signal<Customer | null>(null);
   isLoading = signal(true);
-  activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team'>('ficha');
+  activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team' | 'servicios'>('ficha');
 
   ngOnInit() {
     // Subscribe to params and queryParams using combineLatest or separate subscriptions
