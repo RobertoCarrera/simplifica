@@ -453,16 +453,61 @@ async function handleServicesList(ctx, req, corsHeaders) {
 }
 
 /**
+ * List the variants of a service the client can contract.
+ * Only returns variants for services the client can already see
+ * (is_public = true, is_bookable = true, allow_direct_contracting = true).
+ */
+async function handleServiceVariants(ctx, serviceId, corsHeaders) {
+  if (!serviceId) return jsonError(400, 'service_id is required', corsHeaders);
+
+  // 1. Verify the service is from the user's company AND is contractable
+  const svcRes = await crmFetch(
+    'services',
+    `select=id,name,is_active,is_public,is_bookable,allow_direct_contracting,company_id,has_variants` +
+    `&id=eq.${encodeURIComponent(serviceId)}` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&is_active=eq.true` +
+    `&is_public=eq.true` +
+    `&is_bookable=eq.true` +
+    `&allow_direct_contracting=eq.true` +
+    `&limit=1`,
+  );
+  if (svcRes.error) return jsonError(500, `Service lookup: ${svcRes.error}`, corsHeaders);
+  const service = svcRes.data?.[0];
+  if (!service) return jsonError(404, 'Service not found or not contractable', corsHeaders);
+
+  // 2. Fetch active+visible variants for this service
+  const vRes = await crmFetch(
+    'service_variants',
+    `select=id,service_id,variant_name,base_price,pricing,features,display_config,is_active,is_hidden,sort_order,created_at,updated_at` +
+    `&service_id=eq.${encodeURIComponent(serviceId)}` +
+    `&is_active=eq.true` +
+    `&is_hidden=eq.false` +
+    `&order=sort_order.asc,variant_name.asc`,
+  );
+  if (vRes.error) return jsonError(500, `Variants: ${vRes.error}`, corsHeaders);
+
+  return jsonOk({
+    service_id: serviceId,
+    has_variants: !!service.has_variants,
+    variants: vRes.data ?? [],
+  }, corsHeaders);
+}
+
+/**
  * Contract a service for the current client. Validates that:
  *  - the service belongs to the user's company
  *  - the service is allow_direct_contracting = true
  * Inserts a new row in `contracted_services` with the user's client_id.
+ * If a `variant_id` is provided, uses the variant's name and price.
  */
 async function handleServiceContract(ctx, req, corsHeaders) {
   let body;
   try { body = await req.json(); } catch { return jsonError(400, 'Invalid JSON body', corsHeaders); }
   const serviceId = (body?.service_id ?? '').toString().trim();
   if (!serviceId) return jsonError(400, 'service_id is required', corsHeaders);
+  const variantId = (body?.variant_id ?? '').toString().trim() || null;
+  const pricingPeriod = (body?.pricing_period ?? '').toString().trim() || null;
 
   // Verify the service is from the user's company AND is directly contractable
   const svcRes = await crmFetch(
@@ -480,19 +525,54 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   const service = svcRes.data?.[0];
   if (!service) return jsonError(404, 'Service not found or not contractable', corsHeaders);
 
+  // If a variant is provided, look it up and use its name + price
+  let contractedName = service.name;
+  let contractedDescription = service.description ?? null;
+  let price = body?.price ?? service.base_price ?? 0;
+  const currency = body?.currency || service.currency || 'EUR';
+
+  if (variantId) {
+    const vRes = await crmFetch(
+      'service_variants',
+      `select=id,service_id,variant_name,base_price,pricing,is_active,is_hidden,display_config` +
+      `&id=eq.${encodeURIComponent(variantId)}` +
+      `&service_id=eq.${encodeURIComponent(serviceId)}` +
+      `&is_active=eq.true` +
+      `&is_hidden=eq.false` +
+      `&limit=1`,
+    );
+    if (vRes.error) return jsonError(500, `Variant lookup: ${vRes.error}`, corsHeaders);
+    const variant = vRes.data?.[0];
+    if (!variant) return jsonError(404, 'Variant not found or not available', corsHeaders);
+
+    contractedName = variant.variant_name || service.name;
+
+    // Resolve price: try pricing_period → pricing[0] → base_price
+    let resolvedPrice = variant.base_price ?? null;
+    if (Array.isArray(variant.pricing) && variant.pricing.length > 0) {
+      const match = pricingPeriod
+        ? variant.pricing.find((p) => p?.period === pricingPeriod)
+        : variant.pricing[0];
+      if (match && typeof match.price !== 'undefined') {
+        resolvedPrice = match.price;
+      } else if (variant.pricing[0] && typeof variant.pricing[0].price !== 'undefined') {
+        resolvedPrice = variant.pricing[0].price;
+      }
+    }
+    if (resolvedPrice != null) price = resolvedPrice;
+  }
+
   const startDate = body?.start_date || new Date().toISOString().slice(0, 10);
   const recurrenceType = body?.recurrence_type || null;
   const recurrenceDay = body?.recurrence_day ?? null;
   const recurrenceStart = body?.recurrence_start || (recurrenceType ? startDate : null);
   const recurrenceEnd = body?.recurrence_end || null;
-  const price = body?.price ?? service.base_price ?? 0;
-  const currency = body?.currency || 'EUR';
 
   const insRes = await crmSend('contracted_services', 'POST', {
     client_id: ctx.clientId,
     company_id: ctx.companyId,
-    name: service.name,
-    description: service.description ?? null,
+    name: contractedName,
+    description: contractedDescription,
     price,
     currency,
     start_date: startDate,
@@ -818,6 +898,7 @@ serve(async (req) => {
   let route = last;
   let projectIdSegment = null;
   let taskIdSegment = null;
+  let serviceIdSegment = null;
   // The BFF receives URLs like /functions/v1/client-portal-modules/projects/<id>.
   // Find the "projects" segment in the path and look at what comes after it.
   // This is more robust than counting total segments because the leading
@@ -850,11 +931,15 @@ serve(async (req) => {
   }
 
   // /services/contract → service-contract (POST)
+  // /services/<id>/variants → service-variants (GET)
   const servicesIdx = segments.indexOf('services');
   if (servicesIdx >= 0) {
     const sTail = segments.slice(servicesIdx + 1);
     if (sTail.length === 1 && sTail[0] === 'contract' && req.method === 'POST') {
       route = 'service-contract';
+    } else if (sTail.length === 2 && sTail[1] === 'variants' && req.method === 'GET') {
+      route = 'service-variants';
+      serviceIdSegment = sTail[0];
     }
   }
 
@@ -870,7 +955,11 @@ serve(async (req) => {
         case 'quotes': return await handleQuotes(portalAdmin, ctx, corsHeaders);
         case 'tickets': return await handleTickets(portalAdmin, ctx, corsHeaders);
         case 'stages': return await handleStages(ctx, corsHeaders);
-        case 'services': return await handleServicesList(ctx, req, corsHeaders);
+        case 'services':
+          if (serviceIdSegment) {
+            return await handleServiceVariants(ctx, serviceIdSegment, corsHeaders);
+          }
+          return await handleServicesList(ctx, req, corsHeaders);
         case 'permissions': return await handlePermissions(ctx, corsHeaders);
         case 'projects':
           if (projectIdSegment) {
