@@ -924,7 +924,7 @@ export class ClientProfileComponent implements OnInit {
     });
   }
 
-  setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team') {
+  setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team' | 'servicios') {
     const previousTab = this.activeTab();
 
     // Step-up MFA required to access clinical notes
