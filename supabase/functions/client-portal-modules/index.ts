@@ -483,10 +483,19 @@ async function handleServicesList(ctx, req, corsHeaders) {
     return jsonError(500, `Contracted services: ${contractedRes.error}`, corsHeaders);
   }
 
-  return jsonOk({
+  // DEBUG: log the full response structure we're about to send
+  const responsePayload = {
     available,
     contracted: contractedRes.data ?? [],
-  }, corsHeaders);
+    _debug: {
+      ctx_companyId: ctx.companyId,
+      ctx_clientId: ctx.clientId,
+      available_count: available.length,
+      contracted_count: (contractedRes.data ?? []).length,
+    },
+  };
+  console.log('[handleServicesList] FINAL RESPONSE:', JSON.stringify(responsePayload, null, 2));
+  return jsonOk(responsePayload, corsHeaders);
 }
 
 /**
