@@ -605,15 +605,27 @@ export class ClientServicesComponent implements OnInit {
     this.assigning.set(s.id);
     try {
       const supabase = this.supabaseService.getClient();
-      const { data: client } = await supabase
+
+      // Resolve company_id from the client (the source of truth — the client's
+      // owning company, NOT the company the admin is currently logged into
+      // via @Input). Fall back to @Input only if the lookup fails.
+      const { data: client, error: clientErr } = await supabase
         .from('clients')
         .select('company_id')
         .eq('id', this.clientId)
         .single();
+      if (clientErr) {
+        console.warn('[ClientServices.confirmAssign] could not resolve company_id from client, falling back to @Input companyId', clientErr);
+      }
+      const resolvedCompanyId = client?.company_id ?? this.companyId;
+      if (!resolvedCompanyId) {
+        throw new Error('No se pudo resolver la empresa del cliente. Aborta la asignación.');
+      }
+
       const rec = this.detailRecurrence();
       const insertPayload = {
         client_id: this.clientId,
-        company_id: client?.company_id ?? this.companyId,
+        company_id: resolvedCompanyId,
         name,
         description: this.detailDescription().trim() || null,
         price: this.detailPrice(),
@@ -625,16 +637,21 @@ export class ClientServicesComponent implements OnInit {
         recurrence_start: rec === 'none' ? null : this.detailStartDate(),
         recurrence_end: rec === 'none' ? null : this.detailRecurrenceEnd(),
       };
-      // DEBUG: log the payload so we can verify which client_id and company_id are being used
       console.log('[ClientServices.confirmAssign] insertPayload =', JSON.stringify(insertPayload, null, 2));
-      const { error } = await supabase.from('contracted_services').insert(insertPayload);
+      const { data, error } = await supabase
+        .from('contracted_services')
+        .insert(insertPayload)
+        .select()
+        .single();
       if (error) throw error;
+      console.log('[ClientServices.confirmAssign] inserted row =', JSON.stringify(data, null, 2));
       this.toast.success('Servicio asignado', `"${name}" añadido a los servicios del cliente`);
       this.modalSearch = '';
       this.closeDetailModal();
       this.closeAssignModal();
       await this.loadContracted();
     } catch (e: any) {
+      console.error('[ClientServices.confirmAssign] FAILED:', e);
       this.toast.error('No se pudo asignar', e?.message || 'Error desconocido');
     } finally {
       this.assigning.set(null);
