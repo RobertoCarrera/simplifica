@@ -1026,8 +1026,10 @@ serve(async (req) => {
 async function handleServicesProbe(ctx, corsHeaders) {
   const crmQuery = `select=id,name,company_id,is_public,is_active&company_id=eq.${encodeURIComponent(ctx.companyId)}&limit=10`;
   const portalQuery = `select=id,name,company_id&company_id=eq.${encodeURIComponent(ctx.companyId)}&limit=10`;
+  // Use the BFF's own private connection to probe the PORTAL DB
+  const portalAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  const portalRes = await portalAdmin.from('services').select('id, name, company_id').eq('company_id', ctx.companyId).limit(10);
   const crmRes = await crmFetch('services', crmQuery);
-  const portalRes = await crmSend('services', 'GET', null, portalQuery.replace(/^\?/, ''));
   return jsonOk({
     ctx: { companyId: ctx.companyId, clientId: ctx.clientId },
     crm_url: CRM_SUPABASE_URL,
@@ -1037,6 +1039,6 @@ async function handleServicesProbe(ctx, corsHeaders) {
     portal_url: SUPABASE_URL,
     portal_status: portalRes.error ? 'error' : 'ok',
     portal_rows: portalRes.data ?? [],
-    portal_error: portalRes.error ?? null,
+    portal_error: portalRes.error?.message ?? null,
   }, corsHeaders);
 }
