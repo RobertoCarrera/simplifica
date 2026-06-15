@@ -48,6 +48,13 @@ export interface AvailableService {
   display_price_label?: string | null;
 }
 
+export interface ServiceCategoryRef {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+}
+
 @Component({
   selector: 'app-client-services',
   standalone: true,
@@ -216,8 +223,14 @@ export interface AvailableService {
                         <div class="text-xs text-gray-500 line-clamp-1">{{ s.description }}</div>
                       }
                       <div class="text-xs text-gray-400 mt-1">
-                        @if (s.category && !isLikelyUuid(s.category)) {
-                          <span class="px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 rounded">{{ s.category }}</span>
+                        @if (categoryLabel(s)) {
+                          <span
+                            class="px-1.5 py-0.5 rounded"
+                            [class.bg-gray-100]="!categoryColor(s)"
+                            [class.dark:bg-slate-700]="!categoryColor(s)"
+                            [style.backgroundColor]="categoryColor(s) || null"
+                            [style.color]="categoryColor(s) ? '#fff' : null"
+                          >{{ categoryLabel(s) }}</span>
                         }
                         @if (s.base_price != null) {
                           <span class="ml-2 font-medium">{{ formatPrice(s.base_price) }} EUR</span>
@@ -445,6 +458,9 @@ export class ClientServicesComponent implements OnInit {
   modalSearch = '';
   assigning = signal<string | null>(null);
 
+  // Categories cache: categoryId → { name, color, icon }
+  categoriesById = signal<Record<string, ServiceCategoryRef>>({});
+
   // Detail modal (opened when clicking "Asignar" in the catalog)
   detailModalOpen = signal<boolean>(false);
   detailService = signal<AvailableService | null>(null);
@@ -523,6 +539,32 @@ export class ClientServicesComponent implements OnInit {
         .order('name');
       if (error) throw error;
       this.available.set((data ?? []) as AvailableService[]);
+
+      // If any service's category is a UUID, fetch the matching service_categories
+      // (no FK exists in the DB, so we resolve names client-side — same pattern
+      // as SupabaseServicesService.getServicesFromTable).
+      const categoryIds = Array.from(
+        new Set(
+          (data ?? [])
+            .map((s: any) => s?.category)
+            .filter((id: any) => typeof id === 'string' && this.isValidUuid(id)),
+        ),
+      );
+      const missing = categoryIds.filter((id) => !this.categoriesById()[id]);
+      if (missing.length > 0) {
+        const { data: cats, error: catErr } = await supabase
+          .from('service_categories')
+          .select('id, name, color, icon')
+          .in('id', missing)
+          .eq('company_id', companyId);
+        if (!catErr && Array.isArray(cats)) {
+          const map: Record<string, ServiceCategoryRef> = { ...this.categoriesById() };
+          for (const c of cats) {
+            map[c.id] = c as ServiceCategoryRef;
+          }
+          this.categoriesById.set(map);
+        }
+      }
     } catch (e: any) {
       this.toast.error('Error al cargar catálogo', e?.message || 'Error desconocido');
     } finally {
@@ -649,6 +691,32 @@ export class ClientServicesComponent implements OnInit {
     const trimmed = v.trim();
     if (trimmed.length !== 36) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+  }
+
+  /** Strict UUID check (same pattern as SupabaseServicesService.isValidUuid). */
+  isValidUuid(v: any): boolean {
+    return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+  }
+
+  /**
+   * Resolve the category label for a service. If `service.category` is a UUID
+   * (no FK in the DB), look it up in the categories cache. Otherwise treat
+   * it as a plain string name.
+   */
+  categoryLabel(s: AvailableService): string | null {
+    const c = s.category;
+    if (!c) return null;
+    if (this.isValidUuid(c)) {
+      const resolved = this.categoriesById()[c];
+      return resolved?.name ?? null; // hide if we couldn't resolve
+    }
+    return c;
+  }
+
+  categoryColor(s: AvailableService): string | null {
+    const c = s.category;
+    if (!c || !this.isValidUuid(c)) return null;
+    return this.categoriesById()[c]?.color ?? null;
   }
 
   recurrenceLabel(t: string): string {
