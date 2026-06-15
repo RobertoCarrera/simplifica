@@ -421,37 +421,19 @@ async function handleStages(ctx, corsHeaders) {
  */
 async function handleServicesList(ctx, req, corsHeaders) {
   // 1. Available services for this company.
-  // NOTE: only request columns that actually exist on `services` in the CRM DB.
-  // Columns like `display_price`, `display_price_from_variants`, `updated_at`
-  // are referenced in the TypeScript types but do NOT exist in the DB and
-  // would cause 42703 errors that abort the whole handler (and therefore
-  // hide `contracted` too).
-  //
-  // Visibility filter: only `is_public=true` is required. The two sub-toggles
-  // in the CRM's "Visibilitat i Portal" section are *capabilities*, not
-  // visibility requirements:
-  //   - `is_bookable`               → enables the "reservar" flow (calendar)
-  //   - `allow_direct_contracting`  → enables the "contractar" button
-  // If the big toggle ("Mostrar al portal") is ON, the service should appear
-  // in the client's catalog regardless of the sub-toggles. The card UI in
-  // the portal already shows/hides the action buttons based on those flags.
-  //
-  // TEMP DEBUG: use OR filter to match is_public=true OR is_public=NULL,
-  // since some services may have NULL instead of true.
+  // TEMPORARY: NO filters at all. Return every service of the company. The
+  // frontend already shows/hides the action buttons based on is_public and
+  // sub-toggles, so this is safe visually. The point is to see if the BFF
+  // can read the table at all for this company.
   const availableRes = await crmFetch(
     'services',
     `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
-    `&or=(is_public.eq.true,is_public.is.null)` +
     `&order=name.asc`,
   );
   let available: any[] = availableRes.data ?? [];
   if (availableRes.error) {
     console.error('[handleServicesList] primary query error:', availableRes.error);
-  }
-  console.log(`[handleServicesList] primary query retornó ${available.length} rows for companyId=${ctx.companyId}`);
-  if (available.length > 0) {
-    console.log('[handleServicesList] first available:', JSON.stringify(available[0], null, 2));
   }
 
   // 2. Services already contracted by this client (active only)
@@ -477,9 +459,9 @@ async function handleServicesList(ctx, req, corsHeaders) {
       ctx_clientId: ctx.clientId,
       available_count: available.length,
       contracted_count: (contractedRes.data ?? []).length,
+      first_available: available[0] ?? null,
     },
   };
-  console.log('[handleServicesList] FINAL RESPONSE:', JSON.stringify(responsePayload, null, 2));
   return jsonOk(responsePayload, corsHeaders);
 }
 
