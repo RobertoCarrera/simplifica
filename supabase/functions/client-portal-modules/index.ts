@@ -426,17 +426,19 @@ async function handleServicesList(ctx, req, corsHeaders) {
   // would cause 42703 errors that abort the whole handler (and therefore
   // hide `contracted` too).
   //
-  // Visibility filter: is_public=true AND is_bookable=true is the user-facing
-  // contract (the two toggles in "Visibilidad y Portal"). We also exclude
-  // soft-deleted rows. We intentionally do NOT require is_active=true because
-  // some services are missing that flag in the DB; the visibility toggles
-  // alone are the user-facing contract for "show this to clients".
+  // Visibility filter: only `is_public=true` is required. The two sub-toggles
+  // in the CRM's "Visibilitat i Portal" section are *capabilities*, not
+  // visibility requirements:
+  //   - `is_bookable`               → enables the "reservar" flow (calendar)
+  //   - `allow_direct_contracting`  → enables the "contractar" button
+  // If the big toggle ("Mostrar al portal") is ON, the service should appear
+  // in the client's catalog regardless of the sub-toggles. The card UI in
+  // the portal already shows/hides the action buttons based on those flags.
   const availableRes = await crmFetch(
     'services',
     `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
     `&is_public=eq.true` +
-    `&is_bookable=eq.true` +
     `&deleted_at=is.null` +
     `&order=name.asc`,
   );
