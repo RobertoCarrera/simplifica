@@ -81,6 +81,15 @@ export interface ServiceCategoryRef {
         </button>
       </div>
 
+      <!-- DEBUG BANNER (quitar cuando se arregle) -->
+      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg px-3 py-2 text-xs font-mono text-amber-900 dark:text-amber-200">
+        🔧 DEBUG · <b>clientId (Input):</b> {{ clientId || '(vacío)' }}
+        · <b>companyId (Input):</b> {{ companyId || '(vacío)' }}
+        · <b>contracted count:</b> {{ contracted().length }}
+        @if (debugLastResult()) { · <b>último insert:</b> {{ debugLastResult() }} }
+        @if (debugLastError()) { · <b>error:</b> {{ debugLastError() | slice:0:200 }} }
+      </div>
+
       <!-- Active list -->
       @if (loading()) {
         <div class="text-center text-sm text-gray-500 py-6">Cargando servicios contratados…</div>
@@ -416,6 +425,51 @@ export interface ServiceCategoryRef {
               }
             </div>
 
+            <!-- DEBUG PANEL (visible siempre en este modal — quitar cuando se arregle) -->
+            @if (showDebug()) {
+              <div class="border-t-2 border-amber-400 pt-3 space-y-2 bg-amber-50 dark:bg-amber-900/20 -mx-2 px-2 rounded">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-bold text-amber-700 dark:text-amber-300">
+                    🔧 DEBUG — último intento de asignación
+                  </div>
+                  <button
+                    (click)="showDebug.set(false)"
+                    class="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400"
+                    title="Ocultar"
+                  >✕</button>
+                </div>
+                <div class="text-xs">
+                  <div class="font-semibold text-gray-700 dark:text-gray-300">Status:</div>
+                  <div
+                    class="font-mono text-[10px] mt-0.5 px-2 py-1 rounded"
+                    [class.bg-emerald-100]="debugLastResult() === 'OK — fila insertada'"
+                    [class.text-emerald-800]="debugLastResult() === 'OK — fila insertada'"
+                    [class.bg-amber-100]="debugLastResult() === 'Insertando…'"
+                    [class.text-amber-800]="debugLastResult() === 'Insertando…'"
+                    [class.bg-red-100]="debugLastError()"
+                    [class.text-red-800]="debugLastError()"
+                    [class.bg-gray-100]="!debugLastResult() && !debugLastError()"
+                  >
+                    {{ debugLastResult() || '(aún sin intentar)' }}
+                  </div>
+                </div>
+                @if (debugLastError()) {
+                  <div class="text-xs">
+                    <div class="font-semibold text-red-700 dark:text-red-300">Error:</div>
+                    <pre class="font-mono text-[10px] mt-0.5 px-2 py-1 rounded bg-red-100 text-red-800 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">{{ debugLastError() }}</pre>
+                  </div>
+                }
+                <div class="text-xs">
+                  <div class="font-semibold text-gray-700 dark:text-gray-300">Payload / Row:</div>
+                  <pre class="font-mono text-[10px] mt-0.5 px-2 py-1 rounded bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">{{ formatDebug(debugLastInsert()) }}</pre>
+                </div>
+                <div class="text-xs text-amber-700 dark:text-amber-300">
+                  clientId (de @Input): <span class="font-mono">{{ clientId }}</span><br>
+                  companyId (de @Input): <span class="font-mono">{{ companyId || '(vacío)' }}</span>
+                </div>
+              </div>
+            }
+
             <footer class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-700">
               <button
                 (click)="closeDetailModal()"
@@ -472,6 +526,12 @@ export class ClientServicesComponent implements OnInit {
   detailRecurrence = signal<'none' | 'monthly' | 'weekly' | 'yearly'>('none');
   detailRecurrenceDay = signal<number | null>(null);
   detailRecurrenceEnd = signal<string | null>(null);
+
+  // DEBUG: visible in template (no console needed)
+  debugLastInsert = signal<any>(null);
+  debugLastResult = signal<string>('');
+  debugLastError = signal<string>('');
+  showDebug = signal<boolean>(true);
 
   filteredAvailable = computed<AvailableService[]>(() => {
     const q = this.modalSearch.trim().toLowerCase();
@@ -603,6 +663,8 @@ export class ClientServicesComponent implements OnInit {
       return;
     }
     this.assigning.set(s.id);
+    this.debugLastResult.set('');
+    this.debugLastError.set('');
     try {
       const supabase = this.supabaseService.getClient();
 
@@ -637,22 +699,28 @@ export class ClientServicesComponent implements OnInit {
         recurrence_start: rec === 'none' ? null : this.detailStartDate(),
         recurrence_end: rec === 'none' ? null : this.detailRecurrenceEnd(),
       };
-      console.log('[ClientServices.confirmAssign] insertPayload =', JSON.stringify(insertPayload, null, 2));
+      this.debugLastInsert.set(insertPayload);
+      this.debugLastResult.set('Insertando…');
       const { data, error } = await supabase
         .from('contracted_services')
         .insert(insertPayload)
         .select()
         .single();
-      if (error) throw error;
-      console.log('[ClientServices.confirmAssign] inserted row =', JSON.stringify(data, null, 2));
+      if (error) {
+        this.debugLastError.set(JSON.stringify(error, null, 2));
+        throw error;
+      }
+      this.debugLastInsert.set(data);
+      this.debugLastResult.set('OK — fila insertada');
       this.toast.success('Servicio asignado', `"${name}" añadido a los servicios del cliente`);
       this.modalSearch = '';
       this.closeDetailModal();
       this.closeAssignModal();
       await this.loadContracted();
     } catch (e: any) {
-      console.error('[ClientServices.confirmAssign] FAILED:', e);
-      this.toast.error('No se pudo asignar', e?.message || 'Error desconocido');
+      const msg = e?.message || JSON.stringify(e);
+      if (!this.debugLastError()) this.debugLastError.set(msg);
+      this.toast.error('No se pudo asignar', msg);
     } finally {
       this.assigning.set(null);
     }
@@ -737,6 +805,15 @@ export class ClientServicesComponent implements OnInit {
     const c = s.category;
     if (!c || !this.isValidUuid(c)) return null;
     return this.categoriesById()[c]?.color ?? null;
+  }
+
+  formatDebug(v: any): string {
+    if (v == null) return '(vacío)';
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
   }
 
   recurrenceLabel(t: string): string {
