@@ -241,6 +241,189 @@ export interface AvailableService {
           </div>
         </div>
       }
+
+      <!-- DETAIL MODAL (asignación con campos editables) -->
+      @if (detailModalOpen() && detailService(); as svc) {
+        <div
+          class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+          (click)="closeDetailModal()"
+        >
+          <div
+            class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4"
+            (click)="$event.stopPropagation()"
+          >
+            <header class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Asignar servicio al cliente</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Personaliza los datos antes de asignar. El cliente los verá en su portal.
+                </p>
+              </div>
+              <button
+                (click)="closeDetailModal()"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
+                title="Cerrar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </header>
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Nombre (visible para el cliente)
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="detailName()"
+                  (ngModelChange)="detailName.set($event)"
+                  name="detailName"
+                  placeholder="Nombre del servicio"
+                  class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Descripción (visible para el cliente)
+                </label>
+                <textarea
+                  [ngModel]="detailDescription()"
+                  (ngModelChange)="detailDescription.set($event)"
+                  name="detailDescription"
+                  rows="3"
+                  placeholder="Notas internas y/o descripción que verá el cliente…"
+                  class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200 resize-none"
+                ></textarea>
+                <p class="text-[10px] text-gray-400 mt-1">
+                  Usa este campo para indicar el motivo o contexto de la asignación.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Precio
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="detailPrice()"
+                    (ngModelChange)="detailPrice.set(+$event || 0)"
+                    name="detailPrice"
+                    class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Moneda
+                  </label>
+                  <input
+                    type="text"
+                    maxlength="3"
+                    [ngModel]="detailCurrency()"
+                    (ngModelChange)="detailCurrency.set(($event || 'EUR').toUpperCase())"
+                    name="detailCurrency"
+                    class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Fecha de inicio
+                </label>
+                <input
+                  type="date"
+                  [ngModel]="detailStartDate()"
+                  (ngModelChange)="detailStartDate.set($event)"
+                  name="detailStartDate"
+                  class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Recurrencia
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  @for (opt of detailRecurrenceOptions; track opt.value) {
+                    <label
+                      class="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-colors"
+                      [class.border-blue-500]="detailRecurrence() === opt.value"
+                      [class.bg-blue-50]="detailRecurrence() === opt.value"
+                      [class.dark:bg-blue-900/20]="detailRecurrence() === opt.value"
+                      [class.border-gray-200]="detailRecurrence() !== opt.value"
+                      [class.dark:border-slate-700]="detailRecurrence() !== opt.value"
+                    >
+                      <input
+                        type="radio"
+                        [value]="opt.value"
+                        [checked]="detailRecurrence() === opt.value"
+                        (change)="detailRecurrence.set($any(opt.value))"
+                        class="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span class="text-sm text-gray-700 dark:text-gray-200">{{ opt.label }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+
+              @if (detailRecurrence() !== 'none') {
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                      Día
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      [ngModel]="detailRecurrenceDay()"
+                      (ngModelChange)="detailRecurrenceDay.set($event ? +$event : null)"
+                      name="detailRecurrenceDay"
+                      class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                      Fin (opcional)
+                    </label>
+                    <input
+                      type="date"
+                      [ngModel]="detailRecurrenceEnd()"
+                      (ngModelChange)="detailRecurrenceEnd.set($event || null)"
+                      name="detailRecurrenceEnd"
+                      class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200"
+                    />
+                  </div>
+                </div>
+              }
+            </div>
+
+            <footer class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-700">
+              <button
+                (click)="closeDetailModal()"
+                class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                (click)="confirmAssign()"
+                [disabled]="assigning() === svc.id"
+                class="px-5 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                @if (assigning() === svc.id) {
+                  <span class="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                }
+                Asignar al cliente
+              </button>
+            </footer>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
@@ -261,6 +444,18 @@ export class ClientServicesComponent implements OnInit {
   available = signal<AvailableService[]>([]);
   modalSearch = '';
   assigning = signal<string | null>(null);
+
+  // Detail modal (opened when clicking "Asignar" in the catalog)
+  detailModalOpen = signal<boolean>(false);
+  detailService = signal<AvailableService | null>(null);
+  detailName = signal<string>('');
+  detailDescription = signal<string>('');
+  detailPrice = signal<number>(0);
+  detailCurrency = signal<string>('EUR');
+  detailStartDate = signal<string>(new Date().toISOString().slice(0, 10));
+  detailRecurrence = signal<'none' | 'monthly' | 'weekly' | 'yearly'>('none');
+  detailRecurrenceDay = signal<number | null>(null);
+  detailRecurrenceEnd = signal<string | null>(null);
 
   filteredAvailable = computed<AvailableService[]>(() => {
     const q = this.modalSearch.trim().toLowerCase();
@@ -336,7 +531,32 @@ export class ClientServicesComponent implements OnInit {
   }
 
   async assignService(s: AvailableService) {
-    if (!confirm(`¿Asignar "${s.name}" a este cliente?`)) return;
+    // Open the detail modal pre-populated with the service's data
+    this.detailService.set(s);
+    this.detailName.set(s.name);
+    this.detailDescription.set(s.description ?? '');
+    this.detailPrice.set(s.base_price ?? 0);
+    this.detailCurrency.set('EUR');
+    this.detailStartDate.set(new Date().toISOString().slice(0, 10));
+    this.detailRecurrence.set('none');
+    this.detailRecurrenceDay.set(null);
+    this.detailRecurrenceEnd.set(null);
+    this.detailModalOpen.set(true);
+  }
+
+  closeDetailModal() {
+    this.detailModalOpen.set(false);
+    this.detailService.set(null);
+  }
+
+  async confirmAssign() {
+    const s = this.detailService();
+    if (!s) return;
+    const name = this.detailName().trim();
+    if (!name) {
+      this.toast.error('Falta el nombre', 'El servicio necesita un nombre.');
+      return;
+    }
     this.assigning.set(s.id);
     try {
       const supabase = this.supabaseService.getClient();
@@ -345,19 +565,26 @@ export class ClientServicesComponent implements OnInit {
         .select('company_id')
         .eq('id', this.clientId)
         .single();
+      const rec = this.detailRecurrence();
       const { error } = await supabase.from('contracted_services').insert({
         client_id: this.clientId,
         company_id: client?.company_id ?? this.companyId,
-        name: s.name,
-        description: s.description ?? null,
-        price: s.base_price ?? 0,
-        currency: 'EUR',
-        start_date: new Date().toISOString().slice(0, 10),
+        name,
+        description: this.detailDescription().trim() || null,
+        price: this.detailPrice(),
+        currency: this.detailCurrency() || 'EUR',
+        start_date: this.detailStartDate(),
         status: 'active',
+        recurrence_type: rec === 'none' ? null : rec,
+        recurrence_day: rec === 'none' ? null : this.detailRecurrenceDay(),
+        recurrence_start: rec === 'none' ? null : this.detailStartDate(),
+        recurrence_end: rec === 'none' ? null : this.detailRecurrenceEnd(),
       });
       if (error) throw error;
-      this.toast.success('Servicio asignado', `"${s.name}" añadido a los servicios del cliente`);
+      this.toast.success('Servicio asignado', `"${name}" añadido a los servicios del cliente`);
       this.modalSearch = '';
+      this.closeDetailModal();
+      this.closeAssignModal();
       await this.loadContracted();
     } catch (e: any) {
       this.toast.error('No se pudo asignar', e?.message || 'Error desconocido');
@@ -401,6 +628,13 @@ export class ClientServicesComponent implements OnInit {
     if (p == null) return '—';
     return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(p);
   }
+
+  detailRecurrenceOptions: Array<{ value: 'none' | 'monthly' | 'weekly' | 'yearly'; label: string }> = [
+    { value: 'none', label: 'Puntual' },
+    { value: 'monthly', label: 'Mensual' },
+    { value: 'weekly', label: 'Semanal' },
+    { value: 'yearly', label: 'Anual' },
+  ];
 
   recurrenceLabel(t: string): string {
     switch (t) {
