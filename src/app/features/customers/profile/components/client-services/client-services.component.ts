@@ -611,7 +611,7 @@ export class ClientServicesComponent implements OnInit {
         .eq('id', this.clientId)
         .single();
       const rec = this.detailRecurrence();
-      const { error } = await supabase.from('contracted_services').insert({
+      const insertPayload = {
         client_id: this.clientId,
         company_id: client?.company_id ?? this.companyId,
         name,
@@ -624,7 +624,10 @@ export class ClientServicesComponent implements OnInit {
         recurrence_day: rec === 'none' ? null : this.detailRecurrenceDay(),
         recurrence_start: rec === 'none' ? null : this.detailStartDate(),
         recurrence_end: rec === 'none' ? null : this.detailRecurrenceEnd(),
-      });
+      };
+      // DEBUG: log the payload so we can verify which client_id and company_id are being used
+      console.log('[ClientServices.confirmAssign] insertPayload =', JSON.stringify(insertPayload, null, 2));
+      const { error } = await supabase.from('contracted_services').insert(insertPayload);
       if (error) throw error;
       this.toast.success('Servicio asignado', `"${name}" añadido a los servicios del cliente`);
       this.modalSearch = '';
