@@ -952,9 +952,36 @@ export class AgendaComponent implements OnInit, OnDestroy {
   getTopPosition(hour: number, min: number): string {
     return `${(hour - this.minHour) * 120 + (min / 60) * 120 + 16}px`;
   }
+  /**
+   * Extract the wall-clock hour and minute of an event in the company's
+   * timezone (Europe/Madrid). d.getHours() would use the browser's local
+   * TZ, which is exactly the source of the visual-offset bug: if a user
+   * is on a different timezone (mobile with VPN, system clock wrong, etc.)
+   * the same event appears at a different vertical position.
+   */
+  private getWallClock(value: any): { hour: number; minute: number } {
+    if (typeof value === 'string') {
+      const m = value.match(/T(\d{2}):(\d{2})/);
+      if (m) {
+        return { hour: Number(m[1]), minute: Number(m[2]) };
+      }
+    }
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return { hour: 0, minute: 0 };
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Europe/Madrid',
+    });
+    const parts = fmt.formatToParts(d);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+    return { hour, minute };
+  }
   getEventTop(event: CalendarEvent): string {
-    const d = new Date(event.start);
-    return this.getTopPosition(d.getHours(), d.getMinutes());
+    const { hour, minute } = this.getWallClock(event.start);
+    return this.getTopPosition(hour, minute);
   }
   getEventHeight(event: CalendarEvent): string {
     const mins = (new Date(event.end).getTime() - new Date(event.start).getTime()) / 60000;
