@@ -419,10 +419,15 @@ async function handleStages(ctx, corsHeaders) {
  * client. Returns two parallel arrays: `available` and `contracted`.
  */
 async function handleServicesList(ctx, req, corsHeaders) {
-  // 1. Available services for this company
+  // 1. Available services for this company.
+  // NOTE: only request columns that actually exist on `services` in the CRM DB.
+  // Columns like `display_price`, `display_price_from_variants`, `updated_at`
+  // are referenced in the TypeScript types but do NOT exist in the DB and
+  // would cause 42703 errors that abort the whole handler (and therefore
+  // hide `contracted` too).
   const availableRes = await crmFetch(
     'services',
-    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants&display_price,display_price_label,display_price_from_variants&display_hours&display_hourly_rate,company_id,created_at,updated_at` +
+    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
     `&is_active=eq.true` +
     `&is_public=eq.true` +
@@ -430,7 +435,8 @@ async function handleServicesList(ctx, req, corsHeaders) {
     `&order=name.asc`,
   );
   if (availableRes.error) {
-    return jsonError(500, `Available services: ${availableRes.error}`, corsHeaders);
+    console.error('[handleServicesList] available error:', availableRes.error);
+    // Don't fail the whole request — still return contracted services below.
   }
 
   // 2. Services already contracted by this client (active only)
@@ -443,6 +449,7 @@ async function handleServicesList(ctx, req, corsHeaders) {
     `&order=created_at.desc`,
   );
   if (contractedRes.error) {
+    console.error('[handleServicesList] contracted error:', contractedRes.error);
     return jsonError(500, `Contracted services: ${contractedRes.error}`, corsHeaders);
   }
 
