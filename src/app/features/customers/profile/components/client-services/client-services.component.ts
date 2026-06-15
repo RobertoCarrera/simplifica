@@ -212,7 +212,7 @@ export interface AvailableService {
                   <li class="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-700 rounded-lg hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
                     <div class="flex-1 min-w-0">
                       <div class="font-medium text-sm text-gray-900 dark:text-white">{{ s.name }}</div>
-                      @if (s.description) {
+                      @if (s.description && !isLikelyUuid(s.description)) {
                         <div class="text-xs text-gray-500 line-clamp-1">{{ s.description }}</div>
                       }
                       <div class="text-xs text-gray-400 mt-1">
@@ -531,10 +531,13 @@ export class ClientServicesComponent implements OnInit {
   }
 
   async assignService(s: AvailableService) {
-    // Open the detail modal pre-populated with the service's data
+    // Open the detail modal pre-populated with the service's data.
+    // Skip the description if it looks like a stray UUID (data quality issue
+    // in some services: the description column ended up holding the service id).
+    const cleanDescription = this.isLikelyUuid(s.description) ? '' : (s.description ?? '');
     this.detailService.set(s);
     this.detailName.set(s.name);
-    this.detailDescription.set(s.description ?? '');
+    this.detailDescription.set(cleanDescription);
     this.detailPrice.set(s.base_price ?? 0);
     this.detailCurrency.set('EUR');
     this.detailStartDate.set(new Date().toISOString().slice(0, 10));
@@ -635,6 +638,18 @@ export class ClientServicesComponent implements OnInit {
     { value: 'weekly', label: 'Semanal' },
     { value: 'yearly', label: 'Anual' },
   ];
+
+  /**
+   * Heuristic: many CRM services in production have a UUID stored in the
+   * `description` column (a data entry bug from early imports). Detect that
+   * pattern so the UI doesn't display a raw UUID as the description.
+   */
+  isLikelyUuid(v: string | null | undefined): boolean {
+    if (!v) return false;
+    const trimmed = v.trim();
+    if (trimmed.length !== 36) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+  }
 
   recurrenceLabel(t: string): string {
     switch (t) {
