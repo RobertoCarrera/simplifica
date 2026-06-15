@@ -519,7 +519,7 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   // Verify the service is from the user's company AND is directly contractable
   const svcRes = await crmFetch(
     'services',
-    `select=id,name,description,base_price,is_active,is_public,is_bookable,allow_direct_contracting,company_id,tax_rate,currency` +
+    `select=id,name,description,base_price,is_active,is_public,is_bookable,allow_direct_contracting,company_id` +
     `&id=eq.${encodeURIComponent(serviceId)}` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
     `&is_active=eq.true` +
@@ -536,7 +536,7 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   let contractedName = service.name;
   let contractedDescription = service.description ?? null;
   let price = body?.price ?? service.base_price ?? 0;
-  const currency = body?.currency || service.currency || 'EUR';
+  const currency = body?.currency || 'EUR';
 
   if (variantId) {
     const vRes = await crmFetch(
