@@ -216,7 +216,7 @@ export interface AvailableService {
                         <div class="text-xs text-gray-500 line-clamp-1">{{ s.description }}</div>
                       }
                       <div class="text-xs text-gray-400 mt-1">
-                        @if (s.category) {
+                        @if (s.category && !isLikelyUuid(s.category)) {
                           <span class="px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 rounded">{{ s.category }}</span>
                         }
                         @if (s.base_price != null) {
