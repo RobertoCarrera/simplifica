@@ -425,13 +425,19 @@ async function handleServicesList(ctx, req, corsHeaders) {
   // are referenced in the TypeScript types but do NOT exist in the DB and
   // would cause 42703 errors that abort the whole handler (and therefore
   // hide `contracted` too).
+  //
+  // Visibility filter: is_public=true AND is_bookable=true is the user-facing
+  // contract (the two toggles in "Visibilidad y Portal"). We also exclude
+  // soft-deleted rows. We intentionally do NOT require is_active=true because
+  // some services are missing that flag in the DB; the visibility toggles
+  // alone are the user-facing contract for "show this to clients".
   const availableRes = await crmFetch(
     'services',
     `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
-    `&is_active=eq.true` +
     `&is_public=eq.true` +
     `&is_bookable=eq.true` +
+    `&deleted_at=is.null` +
     `&order=name.asc`,
   );
   if (availableRes.error) {
