@@ -17,6 +17,17 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
     <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full relative" @fadeInUp>
+
+      <!-- DEBUG: trace of the visual-offset bug in week view -->
+      <div style="position:fixed;top:5px;right:5px;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-width:560px;border:2px solid #0f0;white-space:pre-wrap;line-height:1.3;">
+🔍 DEBUG WEEK VIEW
+events count: {{ events.length }}
+first 5 events (week view):
+@for (e of (events | slice:0:5); track e.id) {
+  - id={{ e.id.slice(0, 8) }}… date={{ e.start | date:'yyyy-MM-dd HH:mm':'Europe/Madrid' }} M@M start_raw: {{ e.start }}
+}
+      </div>
+
       <!-- Header (fixed, never scrolls) -->
       <div 
         class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
@@ -1033,7 +1044,77 @@ ngOnInit() {
   getEventsForDay(dayName: string) { return this.getEventsForDate(this.getDateForWeekDay(dayName)); }
   
 
-  isSameDay(d1: any, d2: any) { d1 = new Date(d1); d2 = d2 instanceof Date ? d2 : (d2 ? new Date(d2) : new Date()); return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); }
+  /**
+   * Date comparisons and arithmetic for the calendar grid MUST be anchored
+   * to the company's timezone (Europe/Madrid). Using the browser's local
+   * timezone (via d.getDay/getDate/etc.) was the source of the visual-offset
+   * bug: a user whose browser is in a different timezone (mobile with VPN,
+   * system clock wrong, etc.) would see events in the wrong day-column
+   * and at the wrong vertical position.
+   *
+   * Strategy: format any date-like to a "YYYY-MM-DD" string in Madrid,
+   * then compare strings. No Date arithmetic with setDate/setMonth which
+   * are TZ-local.
+   */
+  private dateToMadridKey(value: any): string {
+    if (value == null) return '';
+    if (value instanceof Date) {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Madrid',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return fmt.format(value); // YYYY-MM-DD in en-CA
+    }
+    if (typeof value === 'string') {
+      // The input is an ISO string. Extract YYYY-MM-DD before any TZ shift.
+      const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Madrid',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return fmt.format(d);
+  }
+
+  isSameDay(d1: any, d2: any) {
+    return this.dateToMadridKey(d1) === this.dateToMadridKey(d2);
+  }
+
+  /**
+   * Returns a Date anchored to the calendar grid for the given week day
+   * name (e.g. "Lunes"). Built from string keys (no setDate TZ-local math).
+   */
+  getDateForWeekDay(name: string): Date {
+    const startKey = this.dateToMadridKey(this.getWeekStart(this.currentView().date));
+    const idx = this.weekDays.indexOf(name);
+    const [y, m, d] = startKey.split('-').map(Number);
+    // Create a UTC midnight of the target date in Madrid — safe arithmetic.
+    const target = new Date(Date.UTC(y, m - 1, d + idx));
+    return target;
+  }
+  getWeekDayNumber(name: string) { return this.getDateForWeekDay(name).getDate(); }
+
+  /**
+   * getWeekStart: returns a Date that represents the Monday of the
+   * currentView date's week, anchored in Europe/Madrid. We work in
+   * string keys to avoid TZ-local Date arithmetic entirely.
+   */
+  getWeekStart(d: Date): Date {
+    const key = this.dateToMadridKey(d); // YYYY-MM-DD in Madrid
+    const [y, m, day] = key.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, day));
+    // dt.getUTCDay() is the day of week of the Madrid date — stable across browsers.
+    const dow = dt.getUTCDay(); // 0=Sun..6=Sat
+    const back = dow === 0 ? 6 : dow - 1;
+    return new Date(Date.UTC(y, m - 1, day - back));
+  }
   isDayWorking(d: Date) { return !this.constraints?.workingDays?.length || this.constraints.workingDays.includes(d.getDay()); }
 
   // ─── Blocked dates (visual) ─────────────────────────────────────────
@@ -1060,9 +1141,6 @@ ngOnInit() {
   }
 
 
-  getWeekStart(d: Date) { const s = new Date(d); const day = s.getDay(); s.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); return s; }
-  getDateForWeekDay(name: string) { const start = this.getWeekStart(this.currentView().date); start.setDate(start.getDate() + this.weekDays.indexOf(name)); return start; }
-  getWeekDayNumber(name: string) { return this.getDateForWeekDay(name).getDate(); }
   getDateFor3Day(name: string) { return this.visible3DaysData().find(d => d.name === name)?.date || new Date(); }
   formatHour(h: number) { return `${h}:00`; }
   formatEventTime(e: CalendarEvent) {
