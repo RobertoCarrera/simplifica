@@ -460,6 +460,8 @@ async function handleServicesList(ctx, req, corsHeaders) {
       available_count: available.length,
       contracted_count: (contractedRes.data ?? []).length,
       first_available: available[0] ?? null,
+      crm_url: CRM_SUPABASE_URL,
+      crm_query_for_available: `select=id,name,...,is_public,is_bookable,...&company_id=eq.${encodeURIComponent(ctx.companyId)}&order=name.asc`,
     },
   };
   return jsonOk(responsePayload, corsHeaders);
