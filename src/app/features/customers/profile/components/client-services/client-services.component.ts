@@ -219,8 +219,8 @@ export interface AvailableService {
                         @if (s.category) {
                           <span class="px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 rounded">{{ s.category }}</span>
                         }
-                        @if (s.display_price != null) {
-                          <span class="ml-2 font-medium">{{ formatPrice(s.display_price) }} EUR</span>
+                        @if (s.base_price != null) {
+                          <span class="ml-2 font-medium">{{ formatPrice(s.base_price) }} EUR</span>
                         }
                       </div>
                     </div>
@@ -321,7 +321,7 @@ export class ClientServicesComponent implements OnInit {
       }
       const { data, error } = await supabase
         .from('services')
-        .select('id, name, description, base_price, category, is_active, is_public, is_bookable, allow_direct_contracting, has_variants, display_price, display_price_label')
+        .select('id, name, description, base_price, category, is_active, is_public, is_bookable, allow_direct_contracting, has_variants')
         .eq('company_id', companyId)
         .eq('is_active', true)
         .eq('is_public', true)
@@ -350,7 +350,7 @@ export class ClientServicesComponent implements OnInit {
         company_id: client?.company_id ?? this.companyId,
         name: s.name,
         description: s.description ?? null,
-        price: s.display_price ?? s.base_price ?? 0,
+        price: s.base_price ?? 0,
         currency: 'EUR',
         start_date: new Date().toISOString().slice(0, 10),
         status: 'active',
