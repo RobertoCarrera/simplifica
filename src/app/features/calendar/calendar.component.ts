@@ -197,9 +197,9 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
       }
 
       <!-- Calendar content (scrollable/flexible based on view) -->
-      <div class="flex-1 flex flex-col min-h-0 relative" [ngClass]="currentView().type === 'agenda' ? '' : 'p-2 md:p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900'">
+      <div class="flex-1 flex flex-col min-h-0 relative" [ngClass]="currentView().type === 'agenda' ? '' : 'overflow-y-auto bg-gray-50 dark:bg-gray-900'">
         @if (loading()) {
-          <div class="absolute inset-0 z-50 bg-gray-50 dark:bg-gray-900 flex flex-col p-2 md:p-6 space-y-4">
+          <div class="absolute inset-0 z-50 bg-gray-50 dark:bg-gray-900 flex flex-col space-y-4">
             <div class="grid grid-cols-7 gap-4 flex-1">
               @for (i of [1,2,3,4,5,6,7]; track i) {
                 <div class="flex flex-col space-y-3">
@@ -214,7 +214,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
         @switch (currentView().type) {
           @case ('week') {
             <div class="week-view" @slideIn>
-              <div class="grid mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2"
+              <div class="grid sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2"
                    [style.grid-template-columns]="'minmax(3rem, auto) repeat(' + visibleWeekDays().length + ', 1fr)'">
                 <div class="p-2"></div>
                 @for (day of visibleWeekDays(); track day) {
@@ -1139,11 +1139,17 @@ ngOnInit() {
   }
 
   /**
-   * Extract the wall-clock hour and minutes from a date-like value.
+   * Extract the wall-clock hour and minutes from a date-like value, anchored
+   * to the company's timezone (Europe/Madrid). This is the single source
+   * of truth for slot position — all events MUST be placed in the company's
+   * local clock, not the browser's, otherwise the same event appears at
+   * different vertical positions for users in different timezones.
+   *
    * - Strings matching `YYYY-MM-DDTHH:mm[:ss[.sss]](Z|±HH:MM)?` → the literal
    *   HH/mm from the string (the time the professional entered).
-   * - Anything else (Date object, naive string) → fallback to
-   *   `getHours()` / `getMinutes()` on the Date.
+   * - Anything else (Date object, naive string) → fallback to Intl.DateTimeFormat
+   *   with explicit Europe/Madrid timezone, NOT d.getHours() (which depends
+   *   on the browser's local TZ and was the source of the offset bug).
    */
   private extractWallClock(value: any): { hour: number; minutes: number } {
     if (typeof value === 'string') {
@@ -1152,8 +1158,21 @@ ngOnInit() {
         return { hour: Number(m[1]), minutes: Number(m[2]) };
       }
     }
+    // Fallback: render the Date in the company's timezone explicitly.
+    // d.getHours() would use the browser's TZ — that's exactly the bug
+    // we are avoiding here.
     const d = new Date(value);
-    return { hour: d.getHours(), minutes: d.getMinutes() };
+    if (isNaN(d.getTime())) return { hour: 0, minutes: 0 };
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Europe/Madrid',
+    });
+    const parts = fmt.formatToParts(d);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    const minutes = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+    return { hour, minutes };
   }
 
   getEventTopRelative(e: CalendarEvent) {
