@@ -17,6 +17,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
     <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full relative" @fadeInUp>
+
       <!-- Header (fixed, never scrolls) -->
       <div 
         class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
@@ -270,7 +271,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
-<div class="absolute inset-x-0 rounded p-1 pr-6 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm relative"
+<div class="absolute inset-x-0 rounded p-1 pr-6 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
                                      [style.border-left-color]="getEventBorderColor($any(event))"
                                      [style.border-left-width]="'4px'"
                                      [style.border-left-style]="'solid'"
@@ -811,25 +812,43 @@ export class CalendarComponent implements OnInit {
   });
 
   // Returns slot structure for any given date — per-day schedule or global fallback.
+  // The visible grid ALWAYS spans from the broader of (constraints.minHour, earliest
+  // schedule start) to the broader of (constraints.maxHour, latest schedule end), so
+  // the professional always sees full context (e.g. 8–20) even if their schedule
+  // for that day starts later. Bookings outside the schedule still render at their
+  // wall-clock vertical position (so the pro sees they are breaching their own hours).
   getSlotStructureForDate(date: Date): any[] {
     const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon...6=Sat
     const daySchedules = (this.constraints?.schedules || []).filter(
       (s: any) => Number(s.day_of_week) === dayOfWeek,
     );
+    // Force a hard floor/ceiling of 8–20 so the pro always sees full context
+    // (8am–8pm) regardless of what the saved constraints.minHour says. The
+    // booking-settings page rewrites constraints.minHour from the schedule's
+    // earliest start, which collapses the visible grid and misaligns events.
+    // Using a fixed 8–20 floor keeps every booking positioned at its true
+    // wall-clock row; slots outside the pro's working hours just appear empty.
+    const fallbackMin = 8;
+    const fallbackMax = 20;
     if (daySchedules.length === 0) {
-      const min = this.constraints?.minHour ?? 8;
-      const max = this.constraints?.maxHour ?? 20;
       const structure: any[] = [];
-      for (let h = min; h <= max; h++) structure.push({ type: 'hour', hour: h, height: 80 });
+      for (let h = fallbackMin; h <= fallbackMax; h++) structure.push({ type: 'hour', hour: h, height: 80 });
       return structure;
     }
-    const structure: any[] = [];
+    // Compute the visible range: from min(fallbackMin, earliest schedule) to
+    // max(fallbackMax, latest schedule end). This way the pro always sees the
+    // full 8–20 context by default, plus any schedule hours that exceed it.
+    let earliest = fallbackMin;
+    let latest = fallbackMax;
     for (const schedule of daySchedules) {
-      const startH = parseInt(schedule.start_time.split(':')[0], 10);
-      const endH = parseInt(schedule.end_time.split(':')[0], 10) + 1; // +1 buffer
-      for (let h = startH; h <= endH; h++) {
-        if (!structure.some(s => s.hour === h)) structure.push({ type: 'hour', hour: h, height: 80 });
-      }
+      const sH = parseInt(schedule.start_time.split(':')[0], 10);
+      const eH = parseInt(schedule.end_time.split(':')[0], 10);
+      if (sH < earliest) earliest = sH;
+      if (eH > latest) latest = eH;
+    }
+    const structure: any[] = [];
+    for (let h = earliest; h <= latest; h++) {
+      structure.push({ type: 'hour', hour: h, height: 80 });
     }
     return structure.sort((a, b) => a.hour - b.hour);
   }
