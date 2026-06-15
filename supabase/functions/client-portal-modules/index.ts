@@ -973,6 +973,8 @@ serve(async (req) => {
             return await handleServiceVariants(ctx, serviceIdSegment, corsHeaders);
           }
           return await handleServicesList(ctx, req, corsHeaders);
+        case 'services-probe':
+          return await handleServicesProbe(ctx, corsHeaders);
         case 'permissions': return await handlePermissions(ctx, corsHeaders);
         case 'projects':
           if (projectIdSegment) {
@@ -1011,3 +1013,28 @@ serve(async (req) => {
     return jsonError(500, 'Internal server error', corsHeaders);
   }
 });
+
+/**
+ * TEMP DEBUG: probe both DBs (CRM and the portal's own) for services of
+ * the current user's company. Returns rows from each so we can see which
+ * DB actually has the data.
+ *
+ * GET /functions/v1/client-portal-modules/services-probe
+ */
+async function handleServicesProbe(ctx, corsHeaders) {
+  const crmQuery = `select=id,name,company_id,is_public,is_active&company_id=eq.${encodeURIComponent(ctx.companyId)}&limit=10`;
+  const portalQuery = `select=id,name,company_id&company_id=eq.${encodeURIComponent(ctx.companyId)}&limit=10`;
+  const crmRes = await crmFetch('services', crmQuery);
+  const portalRes = await crmSend('services', 'GET', null, portalQuery.replace(/^\?/, ''));
+  return jsonOk({
+    ctx: { companyId: ctx.companyId, clientId: ctx.clientId },
+    crm_url: CRM_SUPABASE_URL,
+    crm_status: crmRes.error ? 'error' : 'ok',
+    crm_rows: crmRes.data ?? [],
+    crm_error: crmRes.error ?? null,
+    portal_url: SUPABASE_URL,
+    portal_status: portalRes.error ? 'error' : 'ok',
+    portal_rows: portalRes.data ?? [],
+    portal_error: portalRes.error ?? null,
+  }, corsHeaders);
+}
