@@ -113,6 +113,7 @@ async function crmFetch(table, query) {
     return { data: null, error: 'CRM env vars not configured' };
   }
   const url = `${CRM_SUPABASE_URL}/rest/v1/${table}?${query}`;
+  console.log(`[crmFetch] GET ${CRM_SUPABASE_URL}/rest/v1/${table}?${query.substring(0, 200)}${query.length > 200 ? '...' : ''}`);
   try {
     const res = await fetch(url, {
       method: 'GET',
@@ -435,38 +436,22 @@ async function handleServicesList(ctx, req, corsHeaders) {
   // in the client's catalog regardless of the sub-toggles. The card UI in
   // the portal already shows/hides the action buttons based on those flags.
   //
-  // TEMPORARY: also send a fallback query without the is_public filter to
-  // surface ALL services of the company. The frontend prefers results that
-  // match is_public=true but falls back to showing everything for the
-  // company. This is a diagnostic aid to figure out whether the filter
-  // is the problem or the company_id is wrong.
+  // TEMP DEBUG: use OR filter to match is_public=true OR is_public=NULL,
+  // since some services may have NULL instead of true.
   const availableRes = await crmFetch(
     'services',
     `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
-    `&is_public=eq.true` +
+    `&or=(is_public.eq.true,is_public.is.null)` +
     `&order=name.asc`,
   );
   let available: any[] = availableRes.data ?? [];
-  if (availableRes.error || available.length === 0) {
-    console.log(`[handleServicesList] primary query returned ${available.length} rows (ctx.companyId=${ctx.companyId}), falling back to company-only query`);
-    const fallback = await crmFetch(
-      'services',
-      `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
-      `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
-      `&order=name.asc`,
-    );
-    if (!fallback.error) {
-      // Include ALL services of the company; the frontend card will
-      // respect is_public on display. This is more permissive than the
-      // intended production filter.
-      available = fallback.data ?? [];
-      console.log(`[handleServicesList] fallback query returned ${available.length} rows`);
-    } else {
-      console.error('[handleServicesList] fallback query also failed:', fallback.error);
-    }
-  } else {
-    console.log(`[handleServicesList] primary query returned ${available.length} rows (ctx.companyId=${ctx.companyId})`);
+  if (availableRes.error) {
+    console.error('[handleServicesList] primary query error:', availableRes.error);
+  }
+  console.log(`[handleServicesList] primary query retornó ${available.length} rows for companyId=${ctx.companyId}`);
+  if (available.length > 0) {
+    console.log('[handleServicesList] first available:', JSON.stringify(available[0], null, 2));
   }
 
   // 2. Services already contracted by this client (active only)
