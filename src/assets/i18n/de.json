@@ -1313,6 +1313,19 @@
       "zeroTotal": "mit Gesamtbetrag 0",
       "unpaidPast": "unbezahlt und mit Erstellungsdatum in der Vergangenheit",
       "pastBookings": "durchgeführte Buchungen",
+    "status": {
+      "draft": "Entwurf",
+      "approved": "Genehmigt",
+      "issued": "Ausgestellt",
+      "sent": "Gesendet",
+      "paid": "Bezahlt",
+      "partial": "Teilweise",
+      "overdue": "Überfällig",
+      "cancelled": "Storniert",
+      "void": "Annulliert",
+      "rectified": "Berichtigt",
+      "rectificative": "Berichtigungsrechnung"
+    },
       "pastBookingsHint": "Buchungen, deren Datum bereits vergangen ist (bereits durchgeführt)"
     },
     "seriesSettings": {

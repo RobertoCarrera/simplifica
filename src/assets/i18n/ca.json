@@ -1537,6 +1537,19 @@
       "zeroTotal": "amb total 0",
       "unpaidPast": "impagades i amb data de creació passada",
       "pastBookings": "reserves realitzades",
+    "status": {
+      "draft": "Esborrany",
+      "approved": "Aprovada",
+      "issued": "Emesa",
+      "sent": "Enviada",
+      "paid": "Pagada",
+      "partial": "Parcial",
+      "overdue": "Vençuda",
+      "cancelled": "Cancel·lada",
+      "void": "Anul·lada",
+      "rectified": "Rectificada",
+      "rectificative": "Rectificativa"
+    },
       "pastBookingsHint": "Reserves la data de les quals ja ha passat (ja s'han realitzat)"
     },
     "seriesSettings": {
