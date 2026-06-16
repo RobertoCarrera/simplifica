@@ -6,20 +6,22 @@ import { SupabaseInvoicesService } from '../../../services/supabase-invoices.ser
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { ProjectsService } from '../../../core/services/projects.service';
 import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-invoice-list',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, TranslocoPipe],
   template: `
-    <div class="px-4 py-6 md:px-0">
+    <div class="p-6">
       <!-- Filters and Search -->
       <div class="mb-6 flex flex-col md:flex-row md:items-center gap-4">
         <!-- Search -->
@@ -114,6 +116,18 @@ import { TranslocoPipe } from '@jsverse/transloco';
             <i class="fas fa-file-csv"></i>
             {{ 'invoices.exportarCsv' | transloco }}
           </button>
+
+          <!-- Settings (series de facturación) — visible solo para owner/admin -->
+          @if (canManageSeries()) {
+            <button
+              type="button"
+              (click)="goToSeries()"
+              class="inline-flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
+              [title]="'invoices.seriesSettings.tooltip' | transloco"
+              [attr.aria-label]="'invoices.seriesSettings.tooltip' | transloco">
+              <i class="fas fa-cog"></i>
+            </button>
+          }
         </div>
       </div>
 
@@ -219,6 +233,30 @@ import { TranslocoPipe } from '@jsverse/transloco';
       <div
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
+        <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-4">
+          <span>{{ invoices().length }} {{ 'invoices.list.invoices' | transloco }}</span>
+          @if (zeroTotalCount() > 0) {
+            <span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-full font-medium">
+              <i class="fas fa-exclamation-circle text-[10px]"></i>
+              {{ zeroTotalCount() }} {{ 'invoices.list.zeroTotal' | transloco }}
+            </span>
+          }
+          @if (unpaidAndPastInvoiceDateCount() > 0) {
+            <span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+              <i class="fas fa-clock text-[10px]"></i>
+              {{ unpaidAndPastInvoiceDateCount() }} {{ 'invoices.list.unpaidPast' | transloco }}
+            </span>
+          }
+          @if (pastBookings() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'invoices.list.pastBookingsHint' | transloco"
+            >
+              <i class="fas fa-calendar-check text-[10px]"></i>
+              {{ pastBookings() }} {{ 'invoices.list.pastBookings' | transloco }}
+            </span>
+          }
+        </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
@@ -280,6 +318,22 @@ import { TranslocoPipe } from '@jsverse/transloco';
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end gap-3">
+                      <button
+                        class="text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        (click)="markAsPaid(inv)"
+                        [disabled]="!canMarkAsPaid(inv) || markingAsPaid() === inv.id"
+                        [title]="canMarkAsPaid(inv) ? ('invoices.markAsPaidTooltip' | transloco) : ('invoices.cannotMarkAsPaid' | transloco)"
+                      >
+                        @if (markingAsPaid() === inv.id) {
+                          <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10" stroke-width="2" stroke-dasharray="30 70"></circle>
+                          </svg>
+                        } @else {
+                          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                        }
+                      </button>
                       <button
                         class="text-gray-400 hover:text-blue-600 transition-colors"
                         [routerLink]="['/facturacion', inv.id]"
@@ -443,10 +497,86 @@ export class InvoiceListComponent {
   private invoicesService = inject(SupabaseInvoicesService);
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
+  private supabase = inject(SupabaseClientService);
   private router = inject(Router);
   private toast = inject(ToastService);
-  holdedService = inject(HoldedIntegrationService);
+  private auth = inject(AuthService);
+  protected holdedService = inject(HoldedIntegrationService);
   private projectsService = inject(ProjectsService);
+  private translocoService = inject(TranslocoService);
+
+  /** True if the current user can manage invoice series (owner/admin). */
+  canManageSeries = computed(() => this.auth.isAdmin());
+
+  /** Id of the invoice currently being marked as paid (for spinner). */
+  markingAsPaid = signal<string | null>(null);
+
+  goToSeries(): void {
+    this.router.navigate(['/facturacion/series']);
+  }
+
+  canMarkAsPaid(inv: Invoice): boolean {
+    if (this.markingAsPaid() === inv.id) return false;
+    const pStatus = (inv.payment_status || '').toLowerCase();
+    return pStatus !== 'paid';
+  }
+
+  /** Invoices with total=0 (no money on the document; data hygiene issue). */
+  zeroTotalCount = computed(() =>
+    this.invoices().filter(i => Number(i.total || 0) === 0).length
+  );
+
+  /**
+   * Invoices that are NOT paid AND have an invoice_date in the past.
+   * "Fecha de creación" interpreted as invoice_date (not due_date).
+   * Locale-agnostic: builds a UTC ISO string for comparison.
+   */
+  unpaidAndPastInvoiceDateCount = computed(() => {
+    const todayUtc = new Date();
+    todayUtc.setUTCHours(0, 0, 0, 0);
+    const todayIso = todayUtc.toISOString().slice(0, 10); // YYYY-MM-DD
+    return this.invoices().filter(i => {
+      const pStatus = (i.payment_status || '').toLowerCase();
+      if (pStatus === 'paid' || pStatus === 'cancelled') return false;
+      const invDate = (i.invoice_date || '').slice(0, 10);
+      return invDate !== '' && invDate < todayIso;
+    }).length;
+  });
+
+  /**
+   * Bookings whose `start_time` is in the past (already performed).
+   * This is the time-based snapshot of "sessions already held".
+   * In an ideal system this number should match `invoices().length`,
+   * because every past session should produce one invoice. The visible
+   * gap between this counter and the invoices counter is what
+   * `unpaidAndPastInvoiceDateCount` already accounts for (and more).
+   * Loaded via `loadPastBookingsCount()` because it is a property of
+   * `bookings`, not of `invoices`.
+   */
+  pastBookings = signal<number>(0);
+
+  async markAsPaid(inv: Invoice): Promise<void> {
+    if (!this.canMarkAsPaid(inv)) return;
+    const confirmed = window.confirm(
+      `¿Marcar la factura ${inv.full_invoice_number || inv.invoice_number} como pagada?`
+    );
+    if (!confirmed) return;
+    this.markingAsPaid.set(inv.id);
+    try {
+      await firstValueFrom(
+        this.invoicesService.updateInvoice(inv.id, { payment_status: 'paid' })
+      );
+      // Update the local invoices signal optimistically
+      this.invoices.update(list => list.map(x =>
+        x.id === inv.id ? { ...x, payment_status: 'paid' } : x
+      ));
+      this.toast.success('Pago registrado', 'Factura marcada como pagada');
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'Error al marcar como pagada');
+    } finally {
+      this.markingAsPaid.set(null);
+    }
+  }
 
   holdedInvoices = signal<any[]>([]);
   loadingHolded = signal(false);
@@ -562,6 +692,26 @@ export class InvoiceListComponent {
     } catch (err) {
       console.error('Error loading invoices', err);
     }
+
+    this.loadPastBookingsCount();
+  }
+
+  /**
+   * Counts bookings with `start_time` less than or equal to now.
+   * Time-bucketed snapshot: "sessions already performed".
+   * Non-fatal: counter stays at 0 if the query fails.
+   */
+  private async loadPastBookingsCount(): Promise<void> {
+    try {
+      const { count, error } = await this.supabase.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .lte('start_time', new Date().toISOString());
+      if (error) throw error;
+      this.pastBookings.set(count ?? 0);
+    } catch (e) {
+      console.warn('Could not load past bookings count', e);
+    }
   }
 
   private async loadHoldedInvoices(): Promise<void> {
@@ -612,24 +762,24 @@ export class InvoiceListComponent {
 
   getStatusLabel(inv: Invoice): string {
     if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
-      return 'Rectificativa';
+      return this.translocoService.translate('invoices.status.rectificative');
     }
     if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
-      return 'Emitida';
+      return this.translocoService.translate('invoices.status.issued');
     }
     const status = inv.status;
     const map: Record<string, string> = {
-      draft: 'Borrador',
-      approved: 'Aprobada',
-      issued: 'Emitida',
-      final: 'Emitida',
-      sent: 'Enviada',
-      paid: 'Pagada',
-      partial: 'Parcial',
-      overdue: 'Vencida',
-      cancelled: 'Cancelada',
-      void: 'Anulada',
-      rectified: 'Rectificada',
+      draft: this.translocoService.translate('invoices.status.draft'),
+      approved: this.translocoService.translate('invoices.status.approved'),
+      issued: this.translocoService.translate('invoices.status.issued'),
+      final: this.translocoService.translate('invoices.status.issued'),
+      sent: this.translocoService.translate('invoices.status.sent'),
+      paid: this.translocoService.translate('invoices.status.paid'),
+      partial: this.translocoService.translate('invoices.status.partial'),
+      overdue: this.translocoService.translate('invoices.status.overdue'),
+      cancelled: this.translocoService.translate('invoices.status.cancelled'),
+      void: this.translocoService.translate('invoices.status.void'),
+      rectified: this.translocoService.translate('invoices.status.rectified'),
     };
     return map[status] || status;
   }
@@ -781,22 +931,22 @@ export class InvoiceListComponent {
 
       const getStatusLabelCsv = (inv: Invoice): string => {
         if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
-          return 'Rectificativa';
+          return this.translocoService.translate('invoices.status.rectificative');
         }
         if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
-          return 'Emitida';
+          return this.translocoService.translate('invoices.status.issued');
         }
         const status = inv.status;
         const map: Record<string, string> = {
-          draft: 'Borrador',
-          approved: 'Aprobada',
-          issued: 'Emitida',
-          final: 'Emitida',
-          sent: 'Enviada',
-          paid: 'Pagada',
-          partial: 'Parcial',
-          overdue: 'Vencida',
-          cancelled: 'Cancelada',
+          draft: this.translocoService.translate('invoices.status.draft'),
+          approved: this.translocoService.translate('invoices.status.approved'),
+          issued: this.translocoService.translate('invoices.status.issued'),
+          final: this.translocoService.translate('invoices.status.issued'),
+          sent: this.translocoService.translate('invoices.status.sent'),
+          paid: this.translocoService.translate('invoices.status.paid'),
+          partial: this.translocoService.translate('invoices.status.partial'),
+          overdue: this.translocoService.translate('invoices.status.overdue'),
+          cancelled: this.translocoService.translate('invoices.status.cancelled'),
           void: 'Anulada',
           rectified: 'Rectificada',
         };

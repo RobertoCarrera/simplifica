@@ -1541,6 +1541,19 @@
       "zeroTotal": "con total 0",
       "unpaidPast": "impagas y con fecha de creación pasada",
       "pastBookings": "reservas realizadas",
+    "status": {
+      "draft": "Borrador",
+      "approved": "Aprobada",
+      "issued": "Emitida",
+      "sent": "Enviada",
+      "paid": "Pagada",
+      "partial": "Parcial",
+      "overdue": "Vencida",
+      "cancelled": "Cancelada",
+      "void": "Anulada",
+      "rectified": "Rectificada",
+      "rectificative": "Rectificativa"
+    },
       "pastBookingsHint": "Reservas cuya fecha ya ha pasado (ya se han realizado)"
     },
     "seriesSettings": {
