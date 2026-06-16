@@ -600,7 +600,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(
         (q) =>
           this.formatQuoteNumber(q).toLowerCase().includes(search) ||
-          (q.client?.business_name || q.client?.name || '').toLowerCase().includes(search) ||
+          getClientDisplayName(q.client, '').toLowerCase().includes(search) ||
           (q.title || '').toLowerCase().includes(search),
       );
     }

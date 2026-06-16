@@ -11,6 +11,7 @@ import { ProjectsService } from '../../../core/services/projects.service';
 import { Project, ProjectStage } from '../../../models/project';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { getClientDisplayName } from '../../../models/quote.model';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 @Component({

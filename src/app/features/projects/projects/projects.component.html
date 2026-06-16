@@ -163,7 +163,7 @@
           <option [ngValue]="null">Todos los clientes</option>
           @for (client of clients; track client) {
             <option [value]="client.id">
-              {{ client.business_name || client.name + ' ' + (client.surname || '') }}
+              {{ getClientDisplayName(client, '') }}
             </option>
           }
         </select>
