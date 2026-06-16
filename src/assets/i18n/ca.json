@@ -897,10 +897,12 @@
     "status": {
       "draft": "Esborrany",
       "sent": "Enviat",
+      "viewed": "Vist",
       "pending": "Pendent",
       "accepted": "Acceptat",
       "rejected": "Rebutjat",
       "expired": "Expirat",
+      "cancelled": "Cancel·lat",
       "invoiced": "Facturat",
       "request": "Sol·licitud",
       "puntual": "Puntual"

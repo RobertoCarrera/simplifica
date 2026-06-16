@@ -906,10 +906,12 @@
     "status": {
       "draft": "Borrador",
       "sent": "Enviado",
+      "viewed": "Visto",
       "pending": "Pendiente",
       "accepted": "Aceptado",
       "rejected": "Rechazado",
       "expired": "Expirado",
+      "cancelled": "Cancelado",
       "invoiced": "Facturado",
       "request": "Solicitud",
       "puntual": "Puntual"
