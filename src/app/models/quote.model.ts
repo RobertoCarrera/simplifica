@@ -483,3 +483,45 @@ export function formatQuoteNumber(quote: Quote): string {
   const raw = quote.full_quote_number || `${quote.year}-P-${String(quote.sequence_number).padStart(5, '0')}`;
   return raw.replace('-Q-', '-P-');
 }
+
+// Common client-display name tokens that ended up incorrectly in business_name
+// from a buggy import (caibs/Doctoralia). They are persona descriptors, not
+// company names.
+const NON_COMPANY_BUSINESS_NAMES = new Set([
+  'Natural', 'Particular', 'Self-employed', 'Autonomo', 'Empresa',
+  'Persona física', 'Persona juridica', 'Persona',
+]);
+
+/**
+ * Returns the best display name for a client. Logic:
+ *  1. If the client has a non-empty `name` that is NOT a non-company descriptor,
+ *     use it. (For people, name is "Carmen Maria"; for companies, name is
+ *     sometimes the trade name and business_name is the legal name.)
+ *  2. If `name` is empty or a non-company descriptor, fall back to
+ *     `business_name` (only if it is not a non-company descriptor itself).
+ *  3. If neither is usable, return the placeholder.
+ */
+export function getClientDisplayName(
+  client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined,
+  placeholder = '—'
+): string {
+  if (!client) return placeholder;
+  const rawName = (client.name ?? '').toString().trim();
+  const rawBusiness = (client.business_name ?? '').toString().trim();
+  const fullName = rawName && !NON_COMPANY_BUSINESS_NAMES.has(rawName)
+    ? (client.surname ? `${rawName} ${client.surname}`.trim() : rawName)
+    : '';
+  if (fullName) return fullName;
+  if (rawBusiness && !NON_COMPANY_BUSINESS_NAMES.has(rawBusiness)) return rawBusiness;
+  return placeholder;
+}
+
+/**
+ * Returns the first letter of the best display name, for avatar use.
+ */
+export function getClientInitial(
+  client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined
+): string {
+  const display = getClientDisplayName(client, '');
+  return (display[0] ?? '?').toUpperCase();
+}
