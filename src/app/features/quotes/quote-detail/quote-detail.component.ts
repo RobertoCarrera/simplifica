@@ -16,6 +16,8 @@ import {
   formatQuoteNumber,
   isQuoteExpired,
   canConvertToInvoice,
+  getClientDisplayName,
+  getClientInitial,
 } from '../../../models/quote.model';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ProjectsService } from '../../../core/services/projects.service';
@@ -520,6 +522,21 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   getStatusLabel(status: QuoteStatus): string {
     return this.statusLabels[status] || status;
+  }
+
+  /** Best display name for a client. Prefers personal name over business name. */
+  getClientDisplayName(
+    client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined,
+    placeholder = '—'
+  ): string {
+    return getClientDisplayName(client, placeholder);
+  }
+
+  /** First letter of the best display name, for avatar use. */
+  getClientInitial(
+    client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined
+  ): string {
+    return getClientInitial(client);
   }
 
   isExpired(validUntil: string): boolean {

@@ -324,11 +324,11 @@
           <div class="flex items-start gap-3">
             <div
               class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-lg flex-shrink-0">
-              {{ (quote()!.client?.business_name || quote()!.client?.name || 'N')[0].toUpperCase() }}
+              {{ getClientInitial(quote()!.client) }}
             </div>
             <div class="flex-1 min-w-0">
               <h3 class="text-base font-bold text-gray-900 dark:text-white mb-2 truncate">
-                {{ quote()!.client?.business_name || quote()!.client?.name || 'N/A' }}
+                {{ getClientDisplayName(quote()!.client, 'N/A') }}
               </h3>
               <div class="space-y-2">
                 @if (quote()!.client?.tax_id) {
@@ -604,11 +604,11 @@
             <div class="flex items-start gap-4">
               <div
                 class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
-                {{ (quote()!.client?.business_name || quote()!.client?.name || 'N')[0].toUpperCase() }}
+                {{ getClientInitial(quote()!.client) }}
               </div>
               <div class="flex-1 min-w-0">
                 <h3 class="text-base font-bold text-gray-900 dark:text-white mb-2 truncate">
-                  {{ quote()!.client?.business_name || quote()!.client?.name || 'N/A' }}
+                  {{ getClientDisplayName(quote()!.client, 'N/A') }}
                 </h3>
                 <div class="space-y-2">
                   @if (quote()!.client?.tax_id) {

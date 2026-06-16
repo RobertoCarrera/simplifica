@@ -21,6 +21,8 @@ import {
   QUOTE_STATUS_COLORS,
   formatQuoteNumber,
   isQuoteExpired,
+  getClientDisplayName,
+  getClientInitial,
 } from '../../../models/quote.model';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
@@ -338,11 +340,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                     {{ formatQuoteNumber(quote) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{
-                      quote.client?.business_name ||
-                        quote.client?.name ||
-                        ('quotes.clienteSinNombre' | transloco)
-                    }}
+                    {{ getClientDisplayName(quote.client, 'quotes.clienteSinNombre' | transloco) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {{ quote.quote_date | date: 'dd/MM/yyyy' }}
@@ -478,7 +476,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
             <div class="mb-4">
               <div class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {{ quote.client?.business_name || quote.client?.name || 'Cliente sin nombre' }}
+                {{ getClientDisplayName(quote.client, 'Cliente sin nombre') }}
               </div>
               <div class="text-xl font-bold text-gray-900 dark:text-white mt-1">
                 {{ formatCurrency(displayTotal(quote)) }}
@@ -820,6 +818,25 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     }
 
     return Math.round((subtotal + taxAmount) * 100) / 100;
+  }
+
+  /**
+   * Best display name for a client. Prefers the personal name over the
+   * business name (which can hold a stale "Natural" / "Particular" / etc.
+   * token from a buggy import that placed client_type into business_name).
+   */
+  getClientDisplayName(
+    client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined,
+    placeholder = '—'
+  ): string {
+    return getClientDisplayName(client, placeholder);
+  }
+
+  /** First letter of the best display name, for avatar use. */
+  getClientInitial(
+    client: { name?: string | null; business_name?: string | null; surname?: string | null } | null | undefined
+  ): string {
+    return getClientInitial(client);
   }
 
   getStatusLabel(quote: Quote): string {
