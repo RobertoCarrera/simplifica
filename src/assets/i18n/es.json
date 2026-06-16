@@ -13,9 +13,12 @@
     "productos": "Productos",
     "servicios": "Servicios",
     "reservas": "Reservas",
+    "conciliacion": "Conciliación",
     "webmail": "Webmail",
     "configuracion": "Configuración",
     "adminWebmail": "Admin Webmail",
+    "inboundMail": "Recepción de correo",
+    "adminInboundMail": "Admin Recepción",
     "proyectos": "Proyectos",
     "gestionModulos": "Gestión Módulos",
     "cuentasEmail": "Cuentas de Email",
@@ -350,7 +353,9 @@
           "desconocido": "Desconocido",
           "auditoria": {
             "titulo": "Registro de Auditoría",
-            "fecha": "Fecha",
+    "fecha": "Fecha",
+    "fechaEmision": "Emisión",
+    "fechaAccion": "Vence / Cerrado",
             "accion": "Acción",
             "sujeto": "Sujeto",
             "razon": "Razón",
@@ -911,6 +916,14 @@
     },
     "list": {
       "buscar": "Buscar...",
+      "accepted": "aceptados",
+      "drafts": "en borrador",
+      "futureBookings": "sesiones no realizadas",
+      "futureBookingsHint": "Reservas con fecha futura (todavía no se han realizado)",
+      "futureWithQuote": "futuras con presupuesto",
+      "futureWithQuoteHint": "De las reservas futuras, cuántas tienen un presupuesto asignado",
+      "futureWithoutQuote": "futuras sin presupuesto",
+      "futureWithoutQuoteHint": "De las reservas futuras, cuántas no tienen un presupuesto todavía",
       "filtrarEstado": "Filtrar por estado",
       "filtrarFecha": "Filtrar por fecha",
       "todosEstados": "Todos los estados",
@@ -1517,6 +1530,55 @@
     "enviarEmailCliente": "Enviar por email al cliente",
     "pendientesVerifactu": "pendientes",
     "exportarCsv": "Exportar CSV",
+    "markAsPaidTooltip": "Marcar como pagada",
+    "cannotMarkAsPaid": "Esta factura ya está pagada",
+    "list": {
+      "invoices": "facturas",
+      "zeroTotal": "con total 0",
+      "unpaidPast": "impagas y con fecha de creación pasada",
+      "pastBookings": "reservas realizadas",
+      "pastBookingsHint": "Reservas cuya fecha ya ha pasado (ya se han realizado)"
+    },
+    "seriesSettings": {
+      "tooltip": "Configuración de series de facturación",
+      "title": "Series de facturación",
+      "description": "Configura las series de facturas de tu empresa. Debe haber como mínimo una serie activa y una marcada como predeterminada.",
+      "new": "Nueva serie",
+      "loading": "Cargando...",
+      "createTitle": "Crear nueva serie",
+      "code": "Código",
+      "codePlaceholder": "Ej: A",
+      "name": "Nombre",
+      "namePlaceholder": "Ej: Serie General",
+      "year": "Año",
+      "prefix": "Prefijo",
+      "prefixPlaceholder": "Ej: F",
+      "nextNumber": "Siguiente Nº",
+      "nextNumberPlaceholder": "Ej: 1, 100, 250",
+      "nextNumberHint": "Puedes empezar desde cualquier número ≥ 1, por ejemplo para continuar una serie existente.",
+      "invoicesCount": "Facturas",
+      "max": "máx.",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "default": "Predeterminada",
+      "isDefault": "Por defecto",
+      "mark": "Marcar",
+      "yes": "Sí",
+      "no": "No",
+      "updated": "Actualizado",
+      "editNextNumber": "Editar siguiente número",
+      "nextWillBe": "La siguiente factura será",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "empty": "No hay series configuradas todavía.",
+      "errors": {
+        "mustBePositive": "El siguiente número debe ser un entero positivo.",
+        "wouldOverwrite": "Ese número ya está ocupado por facturas existentes. Elige un número mayor que el máximo actual."
+      },
+      "warnings": {
+        "gap": "Vas a dejar un hueco entre las facturas existentes y la siguiente"
+      }
+    },
     "seleccionarMes": "Seleccionar mes",
     "verifactuOk": "VeriFactu OK",
     "vencimiento": "Vencimiento",
@@ -2958,6 +3020,177 @@
       "body": "¿Enviar «{{name}}» a {{count}} suscriptores con consentimiento marketing?",
       "resultSummary": "{{sent}} enviados, {{failed}} fallidos de {{total}} destinatarios.",
       "firstErrors": "Primeros errores"
+    }
+  },
+  "inbound": {
+    "title": "Recepción de correo",
+    "subtitle": "Configura cómo tu empresa recibe correos en tu dominio. Solo tú y los administradores de tu empresa pueden cambiar esto.",
+    "noDomains": "Aún no tienes dominios verificados. Verifica un dominio desde Configuración → Email para empezar.",
+    "lastProvisioned": "Última verificación",
+    "error": "Error",
+    "sesRule": "Regla SES",
+    "mxRecord": "Registro MX",
+    "behaviorSettings": "Comportamiento de recepción",
+    "forwardUnknown": "Reenviar emails no reconocidos a",
+    "forwardUnknownHelp": "Si llega un email a tu dominio pero no matchea ningún buzón configurado, se reenviará a esta dirección.",
+    "spamAction": "Acción para spam",
+    "spamMark": "Marcar como spam",
+    "spamQuarantine": "Cuarentena",
+    "spamReject": "Rechazar",
+    "rejectUnknown": "Rechazar emails a destinatarios desconocidos (en lugar de reenviar)",
+    "reprovision": "Reprovisionar",
+    "disable": "Desactivar inbound",
+    "banner": {
+      "single": "dominio verificado todavía no puede recibir correos. Configura la recepción ahora.",
+      "multi": "dominios verificados todavía no pueden recibir correos. Configura la recepción ahora.",
+      "openAdmin": "Ver panel de administración",
+      "configure": "Configurar recepción",
+      "dismiss": "Cerrar aviso"
+    }
+  },
+  "bookings": {
+    "conciliation": {
+      "title": "Conciliación de reservas",
+      "subtitle": "Reservas, presupuestos y facturas — todo lo que aún no cuadra.",
+      "backToBookings": "Volver a Reservas",
+      "counters": {
+        "totalBookings": "Reservas totales",
+        "withoutQuote": "Sin presupuesto",
+        "quotesDraft": "Presupuestos en borrador",
+        "sessionsWithoutInvoice": "Sin factura",
+        "invoicesDraft": "Facturas en borrador",
+        "invoicesPaid": "Facturas pagadas"
+      },
+      "filters": {
+        "all": "Todas",
+        "missingQuote": "Sin presupuesto",
+        "missingInvoice": "Sesiones sin factura",
+        "quoteDraft": "Presupuesto en borrador",
+        "quoteRejected": "Presupuesto rechazado",
+        "invoiceDraft": "Factura en borrador",
+        "invoicePending": "Factura pendiente de pago",
+        "paid": "Pagada",
+        "ok": "Conciliadas"
+      },
+      "search": {
+        "placeholder": "Buscar por cliente, estado…",
+        "clear": "Limpiar",
+        "showing": "Mostrando {count} de {total}",
+        "noResults": "Sin resultados para esa búsqueda."
+      },
+      "table": {
+        "headers": {
+          "customer": "Cliente",
+          "date": "Fecha",
+          "bookingStatus": "Estado reserva",
+          "quote": "Presupuesto",
+          "invoice": "Factura",
+          "invoicePayment": "Pago factura",
+          "conciliation": "Conciliación",
+          "actions": "Acciones"
+        },
+        "empty": "No hay reservas para mostrar."
+      },
+      "cancel": "Cancelar",
+      "cancelBooking": "Cancelar reserva (marca el presupuesto como rechazado)",
+      "errors": {
+        "load": "No se pudo cargar la conciliación. Inténtalo de nuevo."
+      }
+    }
+  },
+  "doctoraliaBookingsImport": {
+    "title": "Importar Reservas de Doctoralia",
+    "subtitle": "Importa reservas históricas de Doctoralia sin disparar notificaciones ni presupuestos",
+    "close": "Cerrar",
+    "mfaGate": {
+      "title": "Confirmación de seguridad",
+      "body": "Estás a punto de importar reservas de Doctoralia. Esta acción es silenciosa: no generará presupuestos, facturas ni notificaciones a clientes. Las notas clínicas (campo comments) se almacenarán encriptadas si el cliente tiene consentimiento y el módulo Historial Clínico está activo.",
+      "confirm": "Entiendo, continuar"
+    },
+    "dateFilter": {
+      "title": "Filtrar por fechas (opcional)",
+      "help": "Si no elegís fechas, se importarán todas las filas del CSV.",
+      "from": "Desde",
+      "to": "Hasta",
+      "tz": "Zona horaria del CSV",
+      "tzHelp": "El CSV de Doctoralia no incluye zona horaria en las fechas (ej. \"2025-06-04 12:30\"). Necesitamos saber en qué zona horaria están esas horas para convertirlas a UTC, que es como las guarda el CRM. Si tus clínicas están en España, dejá \"Europe/Madrid\".",
+      "continue": "Continuar",
+      "filteredOut": "filas descartadas por el filtro de fechas"
+    },
+    "status": {
+      "matched": "vinculado",
+      "ambiguous": "ambiguo",
+      "unresolved": "sin resolver",
+      "skipped": "saltado"
+    },
+    "dryRun": "Buscando coincidencias con tu CRM…",
+    "preview": {
+      "title": "Previsualización antes de importar",
+      "help": "Revisá el resumen de qué se va a importar, qué quedó vinculado y qué no. Si algo no está bien, volvé y ajustá los matches. Solo cuando hagas clic en \"Confirmar e Importar\" se ejecutará la inserción.",
+      "total": "Total de filas",
+      "willImport": "Se importarán",
+      "blocked": "Bloqueadas",
+      "willSkip": "Saltadas",
+      "withNotes": "Con notas clínicas",
+      "sectionClient": "Cliente",
+      "sectionProfessional": "Profesional",
+      "sectionService": "Servicio",
+      "linked": "vinculadas",
+      "orphan": "huérfanas",
+      "blockedHelp": "Hay {{count}} fila(s) sin resolver. Abrí la herramienta para vincularlas a elementos existentes del CRM o crearlas al vuelo.",
+      "resolveNow": "Resolver ahora",
+      "resolveTitle": "Resolver filas problemáticas",
+      "resolveHelp": "Para cada fila, elegí un cliente, profesional y servicio existente del CRM. Si ninguno matchea, podés crearlo nuevo. Las elecciones se aplican al cerrar la herramienta.",
+      "sampleTitle": "Muestra de las primeras filas",
+      "thClient": "Cliente",
+      "thProfessional": "Profesional",
+      "thService": "Servicio",
+      "thStatus": "Estado",
+      "moreRows": "filas más (no se muestran)",
+      "silentNotice": "Recordá: esta importación es silenciosa. No se enviarán notificaciones, no se crearán presupuestos ni facturas. Las notas clínicas (campo comments) se guardarán encriptadas si hay consentimiento.",
+      "back": "Volver y ajustar",
+      "confirm": "Confirmar e Importar",
+      "viaMapping": "(mapeo Doctoralia)"
+    },
+    "importing": {
+      "title": "Importando reservas…",
+      "abort": "Abortar"
+    },
+    "resolution": {
+      "sectionClient": "Cliente",
+      "sectionProfessional": "Profesional",
+      "sectionService": "Servicio",
+      "createNew": "Crear nuevo",
+      "linkExisting": "Vincular existente",
+      "change": "Cambiar",
+      "skip": "Saltar fila",
+      "professionalUnresolvedHint": "No se encontró un profesional con ese nombre en el CRM. La fila se marcará como fallida.",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar selección e importar",
+      "searchPlaceholder": "Buscar en el CRM…",
+      "loading": "Cargando…",
+      "noResults": "Sin coincidencias. Probá con otro texto o creá uno nuevo.",
+      "broadcastServiceCheckbox": "Aplicar a las {{count}} filas con este mismo servicio",
+      "broadcastProfessionalCheckbox": "Aplicar a las {{count}} filas con este mismo profesional",
+      "broadcastClientCheckbox": "Aplicar a las {{count}} filas de nombre {{name}}",
+      "broadcastClientHint": "Solo se vinculan filas no resueltas con el mismo nombre y apellido. Filas ya vinculadas a otro cliente no se tocan. Si hay IDs de Doctoralia distintos en el grupo, el broadcast se bloquea.",
+      "showResolved": "Mostrar {{count}} resueltas",
+      "hideResolved": "Ocultar resueltas"
+    },
+    "summary": {
+      "titleComplete": "Importación completada",
+      "titlePartial": "Importación completada con errores",
+      "elapsed": "Tiempo",
+      "new": "Nuevas reservas",
+      "deduped": "Ya existían",
+      "attempted": "Intentadas",
+      "notesImported": "Notas encriptadas",
+      "notesDropped": "Notas descartadas",
+      "failed": "Fallidas",
+      "failuresTitle": "Detalle de fallos",
+      "downloadFailures": "Descargar reporte",
+      "close": "Cerrar",
+      "securityNote": "Esta importación fue silenciosa: no se enviaron notificaciones, presupuestos ni facturas a los clientes."
     }
   }
 }

@@ -27,9 +27,12 @@
     "productos": "Produkte",
     "servicios": "Dienstleistungen",
     "reservas": "Termine",
+    "conciliacion": "Abstimmung",
     "webmail": "Webmail",
     "configuracion": "Einstellungen",
     "adminWebmail": "E-Mail-Verwaltung",
+    "inboundMail": "E-Mail-Empfang",
+    "adminInboundMail": "Admin E-Mail-Empfang",
     "proyectos": "Projekte",
     "gestionModulos": "Modulverwaltung",
     "cuentasEmail": "E-Mail-Konten",
@@ -521,7 +524,9 @@
           "desconocido": "Unbekannt",
           "auditoria": {
             "titulo": "Audit-Protokoll",
-            "fecha": "Datum",
+    "fecha": "Datum",
+    "fechaEmision": "Erstellt",
+    "fechaAccion": "Läuft ab / Abgeschlossen",
             "accion": "Aktion",
             "sujeto": "Betroffener",
             "razon": "Grund",
@@ -832,6 +837,14 @@
     "clienteSinNombre": "Kunde ohne Namen",
     "nuevo": "Neu",
     "list": {
+      "accepted": "akzeptiert",
+      "drafts": "im Entwurf",
+      "futureBookings": "noch nicht durchgeführte Sitzungen",
+      "futureBookingsHint": "Buchungen mit zukünftigem Datum (noch nicht durchgeführt)",
+      "futureWithQuote": "zukünftige mit Angebot",
+      "futureWithQuoteHint": "Von den zukünftigen Buchungen, wie viele haben ein zugewiesenes Angebot",
+      "futureWithoutQuote": "zukünftige ohne Angebot",
+      "futureWithoutQuoteHint": "Von den zukünftigen Buchungen, wie viele haben noch kein Angebot",
       "holdedTitle": "Kostenvoranschläge in Holded",
       "holdedLoading": "Kostenvoranschläge von Holded werden geladen...",
       "holdedNoResults": "Keine Kostenvoranschläge in Holded gefunden.",
@@ -1289,6 +1302,55 @@
     "tipo": "Typ",
     "error": "Fehler",
     "exportarCsv": "CSV exportieren",
+    "markAsPaidTooltip": "Als bezahlt markieren",
+    "cannotMarkAsPaid": "Diese Rechnung ist bereits bezahlt",
+    "list": {
+      "invoices": "Rechnungen",
+      "zeroTotal": "mit Gesamtbetrag 0",
+      "unpaidPast": "unbezahlt und mit Erstellungsdatum in der Vergangenheit",
+      "pastBookings": "durchgeführte Buchungen",
+      "pastBookingsHint": "Buchungen, deren Datum bereits vergangen ist (bereits durchgeführt)"
+    },
+    "seriesSettings": {
+      "tooltip": "Einstellungen für Rechnungsserien",
+      "title": "Rechnungsserien",
+      "description": "Konfigurieren Sie die Rechnungsserien Ihres Unternehmens. Es muss mindestens eine aktive Serie und eine als Standard markierte Serie geben.",
+      "new": "Neue Serie",
+      "loading": "Laden…",
+      "createTitle": "Neue Serie erstellen",
+      "code": "Code",
+      "codePlaceholder": "Z.B.: A",
+      "name": "Name",
+      "namePlaceholder": "Z.B.: Allgemeine Serie",
+      "year": "Jahr",
+      "prefix": "Präfix",
+      "prefixPlaceholder": "Z.B.: F",
+      "nextNumber": "Nächste Nr.",
+      "nextNumberPlaceholder": "Z.B.: 1, 100, 250",
+      "nextNumberHint": "Sie können mit jeder Zahl ≥ 1 beginnen, z.B. um eine bestehende Serie fortzusetzen.",
+      "invoicesCount": "Rechnungen",
+      "max": "max.",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "default": "Standard",
+      "isDefault": "Standard",
+      "mark": "Markieren",
+      "yes": "Ja",
+      "no": "Nein",
+      "updated": "Aktualisiert",
+      "editNextNumber": "Nächste Nummer bearbeiten",
+      "nextWillBe": "Die nächste Rechnung wird sein",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "empty": "Noch keine Serien konfiguriert.",
+      "errors": {
+        "mustBePositive": "Die nächste Nummer muss eine positive Ganzzahl sein.",
+        "wouldOverwrite": "Diese Nummer ist bereits durch vorhandene Rechnungen belegt. Wählen Sie eine höhere Nummer als das aktuelle Maximum."
+      },
+      "warnings": {
+        "gap": "Sie hinterlassen eine Lücke zwischen den vorhandenen Rechnungen und der nächsten"
+      }
+    },
     "seleccionarMes": "Monat auswählen",
     "dia1": "1 Tag",
     "dia3": "3 Tage",
@@ -2936,6 +2998,75 @@
       "body": "«{{name}}» an {{count}} Abonnenten mit Marketing-Einwilligung senden?",
       "resultSummary": "{{sent}} gesendet, {{failed}} fehlgeschlagen von {{total}} Empfängern.",
       "firstErrors": "Erste Fehler"
+    }
+  },
+  "inbound": {
+    "title": "E-Mail-Empfang",
+    "subtitle": "Konfigurieren Sie, wie Ihr Unternehmen E-Mails für Ihre Domain empfängt. Nur Sie und die Administratoren Ihres Unternehmens können dies ändern.",
+    "noDomains": "Sie haben noch keine verifizierten Domains. Verifizieren Sie eine Domain unter Konfiguration → E-Mail, um zu beginnen.",
+    "lastProvisioned": "Zuletzt verifiziert",
+    "error": "Fehler",
+    "sesRule": "SES-Regel",
+    "mxRecord": "MX-Eintrag",
+    "behaviorSettings": "Empfangsverhalten",
+    "forwardUnknown": "Unbekannte E-Mails weiterleiten an",
+    "forwardUnknownHelp": "Wenn eine E-Mail an Ihre Domain gesendet wird, aber keinem konfigurierten Postfach entspricht, wird sie an diese Adresse weitergeleitet.",
+    "spamAction": "Aktion für Spam",
+    "spamMark": "Als Spam markieren",
+    "spamQuarantine": "Quarantäne",
+    "spamReject": "Ablehnen",
+    "rejectUnknown": "E-Mails an unbekannte Empfänger ablehnen (statt weiterzuleiten)",
+    "reprovision": "Erneut bereitstellen",
+    "disable": "Inbound deaktivieren"
+  },
+  "bookings": {
+    "conciliation": {
+      "title": "Buchungsabstimmung",
+      "subtitle": "Buchungen, Angebote und Rechnungen — alles, was noch nicht übereinstimmt.",
+      "backToBookings": "Zurück zu Termine",
+      "counters": {
+        "totalBookings": "Buchungen gesamt",
+        "withoutQuote": "Ohne Angebot",
+        "quotesDraft": "Angebote im Entwurf",
+        "sessionsWithoutInvoice": "Ohne Rechnung",
+        "invoicesDraft": "Rechnungen im Entwurf",
+        "invoicesPaid": "Bezahlte Rechnungen"
+      },
+      "filters": {
+        "all": "Alle",
+        "missingQuote": "Ohne Angebot",
+        "missingInvoice": "Sitzungen ohne Rechnung",
+        "quoteDraft": "Angebot im Entwurf",
+        "quoteRejected": "Angebot abgelehnt",
+        "invoiceDraft": "Rechnung im Entwurf",
+        "invoicePending": "Rechnung zahlbar",
+        "paid": "Bezahlt",
+        "ok": "Abgestimmt"
+      },
+      "search": {
+        "placeholder": "Suche nach Kunde, Status…",
+        "clear": "Zurücksetzen",
+        "showing": "Zeige {count} von {total}",
+        "noResults": "Keine Ergebnisse für diese Suche."
+      },
+      "table": {
+        "headers": {
+          "customer": "Kunde",
+          "date": "Datum",
+          "bookingStatus": "Buchungsstatus",
+          "quote": "Angebot",
+          "invoice": "Rechnung",
+          "invoicePayment": "Rechnungszahlung",
+          "conciliation": "Abstimmung",
+          "actions": "Aktionen"
+        },
+        "empty": "Keine Buchungen anzuzeigen."
+      },
+      "cancel": "Stornieren",
+      "cancelBooking": "Buchung stornieren (Angebot wird als abgelehnt markiert)",
+      "errors": {
+        "load": "Abstimmung konnte nicht geladen werden. Bitte erneut versuchen."
+      }
     }
   }
 }
