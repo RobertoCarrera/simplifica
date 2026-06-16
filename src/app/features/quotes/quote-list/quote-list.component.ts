@@ -29,7 +29,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, TranslocoPipe],
   template: `
-    <div class="px-4 py-6 md:px-0">
+    <div class="p-6">
       <!-- Toolbar - SIN contenedor blanco (exactamente como invoice-list) -->
       <div class="mb-6 flex flex-col md:flex-row md:items-center gap-4">
         <!-- Buscador -->
@@ -237,7 +237,48 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
         <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-4">
-          <span>{{ filteredQuotes().length }} presupuestos</span>
+          <span>
+            {{ filteredQuotes().length }}
+            @if (filteredQuotes().length !== quotes().length) {
+              <span class="text-gray-400 dark:text-gray-500"> de {{ quotes().length }}</span>
+            }
+            presupuestos
+          </span>
+          <span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">
+            <i class="fas fa-check text-[10px]"></i>
+            {{ quotesAcceptedCount() }} {{ 'quotes.list.accepted' | transloco }}
+          </span>
+          <span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+            <i class="fas fa-file text-[10px]"></i>
+            {{ quotesDraftCount() }} {{ 'quotes.list.drafts' | transloco }}
+          </span>
+          @if (futureBookings() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.futureBookingsHint' | transloco"
+            >
+              <i class="fas fa-calendar-plus text-[10px]"></i>
+              {{ futureBookings() }} {{ 'quotes.list.futureBookings' | transloco }}
+            </span>
+            @if (futureBookingsWithQuote() > 0) {
+              <span
+                class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium"
+                [title]="'quotes.list.futureWithQuoteHint' | transloco"
+              >
+                <i class="fas fa-link text-[10px]"></i>
+                {{ futureBookingsWithQuote() }} {{ 'quotes.list.futureWithQuote' | transloco }}
+              </span>
+            }
+            @if (futureBookingsWithoutQuote() > 0) {
+              <span
+                class="inline-flex items-center gap-1 bg-rose-100 dark:bg-rose-900/20 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-full font-medium"
+                [title]="'quotes.list.futureWithoutQuoteHint' | transloco"
+              >
+                <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                {{ futureBookingsWithoutQuote() }} {{ 'quotes.list.futureWithoutQuote' | transloco }}
+              </span>
+            }
+          }
           @if (quotesWithoutTotal() > 0) {
             <span class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium">
               <i class="fas fa-exclamation-triangle text-[10px]"></i> {{ quotesWithoutTotal() }} sin total
@@ -261,7 +302,12 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.fecha' | transloco }}
+                  {{ 'quotes.fechaEmision' | transloco }}
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
+                  {{ 'quotes.fechaAccion' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
@@ -293,6 +339,17 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {{ quote.quote_date | date: 'dd/MM/yyyy' }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    @if (getActionDate(quote); as actionDate) {
+                      <span
+                        [class.text-red-600]="isOverdue(quote)"
+                        [class.dark:text-red-400]="isOverdue(quote)"
+                        [class.font-semibold]="isOverdue(quote)"
+                      >{{ actionDate | date: 'dd/MM/yyyy' }}</span>
+                    } @else {
+                      —
+                    }
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span
@@ -389,8 +446,20 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                   {{ formatQuoteNumber(quote) }}
                 </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ quote.quote_date | date: 'dd MMM yyyy' }}
+                  {{ 'quotes.fechaEmision' | transloco }}: {{ quote.quote_date | date: 'dd MMM yyyy' }}
                 </div>
+                @if (getActionDate(quote); as actionDate) {
+                  <div
+                    class="text-sm"
+                    [class.text-red-600]="isOverdue(quote)"
+                    [class.dark:text-red-400]="isOverdue(quote)"
+                    [class.font-semibold]="isOverdue(quote)"
+                    [class.text-gray-500]="!isOverdue(quote)"
+                    [class.dark:text-gray-400]="!isOverdue(quote)"
+                  >
+                    {{ 'quotes.fechaAccion' | transloco }}: {{ actionDate | date: 'dd MMM yyyy' }}
+                  </div>
+                }
               </div>
               <span
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
@@ -548,9 +617,9 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     return filtered.sort((a, b) => {
       switch (sort) {
         case 'date-asc':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return new Date(a.quote_date || a.created_at).getTime() - new Date(b.quote_date || b.created_at).getTime();
         case 'date-desc':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return new Date(b.quote_date || b.created_at).getTime() - new Date(a.quote_date || a.created_at).getTime();
         case 'amount-asc':
           return this.displayTotal(a) - this.displayTotal(b);
         case 'amount-desc':
@@ -566,6 +635,32 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   quotesWithoutTotal = computed(() =>
     this.quotes().filter(q => this.displayTotal(q) === 0).length
   );
+
+  /** Count of quotes with status='accepted'. */
+  quotesAcceptedCount = computed(() =>
+    this.quotes().filter(q => (q.status || '').toLowerCase() === 'accepted').length
+  );
+
+  /** Count of quotes with status='draft'. */
+  quotesDraftCount = computed(() =>
+    this.quotes().filter(q => (q.status || '').toLowerCase() === 'draft').length
+  );
+
+  /**
+   * Bookings whose `start_time` is in the future. These are sessions
+   * that have NOT yet happened. Loaded via `loadFutureBookingsCount()`
+   * because it is a property of `bookings`, not of `quotes`.
+   */
+  futureBookings = signal<number>(0);
+
+  /**
+   * Of the future bookings, how many have a quote assigned (in any status)?
+   * This is the reconciliation key: futureBookings == futureWithQuote + futureWithoutQuote.
+   */
+  futureBookingsWithQuote = signal<number>(0);
+
+  /** Of the future bookings, how many have NO quote yet. */
+  futureBookingsWithoutQuote = signal<number>(0);
 
   ngOnInit() {
     // Check for query params (status filter from home)
@@ -586,6 +681,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       await this.loadQuotes();
       await this.holdedService.loadIntegration();
       this.loadHoldedEstimates();
+      this.loadFutureBookingsCount();
       this.setupRealtimeSubscription();
     });
   }
@@ -608,6 +704,40 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       this.holdedError.set(e?.message ?? this.translocoService.translate('quotes.list.holdedErrorLoading'));
     } finally {
       this.loadingHolded.set(false);
+    }
+  }
+
+  /**
+   * Counts bookings with `start_time` strictly greater than now.
+   * Time-bucketed snapshot: "sessions not yet performed".
+   * Also returns with_quote/without_quote split for reconciliation.
+   * Non-fatal: counters stay at 0 if the query fails.
+   */
+  private async loadFutureBookingsCount(): Promise<void> {
+    try {
+      const now = new Date().toISOString();
+      const { count: total, error: e1 } = await this.supabaseClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .gt('start_time', now);
+      if (e1) throw e1;
+      this.futureBookings.set(total ?? 0);
+
+      // Future bookings WITH a quote: filter by quote_id IS NOT NULL.
+      // Filter status 'cancelled' is NOT applied here — the question "have a quote?"
+      // is about the link, not about the quote lifecycle. A cancelled quote is
+      // still a quote attached to the booking.
+      const { count: withQ, error: e2 } = await this.supabaseClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .gt('start_time', now)
+        .not('quote_id', 'is', null);
+      if (e2) throw e2;
+      this.futureBookingsWithQuote.set(withQ ?? 0);
+
+      this.futureBookingsWithoutQuote.set((total ?? 0) - (withQ ?? 0));
+    } catch (e) {
+      console.warn('Could not load future bookings count', e);
     }
   }
 
@@ -684,6 +814,45 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       expired: 'Expirado',
     };
     return map[status] || status;
+  }
+
+  /**
+   * Returns the "action" date for a quote based on its status.
+   * - draft/sent/viewed/request/expired: valid_until (when it will die)
+   * - accepted: accepted_at (when the deal closed)
+   * - rejected: rejected_at (when the client said no)
+   * Falls back to quote_date if the specific timestamp is missing.
+   */
+  getActionDate(quote: Quote): string | null {
+    const status = (quote.status || '').toLowerCase();
+    switch (status) {
+      case 'accepted': return quote.accepted_at || quote.quote_date;
+      case 'rejected': return quote.rejected_at || quote.quote_date;
+      case 'draft':
+      case 'sent':
+      case 'viewed':
+      case 'request':
+      case 'expired':
+      default:         return quote.valid_until || quote.quote_date;
+    }
+  }
+
+  /** Localized label for the action-date column header, depending on the dominant status. */
+  getActionDateHeaderLabel(): string {
+    // For mixed lists we show a generic label; per-row coloring hints at the meaning.
+    return 'Vence / Cerrado';
+  }
+
+  /**
+   * True for quotes that have a valid_until in the past and are still
+   * pending (draft / sent / viewed). The user wants these to stand out
+   * in the action-date column.
+   */
+  isOverdue(quote: Quote): boolean {
+    const status = (quote.status || '').toLowerCase();
+    if (status === 'accepted' || status === 'rejected' || status === 'cancelled' || status === 'expired') return false;
+    if (!quote.valid_until) return false;
+    return new Date(quote.valid_until) < new Date();
   }
 
   getStatusClass(quote: Quote): string {

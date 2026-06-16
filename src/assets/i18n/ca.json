@@ -13,9 +13,12 @@
     "productos": "Productes",
     "servicios": "Serveis",
     "reservas": "Reserves",
+    "conciliacion": "Conciliació",
     "webmail": "Webmail",
     "configuracion": "Configuració",
     "adminWebmail": "Admin Webmail",
+    "inboundMail": "Recepció de correu",
+    "adminInboundMail": "Admin Recepció",
     "proyectos": "Projectes",
     "gestionModulos": "Gestió Mòduls",
     "cuentasEmail": "Comptes d'Email",
@@ -343,7 +346,9 @@
           "desconocido": "Desconegut",
           "auditoria": {
             "titulo": "Registre d'Auditoria",
-            "fecha": "Data",
+    "fecha": "Data",
+    "fechaEmision": "Emissió",
+    "fechaAccion": "Caduca / Tancat",
             "accion": "Acció",
             "sujeto": "Subjecte",
             "razon": "Raó",
@@ -902,6 +907,14 @@
     },
     "list": {
       "buscar": "Cercar...",
+      "accepted": "acceptats",
+      "drafts": "en esborrany",
+      "futureBookings": "sessions no realitzades",
+      "futureBookingsHint": "Reserves amb data futura (encara no s'han realitzat)",
+      "futureWithQuote": "futures amb pressupost",
+      "futureWithQuoteHint": "De les reserves futures, quantes tenen un pressupost assignat",
+      "futureWithoutQuote": "futures sense pressupost",
+      "futureWithoutQuoteHint": "De les reserves futures, quantes no tenen un pressupost encara",
       "filtrarEstado": "Filtrar per estat",
       "filtrarFecha": "Filtrar per data",
       "todosEstados": "Tots els estats",
@@ -1513,6 +1526,55 @@
     "tipo": "Tipus",
     "error": "Error",
     "exportarCsv": "Exportar CSV",
+    "markAsPaidTooltip": "Marcar com a pagada",
+    "cannotMarkAsPaid": "Aquesta factura ja està pagada",
+    "list": {
+      "invoices": "factures",
+      "zeroTotal": "amb total 0",
+      "unpaidPast": "impagades i amb data de creació passada",
+      "pastBookings": "reserves realitzades",
+      "pastBookingsHint": "Reserves la data de les quals ja ha passat (ja s'han realitzat)"
+    },
+    "seriesSettings": {
+      "tooltip": "Configuració de sèries de facturació",
+      "title": "Sèries de facturació",
+      "description": "Configura les sèries de factures de la teva empresa. Cal que hi hagi com a mínim una sèrie activa i una marcada com a predeterminada.",
+      "new": "Nova sèrie",
+      "loading": "Carregant...",
+      "createTitle": "Crear nova sèrie",
+      "code": "Codi",
+      "codePlaceholder": "Ex: A",
+      "name": "Nom",
+      "namePlaceholder": "Ex: Sèrie General",
+      "year": "Any",
+      "prefix": "Prefix",
+      "prefixPlaceholder": "Ex: F",
+      "nextNumber": "Següent Núm.",
+      "nextNumberPlaceholder": "Ex: 1, 100, 250",
+      "nextNumberHint": "Pots començar des de qualsevol nombre ≥ 1, per exemple per continuar una sèrie existent.",
+      "invoicesCount": "Factures",
+      "max": "màx.",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "default": "Predeterminada",
+      "isDefault": "Per defecte",
+      "mark": "Marcar",
+      "yes": "Sí",
+      "no": "No",
+      "updated": "Actualitzat",
+      "editNextNumber": "Editar següent número",
+      "nextWillBe": "La següent factura serà",
+      "cancel": "Cancel·lar",
+      "save": "Desar",
+      "empty": "No hi ha sèries configurades encara.",
+      "errors": {
+        "mustBePositive": "El següent número ha de ser un enter positiu.",
+        "wouldOverwrite": "Aquest número ja està ocupat per factures existents. Tria un número més gran que el màxim actual."
+      },
+      "warnings": {
+        "gap": "Deixaràs un buit entre les factures existents i la següent"
+      }
+    },
     "seleccionarMes": "Seleccionar mes",
     "dia1": "1 dia",
     "dia3": "3 dies",
@@ -2783,6 +2845,75 @@
       "body": "Enviar «{{name}}» a {{count}} subscriptors amb consentiment màrqueting?",
       "resultSummary": "{{sent}} enviats, {{failed}} fallits de {{total}} destinataris.",
       "firstErrors": "Primers errors"
+    }
+  },
+  "inbound": {
+    "title": "Recepció de correu",
+    "subtitle": "Configura com la teva empresa rep correus al teu domini. Només tu i els administradors de la teva empresa poden canviar-ho.",
+    "noDomains": "Encara no tens dominis verificats. Verifica un domini des de Configuració → Email per començar.",
+    "lastProvisioned": "Darrera verificació",
+    "error": "Error",
+    "sesRule": "Regla SES",
+    "mxRecord": "Registre MX",
+    "behaviorSettings": "Comportament de recepció",
+    "forwardUnknown": "Reenviar correus no reconeguts a",
+    "forwardUnknownHelp": "Si arriba un correu al teu domini però no coincideix amb cap bústia configurada, es reenviarà a aquesta adreça.",
+    "spamAction": "Acció per a correu brossa",
+    "spamMark": "Marcar com a correu brossa",
+    "spamQuarantine": "Quarantena",
+    "spamReject": "Rebutjar",
+    "rejectUnknown": "Rebutjar correus a destinataris desconeguts (en lloc de reenviar)",
+    "reprovision": "Reprovisionar",
+    "disable": "Desactivar inbound"
+  },
+  "bookings": {
+    "conciliation": {
+      "title": "Conciliació de reserves",
+      "subtitle": "Reserves, pressupostos i factures — tot allò que encara no quadra.",
+      "backToBookings": "Tornar a Reserves",
+      "counters": {
+        "totalBookings": "Reserves totals",
+        "withoutQuote": "Sense pressupost",
+        "quotesDraft": "Pressupostos en esborrany",
+        "sessionsWithoutInvoice": "Sense factura",
+        "invoicesDraft": "Factures en esborrany",
+        "invoicesPaid": "Factures pagades"
+      },
+      "filters": {
+        "all": "Totes",
+        "missingQuote": "Sense pressupost",
+        "missingInvoice": "Sessions sense factura",
+        "quoteDraft": "Pressupost en esborrany",
+        "quoteRejected": "Pressupost rebutjat",
+        "invoiceDraft": "Factura en esborrany",
+        "invoicePending": "Factura pendent de pagament",
+        "paid": "Pagada",
+        "ok": "Conciliades"
+      },
+      "search": {
+        "placeholder": "Cercar per client, estat…",
+        "clear": "Netejar",
+        "showing": "Mostrant {count} de {total}",
+        "noResults": "Sense resultats per aquesta cerca."
+      },
+      "table": {
+        "headers": {
+          "customer": "Client",
+          "date": "Data",
+          "bookingStatus": "Estat reserva",
+          "quote": "Pressupost",
+          "invoice": "Factura",
+          "invoicePayment": "Pagament factura",
+          "conciliation": "Conciliació",
+          "actions": "Accions"
+        },
+        "empty": "No hi ha reserves per mostrar."
+      },
+      "cancel": "Cancel·lar",
+      "cancelBooking": "Cancel·lar reserva (marca el pressupost com a rebutjat)",
+      "errors": {
+        "load": "No s'ha pogut carregar la conciliació. Torna-ho a provar."
+      }
     }
   }
 }
