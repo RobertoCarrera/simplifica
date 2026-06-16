@@ -51,7 +51,7 @@ export class SupabaseQuotesService {
     filters?: QuoteFilters,
     sort?: QuoteSortOptions,
     page: number = 1,
-    pageSize: number = 50
+    pageSize: number = 1000
   ): Observable<{ data: Quote[]; count: number }> {
     return from(this.executeGetQuotes(filters, sort, page, pageSize));
   }
@@ -60,7 +60,7 @@ export class SupabaseQuotesService {
     filters?: QuoteFilters,
     sort?: QuoteSortOptions,
     page: number = 1,
-    pageSize: number = 50
+    pageSize: number = 1000
   ): Promise<{ data: Quote[]; count: number }> {
     const companyId = this.authService.companyId();
     if (!companyId) throw new Error('No company ID available');
