@@ -839,6 +839,8 @@
     "list": {
       "accepted": "akzeptiert",
       "drafts": "im Entwurf",
+      "live": "aktiv",
+      "liveHint": "Angebote, die WEDER fakturiert NOCH storniert sind (Entwurf, gesendet, angesehen, akzeptiert, abgelehnt, abgelaufen)",
       "futureBookings": "noch nicht durchgeführte Sitzungen",
       "futureBookingsHint": "Buchungen mit zukünftigem Datum (noch nicht durchgeführt)",
       "futureWithQuote": "zukünftige mit Angebot",
