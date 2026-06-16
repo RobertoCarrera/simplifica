@@ -143,16 +143,16 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   editQuote() {
     const q = this.quote();
-    // Allow editing for draft and request (solicitud) status
-    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
+    // Allow editing for draft status (request/pending deprecated in v4.9)
+    if (q && q.status === QuoteStatus.DRAFT) {
       this.router.navigate(['/presupuestos/edit', q.id]);
     }
   }
 
   finalizeQuote() {
     const q = this.quote();
-    // Allow finalizing for draft and request (solicitud) status
-    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
+    // Allow finalizing for draft status only (request/pending deprecated in v4.9)
+    if (q && q.status === QuoteStatus.DRAFT) {
       this.quotesService.finalizeQuote(q.id).subscribe({
         next: (updated) => {
           this.loadQuote(q.id);
@@ -176,26 +176,9 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
    * Si la política es automática, se envía automáticamente al cliente
    */
   acceptRequest() {
-    const q = this.quote();
-    if (q && q.status === QuoteStatus.REQUEST) {
-      this.quotesService.acceptRequest(q.id).subscribe({
-        next: (result) => {
-          this.loadQuote(q.id);
-          if (result.autoFinalized) {
-            this.toastService.success(
-              'Solicitud aceptada',
-              'El presupuesto ha sido procesado y enviado al cliente automáticamente',
-            );
-          } else {
-            this.toastService.success(
-              'Solicitud aceptada',
-              'El presupuesto está ahora en borrador. Puedes editarlo y enviarlo manualmente.',
-            );
-          }
-        },
-        error: (err) => this.error.set('Error: ' + err.message),
-      });
-    }
+    // Deprecated in v4.9: REQUEST status was removed from the enum.
+    // This handler is kept as a no-op so that any lingering UI buttons don't crash.
+    // The "solicitud" flow was never used in production data.
   }
 
   markAsSent() {
@@ -340,8 +323,8 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   deleteQuote() {
     const q = this.quote();
-    // Allow deletion for draft and request (solicitud) status
-    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
+    // Allow deletion for draft status only (request deprecated in v4.9)
+    if (q && q.status === QuoteStatus.DRAFT) {
       if (confirm(this.translocoService.translate('quotes.detail.confirmEliminar'))) {
         this.quotesService.deleteQuote(q.id).subscribe({
           next: () => this.router.navigate(['/presupuestos']),

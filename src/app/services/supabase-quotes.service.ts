@@ -554,13 +554,13 @@ export class SupabaseQuotesService {
         await firstValueFrom(this.sendQuoteEmail(id, to));
         return this.executeUpdateQuote(id, { status: QuoteStatus.SENT });
       } else {
-        // Si no hay email, no se puede enviar, dejar en PENDING o lanzar error?
-        // Mejor dejar en PENDING y avisar
+        // Si no hay email, no se puede enviar, dejar en DRAFT y avisar
         console.warn('No se pudo enviar email automático: falta destinatario');
-        return this.executeUpdateQuote(id, { status: QuoteStatus.PENDING });
+        return this.executeUpdateQuote(id, { status: QuoteStatus.DRAFT });
       }
     } else {
-      return this.executeUpdateQuote(id, { status: QuoteStatus.PENDING });
+      // Sin auto-send: el quote queda en DRAFT para envío manual
+      return this.executeUpdateQuote(id, { status: QuoteStatus.DRAFT });
     }
   }
 
