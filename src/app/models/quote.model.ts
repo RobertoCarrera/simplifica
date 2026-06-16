@@ -14,27 +14,21 @@
 // =====================================================
 
 export enum QuoteStatus {
-  DRAFT = 'draft',           // Borrador (en edición)
-  REQUEST = 'request',       // Solicitud del cliente (nuevo)
-  PENDING = 'pending',        // Generado/Pendiente (listo para cliente, no enviado)
-  SENT = 'sent',              // Enviado al cliente
-  VIEWED = 'viewed',          // Visto por el cliente
-  ACCEPTED = 'accepted',      // Aceptado
-  PAUSED = 'paused',          // Pausado (recurrencia pausada)
-  REJECTED = 'rejected',      // Rechazado
-  EXPIRED = 'expired',        // Expirado
-  INVOICED = 'invoiced',      // Convertido a factura
-  CANCELLED = 'cancelled'     // Cancelado
+  DRAFT = 'draft',           // Created, waiting for the session to happen
+  SENT = 'sent',              // Commercial: sent to the client (portal del cliente, future)
+  VIEWED = 'viewed',          // Commercial: client opened it (portal del cliente, future)
+  ACCEPTED = 'accepted',      // Session is past: the service was performed
+  REJECTED = 'rejected',      // Client rejected the quote commercially (booking may still be live)
+  EXPIRED = 'expired',        // Valid_until passed without acceptance
+  INVOICED = 'invoiced',      // Invoice was generated from this quote
+  CANCELLED = 'cancelled'     // The BOOKING was cancelled — quote stays as audit trail
 }
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'Borrador',
-  [QuoteStatus.REQUEST]: 'Solicitud',
-  [QuoteStatus.PENDING]: 'Pendiente',
   [QuoteStatus.SENT]: 'Enviado',
   [QuoteStatus.VIEWED]: 'Visto',
   [QuoteStatus.ACCEPTED]: 'Aceptado',
-  [QuoteStatus.PAUSED]: 'Pausado',
   [QuoteStatus.REJECTED]: 'Rechazado',
   [QuoteStatus.EXPIRED]: 'Expirado',
   [QuoteStatus.INVOICED]: 'Facturado',
@@ -43,12 +37,9 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'gray',
-  [QuoteStatus.REQUEST]: 'purple',
-  [QuoteStatus.PENDING]: 'blue',
   [QuoteStatus.SENT]: 'blue',
   [QuoteStatus.VIEWED]: 'cyan',
   [QuoteStatus.ACCEPTED]: 'green',
-  [QuoteStatus.PAUSED]: 'orange',
   [QuoteStatus.REJECTED]: 'red',
   [QuoteStatus.EXPIRED]: 'orange',
   [QuoteStatus.INVOICED]: 'purple',
