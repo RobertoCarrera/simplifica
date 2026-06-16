@@ -422,7 +422,36 @@ export class SupabaseInvoicesService {
         return response.data as InvoiceSeries[];
       }),
       catchError(error => {
-        console.error('Error al obtener todas las series de facturación:', error);
+        console.error('Error al obtener series:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Stats of a series: how many invoices exist and the max invoice_number.
+   * Used by the UI to validate the "next_number" before saving
+   * (warn about gaps, block overwriting existing invoices).
+   */
+  getSeriesStats(seriesId: string): Observable<{ invoice_count: number; max_invoice_number: number | null }> {
+    return from(
+      this.supabase
+        .from('invoices')
+        .select('invoice_number', { count: 'exact', head: false })
+        .eq('series_id', seriesId)
+    ).pipe(
+      map(response => {
+        if (response.error) throw response.error;
+        const rows = (response.data ?? []) as Array<{ invoice_number: string }>;
+        const max = rows.reduce<number | null>((acc, r) => {
+          const n = parseInt(r.invoice_number, 10);
+          if (Number.isNaN(n)) return acc;
+          return acc === null || n > acc ? n : acc;
+        }, null);
+        return { invoice_count: response.count ?? rows.length, max_invoice_number: max };
+      }),
+      catchError(error => {
+        console.error('Error al obtener stats de serie:', error);
         return throwError(() => error);
       })
     );
@@ -557,7 +586,7 @@ export class SupabaseInvoicesService {
       `)
       .is('deleted_at', null)
       .order('invoice_date', { ascending: false })
-      .limit(200);
+      .limit(1000);
 
     // Aplicar filtros
     if (filters) {
