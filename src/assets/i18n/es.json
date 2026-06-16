@@ -918,6 +918,8 @@
       "buscar": "Buscar...",
       "accepted": "aceptados",
       "drafts": "en borrador",
+      "live": "vivos",
+      "liveHint": "Presupuestos que NO están facturados ni cancelados (borrador, enviado, visto, aceptado, rechazado, expirado)",
       "futureBookings": "sesiones no realizadas",
       "futureBookingsHint": "Reservas con fecha futura (todavía no se han realizado)",
       "futureWithQuote": "futuras con presupuesto",

@@ -242,7 +242,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
             @if (filteredQuotes().length !== quotes().length) {
               <span class="text-gray-400 dark:text-gray-500"> de {{ quotes().length }}</span>
             }
-            presupuestos
+            presupuestos totales
           </span>
           <span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">
             <i class="fas fa-check text-[10px]"></i>
@@ -251,6 +251,13 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
           <span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
             <i class="fas fa-file text-[10px]"></i>
             {{ quotesDraftCount() }} {{ 'quotes.list.drafts' | transloco }}
+          </span>
+          <span
+            class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
+            [title]="'quotes.list.liveHint' | transloco"
+          >
+            <i class="fas fa-heartbeat text-[10px]"></i>
+            {{ liveQuotesCount() }} {{ 'quotes.list.live' | transloco }}
           </span>
           @if (futureBookings() > 0) {
             <span
@@ -645,6 +652,18 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   quotesDraftCount = computed(() =>
     this.quotes().filter(q => (q.status || '').toLowerCase() === 'draft').length
   );
+
+  /**
+   * Count of "live" quotes: anything that is NOT invoiced and NOT cancelled.
+   * Live states: draft, sent, viewed, accepted, rejected, expired.
+   * This is the working universe — the quotes that still represent an open
+   * business conversation (not yet a closed-and-invoiced deal, not yet
+   * a recorded cancellation).
+   */
+  liveQuotesCount = computed(() => {
+    const excluded = new Set(['invoiced', 'cancelled']);
+    return this.quotes().filter(q => !excluded.has((q.status || '').toLowerCase())).length;
+  });
 
   /**
    * Bookings whose `start_time` is in the future. These are sessions
