@@ -20,7 +20,7 @@ import { SupabaseServicesService, Service } from '../../../services/supabase-ser
 import { ProductsService } from '../../../services/products.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { Customer } from '../../../models/customer';
-import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
+import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem, getClientDisplayName } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
 import {
   SupabaseSettingsService,
@@ -1003,7 +1003,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const clientId = this.quoteForm.get('client_id')?.value;
     if (!clientId) return 'Seleccionar cliente';
     const client = this.clients().find((c) => c.id === clientId);
-    return client?.business_name || client?.name || 'Cliente seleccionado';
+    return getClientDisplayName(client, 'Cliente seleccionado');
   }
 
   // Métodos para selector de servicios

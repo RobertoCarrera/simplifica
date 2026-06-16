@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Project, ProjectStage } from '../../../../../models/project';
 import { Customer } from '../../../../../models/customer';
+import { getClientDisplayName } from '../../../../../models/quote.model';
 
 export interface TeamMember {
   id: string;
@@ -82,7 +83,7 @@ export interface TeamMember {
               <option [value]="null">Seleccionar Cliente</option>
               @for (client of clients; track client) {
                 <option [value]="client.id">
-                  {{ client.business_name || client.name + ' ' + (client.surname || '') }}
+                  {{ getClientDisplayName(client, '') }}
                 </option>
               }
             </select>

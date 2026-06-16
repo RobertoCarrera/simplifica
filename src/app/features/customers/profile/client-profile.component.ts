@@ -18,6 +18,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 import { TranslocoPipe } from '@jsverse/transloco';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { SupabaseSessionCloseService } from '../../../services/supabase-session-close.service';
+import { getClientDisplayName, getClientInitial } from '../../../models/quote.model';
 
 @Component({
   selector: 'app-client-profile',
@@ -1032,9 +1033,10 @@ export class ClientProfileComponent implements OnInit {
 
   // Helpers
   getDisplayName(c: Customer): string {
-    return c.client_type === 'business'
-      ? c.business_name || c.name
-      : `${c.name} ${c.surname}`.trim();
+    if (c.client_type === 'business') {
+      return getClientDisplayName(c, c.name ?? '');
+    }
+    return `${c.name} ${c.surname}`.trim();
   }
 
   getInitials(c: Customer): string {

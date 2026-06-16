@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectPermissions } from '../../../../models/project';
+import { getClientDisplayName } from '../../../../models/quote.model';
 import { ProjectsService } from '../../../../core/services/projects.service';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { AppModalComponent } from '../../../../shared/ui/app-modal/app-modal.component';
@@ -109,7 +110,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                 [completedTasks]="completedTasks"
                 [completedTasksCount]="getCompletedTasks()"
                 [professionals]="professionals"
-                [clientName]="project?.client?.business_name || project?.client?.name || null"
+                [clientName]="getClientDisplayName(project?.client, null)"
                 [clientAuthUserId]="project?.client?.auth_user_id || null"
                 [projectId]="project?.id || ''"
                 [canCreate]="canCreateTask()"
@@ -1868,7 +1869,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
     // Check client
     if (this.project?.client?.auth_user_id === task.assigned_to) {
-      return this.project.client.business_name || this.project.client.name || 'Cliente';
+      return getClientDisplayName(this.project.client, 'Cliente');
     }
 
     return 'Usuario desconocido';

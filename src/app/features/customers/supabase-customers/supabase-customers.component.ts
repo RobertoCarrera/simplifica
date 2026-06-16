@@ -30,6 +30,7 @@ import { SupabaseCustomersService as CustomersSvc } from '../../../services/supa
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
+import { getClientDisplayName, getClientInitial } from '../../../models/quote.model';
 
 // Optimization: Constants for Regex to avoid reallocation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -362,7 +363,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             // Display Name Logic
             let displayName = '';
             if (customer.client_type === 'business') {
-                displayName = customer.business_name || customer.trade_name || customer.name || '';
+                displayName = getClientDisplayName(customer, customer.name ?? '');
             } else {
                 displayName = [customer.name, customer.surname].filter(Boolean).join(' ').trim();
             }
@@ -1147,7 +1148,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         if (!customer) return '';
         // Preferir razón social si es empresa
         let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
+            ? getClientDisplayName(customer, customer.name ?? '')
             : [customer.name, customer.surname].filter(Boolean).join(' ').trim();
 
         if (!base || !base.trim()) {
