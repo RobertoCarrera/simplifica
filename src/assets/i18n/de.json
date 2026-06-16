@@ -924,10 +924,12 @@
     "status": {
       "draft": "Entwurf",
       "sent": "Gesendet",
+      "viewed": "Angesehen",
       "pending": "Ausstehend",
       "accepted": "Akzeptiert",
       "rejected": "Abgelehnt",
       "expired": "Abgelaufen",
+      "cancelled": "Storniert",
       "invoiced": "Fakturiert",
       "request": "Anfrage",
       "puntual": "Einmalig"
