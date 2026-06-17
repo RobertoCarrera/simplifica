@@ -4040,35 +4040,48 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           eventAttendees.push({ email: assignedResource.google_calendar_id });
         }
 
+        // Build extendedProperties.shared WITHOUT null/empty values.
+        // Google Calendar API rejects create-event payloads with 400
+        // "Required" when any value is the literal JSON null — confirmed
+        // against booking-settings.component.ts forceFullSync (commit
+        // 059436d6). Omit the keys entirely when their value is
+        // null/undefined/empty so Google never sees them.
+        const sharedProps: Record<string, string | undefined> = {
+          localBookingId: localBooking.id,
+          serviceId: (formValue.service as any)?.id
+            ? String((formValue.service as any).id)
+            : undefined,
+          clientId: finalClient?.id ? String(finalClient.id) : undefined,
+          professionalId: assignedProfessional?.id
+            ? String(assignedProfessional.id)
+            : undefined,
+          resourceId: assignedResource?.id
+            ? String(assignedResource.id)
+            : undefined,
+          sessionType: (formValue.session_type as any) || 'presencial',
+          clientName:
+            finalClient?.displayName ||
+            (finalClient?.name
+              ? finalClient.name +
+                (finalClient.surname ? " " + finalClient.surname : "")
+              : undefined),
+          serviceName: (formValue.service as any)?.name,
+          professionalName: assignedProfessional?.display_name,
+          resourceName: assignedResource?.name,
+        };
+        const cleanShared: Record<string, string> = {};
+        for (const [k, v] of Object.entries(sharedProps)) {
+          if (v !== null && v !== undefined && v !== '') {
+            cleanShared[k] = v;
+          }
+        }
         const eventData = {
           summary: formValue.summary,
           description: description,
           start: { dateTime: startDate.toISOString() },
           end: { dateTime: endDate.toISOString() },
           extendedProperties: {
-            shared: {
-              localBookingId: localBooking.id,
-              serviceId: (formValue.service as any)?.id
-                ? String((formValue.service as any).id)
-                : undefined,
-              clientId: finalClient?.id ? String(finalClient.id) : undefined,
-              professionalId: assignedProfessional?.id
-                ? String(assignedProfessional.id)
-                : undefined,
-              resourceId: assignedResource?.id
-                ? String(assignedResource.id)
-                : undefined,
-              sessionType: (formValue.session_type as any) || 'presencial',
-              clientName:
-                finalClient?.displayName ||
-                (finalClient?.name
-                  ? finalClient.name +
-                    (finalClient.surname ? " " + finalClient.surname : "")
-                  : undefined),
-              serviceName: (formValue.service as any)?.name,
-              professionalName: assignedProfessional?.display_name,
-              resourceName: assignedResource?.name,
-            },
+            shared: cleanShared,
           },
           attendees: eventAttendees,
         };
