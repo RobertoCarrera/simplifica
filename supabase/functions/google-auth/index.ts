@@ -57,7 +57,7 @@ serve(async (req)=>{
     if (!user) {
       throw new Error('Unauthorized');
     }
-    const { action: action1, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service, conferenceDataVersion } = await req.json();
+    const { action: action1, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service, conferenceDataVersion, sendUpdates: sendUpdatesParam } = await req.json();
     console.log('Received Action:', action1);
     const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
     const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -322,9 +322,13 @@ serve(async (req)=>{
       const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
       const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
-      // Add sendUpdates=all to notify attendees; conferenceDataVersion=1 needed for Meet links
+      // sendUpdates is OPTIONAL. Default 'all' (notify attendees) for
+      // backwards compatibility with existing callers. The frontend
+      // "Sincronizar Calendar" button passes 'none' to recreate the
+      // event silently without sending invite emails.
+      // Acceptable values per Google Calendar API: 'all', 'externalOnly', 'none'.
       const createEventParams = new URLSearchParams({
-        sendUpdates: 'all'
+        sendUpdates: sendUpdatesParam || 'all'
       });
       if (conferenceDataVersion != null) {
         createEventParams.set('conferenceDataVersion', String(conferenceDataVersion));
@@ -349,6 +353,37 @@ serve(async (req)=>{
         });
       }
       const createdEvent = await response.json();
+
+      // After a successful create, write the sync timestamps back
+      // to the booking row so the frontend can show "Email enviado"
+      // and "Sincronizado con Calendar" badges in the modal. We
+      // only update last_invite_sent_at when sendUpdates is 'all'
+      // (or absent, which defaults to 'all' here). For 'none' the
+      // client asked us NOT to send invite emails, so we don't
+      // claim any invite was sent. last_calendar_sync_at is
+      // updated regardless — the event exists in GCal either way.
+      try {
+        const localBookingId: string | undefined =
+          (event as any)?.extendedProperties?.shared?.localBookingId;
+        if (localBookingId) {
+          const nowIso = new Date().toISOString();
+          const sentInvite = (sendUpdatesParam || 'all') === 'all';
+          const { error: updateErr } = await supabaseClient
+            .from('bookings')
+            .update({
+              google_event_id: createdEvent.id,
+              last_calendar_sync_at: nowIso,
+              ...(sentInvite ? { last_invite_sent_at: nowIso } : {}),
+            })
+            .eq('id', localBookingId);
+          if (updateErr) {
+            console.warn('google-auth: could not write sync timestamps:', updateErr);
+          }
+        }
+      } catch (e) {
+        console.warn('google-auth: sync timestamp write threw:', e);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         event: createdEvent
@@ -379,6 +414,33 @@ serve(async (req)=>{
         throw new Error('Failed to update event');
       }
       const updatedEvent = await response.json();
+
+      // After a successful PATCH, write the sync timestamps so the
+      // frontend can show updated "last invite sent" / "last sync"
+      // badges. sendUpdates=all is hardcoded on the update-event
+      // action today, so last_invite_sent_at is always set here.
+      // If we later make update-event's sendUpdates configurable,
+      // gate this the same way we did for create.
+      try {
+        const localBookingId: string | undefined =
+          (event as any)?.extendedProperties?.shared?.localBookingId;
+        if (localBookingId) {
+          const nowIso = new Date().toISOString();
+          const { error: updateErr } = await supabaseClient
+            .from('bookings')
+            .update({
+              last_calendar_sync_at: nowIso,
+              last_invite_sent_at: nowIso,
+            })
+            .eq('id', localBookingId);
+          if (updateErr) {
+            console.warn('google-auth: could not write sync timestamps on PATCH:', updateErr);
+          }
+        }
+      } catch (e) {
+        console.warn('google-auth: sync timestamp write on PATCH threw:', e);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         event: updatedEvent
@@ -395,7 +457,13 @@ serve(async (req)=>{
       const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
       const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
-      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
+      // sendUpdates is OPTIONAL. Default 'all' (notify attendees) for
+      // backwards compatibility. The frontend passes 'none' when the
+      // PATCH-cancel + DELETE flow already sent the cancellation
+      // email via sendUpdates=all on the PATCH, so we don't want to
+      // send a SECOND email on the DELETE.
+      const deleteSendUpdates = sendUpdatesParam || 'all';
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=${deleteSendUpdates}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${accessToken}`
