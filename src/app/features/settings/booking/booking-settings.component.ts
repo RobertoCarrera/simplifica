@@ -153,6 +153,14 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   savingSettings = signal(false);
   viewSettingsMode = signal<'desktop' | 'mobile'>('desktop');
 
+  /** Quote/invoice lifecycle mode for this tenant.
+   *  - 'booking-driven' (default): every booking auto-creates a draft quote;
+   *    on session start the quote is accepted and an invoice is created.
+   *  - 'manual': none of the four lifecycle triggers fire for this tenant.
+   *  Persisted in companies.settings->>'quote_lifecycle_mode'. */
+  quoteLifecycleMode = signal<'booking-driven' | 'manual'>('booking-driven');
+  savingLifecycleMode = signal(false);
+
   // Computed: get the enabled views based on current mode
   enabledViewsForMode = computed(() => {
     const mode = this.viewSettingsMode();
@@ -825,6 +833,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       settings: company.settings,
     });
 
+    // Hydrate quote lifecycle mode from companies.settings (default: 'booking-driven').
+    const mode = company.settings?.quote_lifecycle_mode;
+    this.quoteLifecycleMode.set(
+      mode === 'manual' ? 'manual' : 'booking-driven',
+    );
+
     // Determine which default view to use based on device
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const desktopView = settings?.default_calendar_view;
@@ -1232,6 +1246,44 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
 
     this.showEventModal = true;
+  }
+
+  /**
+   * Persist the tenant's quote lifecycle mode (booking-driven | manual) to
+   * companies.settings. Triggers gated by `get_company_quote_mode()` in DB
+   * will read this value on their next fire.
+   */
+  async saveLifecycleMode() {
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+    const mode = this.quoteLifecycleMode();
+
+    this.savingLifecycleMode.set(true);
+    try {
+      const existingSettings = this.companySettings()?.settings || {};
+      const newSettings = { ...existingSettings, quote_lifecycle_mode: mode };
+      const { error } = await this.supabase
+        .getClient()
+        .from('companies')
+        .update({ settings: newSettings })
+        .eq('id', companyId);
+
+      if (error) {
+        console.error('Error saving lifecycle mode:', error);
+        this.toastService.error('Configuración', 'No se pudo guardar el modo del ciclo de vida');
+        return;
+      }
+
+      this.companySettings.update((prev) => ({ ...prev, settings: newSettings }));
+      this.toastService.success(
+        'Configuración',
+        mode === 'manual'
+          ? 'Modo manual activado: las reservas no generarán presupuestos automáticos'
+          : 'Modo automático activado: cada reserva generará un presupuesto en borrador',
+      );
+    } finally {
+      this.savingLifecycleMode.set(false);
+    }
   }
 
   toggleCalendarView(view: string) {

@@ -238,36 +238,44 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
       <div
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
-        <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-4">
-          <span>
-            {{ filteredQuotes().length }}
-            @if (filteredQuotes().length !== quotes().length) {
-              <span class="text-gray-400 dark:text-gray-500"> de {{ quotes().length }}</span>
-            }
-            presupuestos totales
-          </span>
-          <span class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">
-            <i class="fas fa-check text-[10px]"></i>
-            {{ quotesAcceptedCount() }} {{ 'quotes.list.accepted' | transloco }}
+        <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-3">
+          <!-- Group 1: Quote universe (indigo / amber / emerald) -->
+          <span
+            class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
+            [title]="'quotes.list.totalHint' | transloco"
+          >
+            <i class="fas fa-file-invoice text-[10px]"></i>
+            {{ 'quotes.list.totalQuotes' | transloco }}: {{ quotes().length }}
           </span>
           <span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
             <i class="fas fa-file text-[10px]"></i>
-            {{ quotesDraftCount() }} {{ 'quotes.list.drafts' | transloco }}
+            {{ 'quotes.list.drafts' | transloco }}: {{ quotesDraftCount() }}
           </span>
           <span
-            class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
+            class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium"
             [title]="'quotes.list.liveHint' | transloco"
           >
             <i class="fas fa-heartbeat text-[10px]"></i>
-            {{ liveQuotesCount() }} {{ 'quotes.list.live' | transloco }}
+            {{ 'quotes.list.live' | transloco }}: {{ liveQuotesCount() }}
           </span>
+          @if (quotesWithoutTotal() > 0) {
+            <span class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium">
+              <i class="fas fa-exclamation-triangle text-[10px]"></i>
+              {{ 'quotes.list.withoutTotal' | transloco }}: {{ quotesWithoutTotal() }}
+            </span>
+          }
+
+          <!-- Visual divider between universes -->
+          <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
+
+          <!-- Group 2: Booking universe (sky / emerald / rose) -->
           @if (futureBookings() > 0) {
             <span
               class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
               [title]="'quotes.list.futureBookingsHint' | transloco"
             >
               <i class="fas fa-calendar-plus text-[10px]"></i>
-              {{ futureBookings() }} {{ 'quotes.list.futureBookings' | transloco }}
+              {{ 'quotes.list.futureBookings' | transloco }}: {{ futureBookings() }}
             </span>
             @if (futureBookingsWithQuote() > 0) {
               <span
@@ -275,7 +283,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 [title]="'quotes.list.futureWithQuoteHint' | transloco"
               >
                 <i class="fas fa-link text-[10px]"></i>
-                {{ futureBookingsWithQuote() }} {{ 'quotes.list.futureWithQuote' | transloco }}
+                {{ 'quotes.list.futureWithQuote' | transloco }}: {{ futureBookingsWithQuote() }}
               </span>
             }
             @if (futureBookingsWithoutQuote() > 0) {
@@ -284,13 +292,19 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 [title]="'quotes.list.futureWithoutQuoteHint' | transloco"
               >
                 <i class="fas fa-exclamation-triangle text-[10px]"></i>
-                {{ futureBookingsWithoutQuote() }} {{ 'quotes.list.futureWithoutQuote' | transloco }}
+                {{ 'quotes.list.futureWithoutQuote' | transloco }}: {{ futureBookingsWithoutQuote() }}
               </span>
             }
           }
-          @if (quotesWithoutTotal() > 0) {
-            <span class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium">
-              <i class="fas fa-exclamation-triangle text-[10px]"></i> {{ quotesWithoutTotal() }} sin total
+
+          <!-- Group 3: Reconciliation warning (only when drift > 0) -->
+          @if (quoteBookingDescuadre() !== 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.descuadreHint' | transloco"
+            >
+              <i class="fas fa-exclamation-triangle text-[10px]"></i>
+              {{ 'quotes.list.descuadre' | transloco }}: {{ quoteBookingDescuadre() }}
             </span>
           }
         </div>
@@ -661,6 +675,18 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   liveQuotesCount = computed(() => {
     const excluded = new Set(['invoiced', 'cancelled']);
     return this.quotes().filter(q => !excluded.has((q.status || '').toLowerCase())).length;
+  });
+
+  /**
+   * Absolute drift between future bookings count and the (with quote + without quote)
+   * split. Should always be 0 in healthy data — the trigger guarantees that every
+   * future booking has exactly one quote (or zero). Non-zero = data drift that
+   * the descuadre pill surfaces.
+   */
+  quoteBookingDescuadre = computed(() => {
+    const total = this.futureBookings();
+    const sum = this.futureBookingsWithQuote() + this.futureBookingsWithoutQuote();
+    return Math.abs(total - sum);
   });
 
   /**
