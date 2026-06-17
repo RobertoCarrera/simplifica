@@ -328,7 +328,9 @@ serve(async (req)=>{
       // event silently without sending invite emails.
       // Acceptable values per Google Calendar API: 'all', 'externalOnly', 'none'.
       const createEventParams = new URLSearchParams({
-        sendUpdates: sendUpdatesParam || 'all'
+        sendUpdates: sendUpdatesParam || 'all',
+        prettyPrint: 'false',
+        alt: 'json'
       });
       if (conferenceDataVersion != null) {
         createEventParams.set('conferenceDataVersion', String(conferenceDataVersion));
@@ -343,7 +345,7 @@ serve(async (req)=>{
         body: JSON.stringify(event)
       });
       if (!response.ok) {
-        console.error('[CREATE-EVENT-GOOGLE-ERR] status:', response.status, 'body:', JSON.stringify(await response.clone().json()));
+        console.error('[CREATE-EVENT-GOOGLE-ERR] status:', response.status, 'headers:', JSON.stringify(Object.fromEntries(response.headers.entries())), 'body:', JSON.stringify(await response.clone().json()));
         const err = await response.json();
         console.error('Google Create Event Error:', err);
         return new Response(JSON.stringify(err), {
