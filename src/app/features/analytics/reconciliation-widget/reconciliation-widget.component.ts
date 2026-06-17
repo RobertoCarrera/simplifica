@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, CheckCircle, AlertCircle, RefreshCw, Search } from 'lucide-angular';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { DocplannerReconciliationService, ReconciliationAudit } from './docplanner-reconciliation.service';
 
 @Component({
@@ -21,6 +22,7 @@ import { DocplannerReconciliationService, ReconciliationAudit } from './docplann
 })
 export class ReconciliationWidgetComponent implements OnInit {
   private reconciliationService = inject(DocplannerReconciliationService);
+  private bookingsService = inject(SupabaseBookingsService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
 
@@ -44,13 +46,30 @@ export class ReconciliationWidgetComponent implements OnInit {
       .reduce((sum, a) => sum + a.discrepancy, 0)
   );
   errorMessage = signal<string | null>(null);
+  // Global KPI: future bookings (start_time > now) split by Google Calendar sync.
+  // Loaded once on init. Refreshes when the user collapses/expands is irrelevant
+  // (data doesn't change frame-to-frame). Null = query failed or not yet loaded.
+  calendarStats = signal<{ total: number; synced: number; notSynced: number } | null>(null);
 
   ngOnInit() {
     this.companyId.set(this.authService.currentCompanyId());
     const cid = this.companyId();
     if (cid) {
       this.loadAuditData();
+      this.loadCalendarStats();
     }
+  }
+
+  private loadCalendarStats() {
+    const cid = this.companyId();
+    if (!cid) return;
+    this.bookingsService.getFutureBookingsSyncStats(cid).subscribe({
+      next: (stats) => this.calendarStats.set(stats),
+      error: (err: unknown) => {
+        console.error('[reconciliation-widget] Failed to load calendar stats:', err);
+        // Leave calendarStats as null so the UI shows nothing.
+      },
+    });
   }
 
   loadAuditData() {

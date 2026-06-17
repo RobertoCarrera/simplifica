@@ -25,6 +25,18 @@
       <span class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">
         Actualizado {{ formatSyncedAt(lastAudit().synced_at) }}
       </span>
+      <!-- Calendar sync KPI: total futuras vs no sincronizadas -->
+      @if (calendarStats(); as cs) {
+        <span class="flex items-center gap-1 text-[10px] font-medium"
+              [class.text-amber-600]="cs.notSynced > 0"
+              [class.dark:text-amber-400]="cs.notSynced > 0"
+              [class.text-gray-400]="cs.notSynced === 0"
+              [class.dark:text-gray-500]="cs.notSynced === 0"
+              [title]="cs.notSynced + ' de ' + cs.total + ' reservas futuras sin sincronizar con Google Calendar'">
+          <i class="fas fa-calendar-xmark text-[10px]"></i>
+          {{ cs.notSynced }}/{{ cs.total }} sin Calendar
+        </span>
+      }
       <i class="fas fa-chevron-down text-[10px] text-gray-400 transition-transform"
          [class.rotate-180]="!isCollapsed()"></i>
     </div>
@@ -62,6 +74,24 @@
         </div>
 
         <div class="flex items-center gap-3">
+          <!-- Calendar sync KPI: total futuras vs no sincronizadas -->
+          @if (calendarStats(); as cs) {
+            <div class="flex items-center gap-3 mr-2 pr-3 border-r border-gray-200 dark:border-gray-700"
+                 [title]="cs.notSynced + ' de ' + cs.total + ' reservas futuras sin sincronizar con Google Calendar'">
+              <div class="flex items-baseline gap-1">
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">Futuras</span>
+                <span class="text-base font-bold text-gray-700 dark:text-gray-200">{{ cs.total }}</span>
+              </div>
+              <div class="flex items-baseline gap-1">
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">Sin Calendar</span>
+                <span class="text-base font-bold"
+                      [class.text-amber-600]="cs.notSynced > 0"
+                      [class.dark:text-amber-400]="cs.notSynced > 0"
+                      [class.text-gray-400]="cs.notSynced === 0"
+                      [class.dark:text-gray-500]="cs.notSynced === 0">{{ cs.notSynced }}</span>
+              </div>
+            </div>
+          }
           @if (lastAudit()) {
             <span class="text-xs text-gray-400 dark:text-gray-500">
               {{ formatSyncedAt(lastAudit().synced_at) }}
