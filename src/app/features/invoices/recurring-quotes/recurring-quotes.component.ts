@@ -265,7 +265,7 @@ interface GeneratedInvoice {
                           </svg>
                         </button>
                         <!-- Pause/Resume -->
-                        @if (quote.status === 'accepted' || quote.status === 'active') {
+                        @if (quote.status === 'accepted') {
                           <button
                             (click)="pauseRecurrence(quote)"
                             class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-amber-500"
@@ -563,7 +563,7 @@ export class RecurringQuotesComponent {
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const active = q.filter((x) => x.status === 'accepted' || x.status === 'active').length;
+    const active = q.filter((x) => x.status === 'accepted').length;
     const upcoming = q.filter((x) => {
       if (!x.next_run_at) return false;
       const nextDate = new Date(x.next_run_at);
@@ -574,7 +574,7 @@ export class RecurringQuotesComponent {
 
     // Monthly revenue (sum of all monthly equivalents) using display amount
     const monthlyRevenue = q
-      .filter((x) => x.status === 'accepted' || x.status === 'active')
+      .filter((x) => x.status === 'accepted')
       .reduce((sum, x) => {
         const amount = this.getDisplayAmount(x);
         switch (x.recurrence_type) {
@@ -935,13 +935,13 @@ export class RecurringQuotesComponent {
 
   getStatusLabel(quote: RecurringQuote): string {
     const t = (key: string) => this.transloco.translate(key);
-    if (quote.status === 'accepted' || quote.status === 'active') return t('quotes.recurring.statusActivo');
+    if (quote.status === 'accepted') return t('quotes.recurring.statusActivo');
     if (quote.status === 'paused') return t('quotes.recurring.statusPausado');
     return t('quotes.recurring.statusInactivo');
   }
 
   getStatusClass(quote: RecurringQuote): string {
-    if (quote.status === 'accepted' || quote.status === 'active') {
+    if (quote.status === 'accepted') {
       return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200';
     }
     if (quote.status === 'paused') {

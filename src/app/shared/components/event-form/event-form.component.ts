@@ -27,6 +27,7 @@ import { ToastService } from "../../../services/toast.service";
 import { SupabaseSettingsService } from "../../../services/supabase-settings.service";
 import { SupabaseCustomersService } from "../../../services/supabase-customers.service";
 import { SupabaseBookingsService, SourceKey } from "../../../services/supabase-bookings.service";
+import { buildCleanExtendedProperties } from "../../utils/booking-sync-helpers";
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
@@ -4042,11 +4043,11 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
 
         // Build extendedProperties.shared WITHOUT null/empty values.
         // Google Calendar API rejects create-event payloads with 400
-        // "Required" when any value is the literal JSON null — confirmed
-        // against booking-settings.component.ts forceFullSync (commit
-        // 059436d6). Omit the keys entirely when their value is
-        // null/undefined/empty so Google never sees them.
-        const sharedProps: Record<string, string | undefined> = {
+        // "Required" when any value is the literal JSON null. The logic
+        // lives in buildCleanExtendedProperties (tested in
+        // booking-sync-helpers.spec.ts) so both this create-new flow
+        // and the forceFullSync re-sync flow share the same fix.
+        const cleanShared = buildCleanExtendedProperties({
           localBookingId: localBooking.id,
           serviceId: (formValue.service as any)?.id
             ? String((formValue.service as any).id)
@@ -4068,13 +4069,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           serviceName: (formValue.service as any)?.name,
           professionalName: assignedProfessional?.display_name,
           resourceName: assignedResource?.name,
-        };
-        const cleanShared: Record<string, string> = {};
-        for (const [k, v] of Object.entries(sharedProps)) {
-          if (v !== null && v !== undefined && v !== '') {
-            cleanShared[k] = v;
-          }
-        }
+        });
         const eventData = {
           summary: formValue.summary,
           description: description,
