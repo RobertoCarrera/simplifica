@@ -333,7 +333,7 @@ serve(async (req)=>{
       if (conferenceDataVersion != null) {
         createEventParams.set('conferenceDataVersion', String(conferenceDataVersion));
       }
-      console.log('[CREATE-EVENT-INBOUND] calendarId:', calendarId, 'sendUpdates:', sendUpdatesParam || 'all', 'attendees:', JSON.stringify(event?.attendees || []), 'summary:', event?.summary, 'start:', event?.start?.dateTime, 'end:', event?.end?.dateTime, 'localBookingId:', (event as any)?.extendedProperties?.shared?.localBookingId);
+      console.log('[CREATE-EVENT-INBOUND] calendarId:', calendarId, 'sendUpdates:', sendUpdatesParam || 'all', 'attendees:', JSON.stringify(event?.attendees || []), 'summary:', event?.summary, 'description:', event?.description, 'start:', event?.start?.dateTime, 'end:', event?.end?.dateTime, 'conferenceData:', JSON.stringify(event?.conferenceData || null), 'extendedProperties:', JSON.stringify(event?.extendedProperties || null), 'localBookingId:', (event as any)?.extendedProperties?.shared?.localBookingId);
       const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${createEventParams.toString()}`, {
         method: 'POST',
         headers: {
