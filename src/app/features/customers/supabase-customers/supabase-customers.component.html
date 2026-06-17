@@ -396,7 +396,8 @@
 
                                 <!-- Action Icons -->
                                 <div class="flex items-center gap-4">
-                                    @if (isOwner()) {
+                                    <!-- TODO: TEMPORAL 2026-06-17 — permitir edit también a professional. Revertir ambos: este cambio + migration 20260617000001. -->
+                                    @if (isOwner() || isProfessional()) {
                                         <!-- GDPR Badge -->
                                         @let badge = getGdprBadgeConfig(customer);
                                         <button (click)="openGdprModal(customer); $event.stopPropagation()"
@@ -580,7 +581,8 @@
                                 <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
 
-                                        @if (isOwner()) {
+                                        <!-- TODO: TEMPORAL 2026-06-17 — permitir edit también a professional. Revertir ambos: este cambio + migration 20260617000001. -->
+                                        @if (isOwner() || isProfessional()) {
                                             <button (click)="openInviteModal(customer)"
                                                 class="text-cyan-400 hover:text-cyan-300 transition-colors"
                                                 [title]="'customers.inviteToPortal' | transloco">
