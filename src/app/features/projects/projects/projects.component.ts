@@ -32,6 +32,9 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   currentView: 'kanban' | 'timeline' | 'list' = 'kanban';
   projects: any[] = [];
 
+  // Expose helper for template usage
+  protected readonly getClientDisplayName = getClientDisplayName;
+
   // Dialog state
   isProjectDialogVisible = false;
   selectedProject: Project | null = null;
