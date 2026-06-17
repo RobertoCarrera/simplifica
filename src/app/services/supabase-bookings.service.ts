@@ -413,7 +413,21 @@ export class SupabaseBookingsService {
       .eq('id', id)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      // DIAGNOSTIC: surface the full PostgREST error body so we can
+      // see WHICH column / constraint / RLS rule the server is rejecting.
+      // The toast in the component only shows err.message (one line),
+      // which is why 'Failed to load resource: 400' is all the user
+      // sees. Remove the diagnostic block once the root cause is fixed.
+      console.error('[updateBooking] Supabase error detail:', {
+        message: error.message,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        code: (error as any).code,
+        raw: error,
+      });
+      throw error;
+    }
     return data;
   }
 
