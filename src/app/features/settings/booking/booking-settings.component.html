@@ -1151,6 +1151,23 @@
          deletion at a glance. Falls back to plain message string above if
          the slot is empty. -->
     <div #confirmBody class="space-y-4">
+      <!-- Per-cancellation email toggle: lets the operator choose whether
+           to notify the client for THIS specific cancellation. Defaults
+           to whatever the company-wide setting (booking_cancellation_client)
+           resolved to, so the common case is one less click. -->
+      <label class="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <input
+          type="checkbox"
+          class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          [checked]="deleteEventDialog.sendCancellationEmail"
+          (change)="onToggleCancellationEmail($any($event.target).checked)" />
+        <span class="flex-1 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+          <span class="font-semibold block">Enviar email de cancelación al cliente</span>
+          <span class="text-gray-500 dark:text-gray-400 text-[11px]">
+            Desmarcá esta casilla si el cliente ya sabe que se cancela y no querés enviarle otro correo.
+          </span>
+        </span>
+      </label>
       <!-- Reservation summary card -->
       <div
         class="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/60 dark:bg-red-950/20 overflow-hidden"

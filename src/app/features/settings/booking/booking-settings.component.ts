@@ -1555,12 +1555,27 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   onDeleteEventConfirm(): void {
     const event = this.deleteEventDialog.event;
+    const skipEmail = !this.deleteEventDialog.sendCancellationEmail;
     this.deleteEventDialog.isOpen = false;
     this.deleteEventDialog.event = null;
     if (event) {
       // Fire-and-forget: errors are surfaced via toast inside deleteEvent.
+      // We forward the operator's per-cancellation choice so the SES
+      // email is suppressed when they unchecked the box, regardless of
+      // whether Google Calendar managed to send its own cancellation.
+      (event as any).__forceSkipCancellationEmail = skipEmail;
       this.deleteEvent(event);
     }
+  }
+
+  /**
+   * Toggles the per-cancellation "send cancellation email" checkbox in
+   * the delete-confirmation dialog. Bound to the checkbox's (change)
+   * event. The dialog state lives on `deleteEventDialog` so the change
+   * is reactive in the template via [checked]="...".
+   */
+  onToggleCancellationEmail(checked: boolean): void {
+    this.deleteEventDialog.sendCancellationEmail = checked;
   }
 
   onDeleteEventCancel(): void {
@@ -2045,13 +2060,18 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }
       }
 
-      // 2. Delete Local Booking if exists. Pass skipCancellationEmail only
-      //    when GCal successfully sent its own notification; otherwise the
-      //    SES fallback path inside SupabaseBookingsService handles it.
+      // 2. Delete Local Booking if exists. Pass skipCancellationEmail when
+      //    either GCal successfully sent its own notification OR the
+      //    operator unchecked the per-cancellation "send email" box in
+      //    the dialog (forwarded as __forceSkipCancellationEmail by
+      //    onDeleteEventConfirm). The operator's choice wins over the
+      //    GCal fallback logic: if they said "don't email the client",
+      //    we don't email them, even if Calendar failed.
       const localBookingId = event.localBookingId || (event.isLocal ? event.id : null);
+      const forceSkip = (event as any).__forceSkipCancellationEmail === true;
       if (localBookingId) {
         await this.bookingsService.deleteBooking(localBookingId, {
-          skipCancellationEmail: gcalNotified,
+          skipCancellationEmail: gcalNotified || forceSkip,
         });
       }
 
