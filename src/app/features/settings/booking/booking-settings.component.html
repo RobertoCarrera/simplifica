@@ -551,6 +551,15 @@
             <i class="fas fa-link text-xs"></i>
           </button>
         }
+        <!-- Temporary: conciliation quick-access button (will move to a proper settings page in a follow-up) -->
+        <a
+          calendarToolbarRight
+          routerLink="/reservas/conciliacion"
+          class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 hover:text-white border border-amber-400/40 rounded-lg transition-all text-xs font-bold whitespace-nowrap"
+          title="Conciliación de reservas">
+          <i class="fas fa-clipboard-check text-xs"></i>
+          <span>Conciliación</span>
+        </a>
       </app-calendar>
     </div>
   }
@@ -825,6 +834,50 @@
               }
             </div>
 
+            <!-- Sync status badges — show whether the event is in
+                 Google Calendar and whether the last invite was
+                 actually sent. Reads from the local booking row
+                 (extendedProps.shared) which the getBookings
+                 SELECT now includes. -->
+            @if (selectedEventDetails.extendedProps?.shared?.localBookingId || selectedEventDetails.googleEventId) {
+              <div class="flex flex-wrap items-center gap-2 mb-3">
+                @if (selectedEventDetails.extendedProps?.shared?.lastCalendarSyncAt || selectedEventDetails.googleEventId) {
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/50"
+                    [title]="'Última sincronización: ' + formatSyncTimestamp(selectedEventDetails.extendedProps?.shared?.lastCalendarSyncAt ?? selectedEventDetails.updated)"
+                  >
+                    <i class="fas fa-calendar-check text-[10px]"></i>
+                    Sincronizado con Calendar
+                  </span>
+                } @else {
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50"
+                    title="Esta reserva aún no está en Google Calendar"
+                  >
+                    <i class="fas fa-exclamation-circle text-[10px]"></i>
+                    Sin sincronizar
+                  </span>
+                }
+                @if (selectedEventDetails.extendedProps?.shared?.lastInviteSentAt) {
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50"
+                    [title]="'Último email enviado: ' + formatSyncTimestamp(selectedEventDetails.extendedProps.shared.lastInviteSentAt)"
+                  >
+                    <i class="fas fa-envelope text-[10px]"></i>
+                    Email enviado
+                  </span>
+                } @else {
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700/50"
+                    title="No se ha enviado invitación por email todavía"
+                  >
+                    <i class="fas fa-envelope-open text-[10px]"></i>
+                    Email no enviado
+                  </span>
+                }
+              </div>
+            }
+
             <!-- Attendees -->
             <div>
               <div class="flex items-center justify-between mb-2 gap-2">
@@ -838,15 +891,38 @@
                   selectedEventDetails.isLocal ||
                   selectedEventDetails.isGoogle
                 ) {
-                  <button
-                    type="button"
-                    (click)="openResendInviteDialog()"
-                    class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/50 rounded-md transition-colors"
-                    title="Forzar el reenvío de la invitación de Google Calendar a todos los asistentes"
-                  >
-                    <i class="fas fa-paper-plane text-[10px]"></i>
-                    <span>Reenviar invitación</span>
-                  </button>
+                  <div class="inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      (click)="openResendInviteDialog()"
+                      class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/50 rounded-md transition-colors"
+                      title="Forzar el reenvío de la invitación de Google Calendar a todos los asistentes (envía email)"
+                    >
+                      <i class="fas fa-paper-plane text-[10px]"></i>
+                      <span>Reenviar invitación</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="onSyncCalendarOnly()"
+                      [disabled]="isResendingInvite()"
+                      [class.opacity-60]="isResendingInvite()"
+                      [class.cursor-not-allowed]="isResendingInvite()"
+                      class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700/50 rounded-md transition-colors disabled:hover:bg-slate-50"
+                      [title]="
+                        isResendingInvite()
+                          ? 'Sincronizando, espera un momento...'
+                          : 'Sincronizar el evento en Google Calendar sin enviar emails a los asistentes'
+                      "
+                    >
+                      <i
+                        class="text-[10px]"
+                        [class.fa-sync-alt]="!isResendingInvite()"
+                        [class.fa-spin]="isResendingInvite()"
+                        [class.fa-spinner]="isResendingInvite()"
+                      ></i>
+                      <span>{{ isResendingInvite() ? 'Sincronizando…' : 'Sincronizar Calendar' }}</span>
+                    </button>
+                  </div>
                 }
               </div>
               <div class="flex flex-wrap gap-2">

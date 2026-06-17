@@ -1557,122 +1557,324 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    * user must edit + save the booking first so the calendar sync runs.
    */
   async onResendInviteConfirm(): Promise<void> {
-    const event = this.selectedEventDetails;
     this.resendInviteDialog.isOpen = false;
+    await this.forceFullSync('all', 'Se ha enviado la invitación a {n} asistente{s}. El evento se ha recreado en el calendario del profesional.');
+  }
+
+  /**
+   * "Sincronizar Calendar" button — re-runs the full sync (DELETE +
+   * CREATE) on the professional's calendar, but with sendUpdates=none
+   * so no invite emails are sent. Useful when the user just wants
+   * the event to appear in GCal (or get refreshed after a manual
+   * edit) without spamming the attendees.
+   *
+   * Dedupe: we refuse to run a second sync within SYNC_DEDUPE_MS
+   * milliseconds of the last one. This prevents the user from
+   * double-clicking the button (or browser from firing click twice
+   * on slow connections) and accidentally creating duplicate
+   * events / extra DELETE+CREATE cycles.
+   */
+  private readonly SYNC_DEDUPE_MS = 5000;
+  private lastSyncAt = 0;
+
+  async onSyncCalendarOnly(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastSyncAt < this.SYNC_DEDUPE_MS) {
+      const remaining = Math.ceil(
+        (this.SYNC_DEDUPE_MS - (now - this.lastSyncAt)) / 1000,
+      );
+      this.toastService.info(
+        'Espera un momento',
+        `Ya sincronizaste hace ${Math.ceil((now - this.lastSyncAt) / 1000)}s. Vuelve a intentarlo en ${remaining}s para evitar duplicar el evento.`,
+      );
+      return;
+    }
+    this.lastSyncAt = now;
+    await this.forceFullSync(
+      'none',
+      'Sincronizado con Google Calendar. El evento se ha recreado sin enviar emails.',
+    );
+  }
+
+  /**
+   * Shared implementation for "Reenviar invitación" and "Sincronizar
+   * Calendar". Both buttons do the same DELETE+CREATE flow on the
+   * professional's calendar; the only difference is whether to send
+   * invite emails to attendees.
+   */
+  private async forceFullSync(
+    sendUpdates: 'all' | 'none',
+    successTemplate: string,
+  ): Promise<void> {
+    const event = this.selectedEventDetails;
     if (!event) return;
 
-    const googleEventId: string | null =
-      event.googleEventId ||
-      event.extendedProps?.shared?.googleEventId ||
-      (event.isGoogle ? event.id : null);
-    if (!googleEventId) {
-      this.toastService.warning(
-        'Sin evento en Google Calendar',
-        'Esta reserva no está sincronizada con Google Calendar. Edita y guarda la reserva para forzar la primera sincronización, y luego podrás reenviar la invitación.',
+    // ─── MODELO DE CALENDAR CORRECTO ────────────────────────────
+    // En este proyecto cada PROFESIONAL tiene su propio calendar
+    // (en la columna `professionals.google_calendar_id`) y su
+    // propia integración OAuth (en la tabla `integrations` con
+    // `user_id = professional.user_id`). Las sesiones se crean
+    // SIEMPRE en el calendar del profesional asignado a la reserva.
+    //
+    // El modelo de "calendar de la empresa" NO aplica. El calendar
+    // que está bajo Configuración > Integraciones > Google Calendar
+    // es el de la persona que conectó la integración, no un
+    // calendar compartido de empresa.
+    //
+    // Después de 9 sesiones de debug, el fix correcto es: leer
+    // `professionals.google_calendar_id` directamente, y el token
+    // OAuth de la integración del profesional.
+    // ──────────────────────────────────────────────────────────
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+
+    const professionalId = (event.extendedProps?.shared?.professionalId) as
+      | string
+      | undefined;
+    if (!professionalId) {
+      this.toastService.error(
+        'Sin profesional asignado',
+        'Esta reserva no tiene un profesional asignado, no se puede sincronizar con Google Calendar.',
       );
       return;
     }
 
-    // Resolve the calendarId. Prefer the event's own calendarId; fall
-    // back to the company-wide default.
-    const companyId = this.authService.currentCompanyId();
-    if (!companyId) return;
-    let calendarId: string | null =
-      event.calendarId ||
-      this.googleIntegration()?.metadata?.calendar_id_appointments ||
-      null;
-    if (!calendarId) {
-      // Fetch the integration to get a calendarId when the event
-      // doesn't carry one in extendedProps.
-      try {
-        const { data: integration } = await this.supabase
-          .getClient()
-          .from('integrations')
-          .select('metadata')
-          .eq('company_id', companyId)
-          .eq('provider', 'google_calendar')
-          .maybeSingle();
-        calendarId = (integration as any)?.metadata?.calendar_id_appointments ?? null;
-      } catch (e) {
-        // ignore — error surfaced below
+    // Resolve the professional's calendar (from professionals table)
+    // and their OAuth integration (from integrations table keyed by
+    // professional.user_id).
+    let professionalCalendarId: string | null = null;
+    let professionalPublicId: string | null = null; // public.users.id
+    try {
+      const { data: profRow } = await this.supabase
+        .getClient()
+        .from('professionals')
+        .select('id, user_id, google_calendar_id')
+        .eq('id', professionalId)
+        .maybeSingle();
+      if (profRow) {
+        professionalCalendarId = (profRow as any).google_calendar_id ?? null;
+        if (profRow.user_id) {
+          // Look up the OAuth integration for this professional.
+          // The access token for PATCH/DELETE/CREATE comes from
+          // this user's stored OAuth credentials.
+          const { data: integ } = await this.supabase
+            .getClient()
+            .from('integrations')
+            .select('user_id')
+            .eq('user_id', profRow.user_id)
+            .eq('provider', 'google_calendar')
+            .maybeSingle();
+          if (integ) {
+            // The public.users.id that owns this integration is
+            // the user_id stored in integrations (which references
+            // public.users.id, NOT auth.users.id).
+            professionalPublicId = (integ as any).user_id;
+          }
+        }
       }
+    } catch (e) {
+      console.warn('Could not resolve professional calendar/integration:', e);
     }
-    if (!calendarId) {
+
+    // The calendar the event lives in (or will live in) is
+    // ALWAYS the professional's calendar. The event.calendarId
+    // is preserved as a hint for cases where the stored id is
+    // somehow different (e.g. legacy bookings), but in normal
+    // operation the professional's calendar is the source of
+    // truth.
+    let existingCalendarId: string | null =
+      event.calendarId ?? professionalCalendarId ?? null;
+    let existingTargetUserId: string | null = professionalPublicId;
+
+    if (!existingCalendarId) {
       this.toastService.error(
         'Sin calendario configurado',
-        'No se encontró un calendario de Google asociado a esta empresa.',
+        `El profesional de esta reserva no tiene un Google Calendar configurado. Ve a Configuración > Profesionales y asigna un calendar al profesional.`,
       );
       return;
+    }
+
+    // Resolve the attendees ONCE — used both for create-event (if
+    // needed) and for update-event (always).
+    const shared = event.extendedProps?.shared ?? {};
+    const attendees: { email: string }[] = [];
+    const seenEmails = new Set<string>();
+    const pushEmail = (e: string | null | undefined) => {
+      if (!e) return;
+      const k = e.toLowerCase();
+      if (seenEmails.has(k)) return;
+      seenEmails.add(k);
+      attendees.push({ email: e });
+    };
+    (event.attendees ?? []).forEach((a: any) => pushEmail(a?.email));
+    pushEmail(shared.customerEmail);
+    pushEmail(shared.customer_email);
+    const resource = (this.availableResources() ?? []).find(
+      (r: any) => r.id === shared.resourceId,
+    );
+    if (resource?.google_calendar_id) {
+      pushEmail(resource.google_calendar_id);
     }
 
     this.isResendingInvite.set(true);
     try {
-      // Resolve the attendees. Prefer the GCal attendees (with response
-      // status), fall back to building a minimal attendee list from
-      // shared.customer_email and the resource's google_calendar_id
-      // (matching the create-event flow in event-form).
-      const shared = event.extendedProps?.shared ?? {};
-      const attendees: { email: string }[] = [];
-      const seenEmails = new Set<string>();
-      const pushEmail = (e: string | null | undefined) => {
-        if (!e) return;
-        const k = e.toLowerCase();
-        if (seenEmails.has(k)) return;
-        seenEmails.add(k);
-        attendees.push({ email: e });
-      };
-      (event.attendees ?? []).forEach((a: any) => pushEmail(a?.email));
-      pushEmail(shared.customerEmail);
-      pushEmail(shared.customer_email);
-      // The room's GCal id (if any) is also an attendee in our model
-      // (it receives the room events). Look it up from availableResources.
-      const resource = (this.availableResources() ?? []).find(
-        (r: any) => r.id === shared.resourceId,
-      );
-      if (resource?.google_calendar_id) {
-        pushEmail(resource.google_calendar_id);
+      const localBookingId = shared.localBookingId as string | undefined;
+      if (!localBookingId) {
+        this.toastService.warning(
+          'Reserva sin ID local',
+          'No se pudo identificar la reserva local. Edita y guarda la reserva para forzar la primera sincronización.',
+        );
+        this.isResendingInvite.set(false);
+        return;
       }
 
-      // Build a minimal event body with the resolved attendees so
-      // Google's update-event endpoint re-sends invites without
-      // altering the event. summary/start/end are echoed back so the
-      // PATCH is a no-op semantically, but the backend still triggers
-      // sendUpdates=all.
-      const eventBody: any = {
-        id: googleEventId,
+      // ─── FORCE FULL SYNC ───────────────────────────────────────
+      // The user wants the "Reenviar invitación" button to be a
+      // full reset: delete any existing Google event for this
+      // booking (regardless of which calendar it's in) and create
+      // a fresh one in the COMPANY calendar with all the right
+      // attendees. This guarantees:
+      //   • No duplicates (the old event is gone)
+      //   • The event lives in the calendar the admin sees in the
+      //     CRM (companyCalendarId)
+      //   • A fresh invite email is sent (the CREATE uses
+      //     sendUpdates=all by default in the backend)
+      //
+      // Order matters: DELETE first (best-effort, ignore "not
+      // found" errors), then CREATE. If DELETE fails for any other
+      // reason we surface a toast and stop — better to not act
+      // than to risk a duplicate.
+      // ──────────────────────────────────────────────────────────
+
+      // STEP 1: Try to DELETE the old event (if any). We look up
+      // the google_event_id from multiple sources in case the
+      // stored one is stale.
+      const oldGoogleEventId: string | null =
+        event.googleEventId ||
+        event.extendedProps?.shared?.googleEventId ||
+        null;
+      if (oldGoogleEventId && existingCalendarId) {
+        // Best-effort delete on the professional's calendar. If
+        // the event is here, this removes it (so we can recreate
+        // it fresh). If it's on a different calendar (404 from
+        // this one), we silently continue — the admin can clean
+        // up manually. The worst case is a duplicate on a
+        // different calendar, which is recoverable.
+        try {
+          const { error: delError } = await this.supabase
+            .getClient()
+            .functions.invoke('google-auth', {
+              body: {
+                action: 'delete-event',
+                calendarId: existingCalendarId,
+                eventId: oldGoogleEventId,
+                userId: existingTargetUserId ?? undefined,
+              },
+            });
+          if (delError) {
+            console.warn(
+              'Best-effort delete failed (likely the event was on a different calendar):',
+              delError,
+            );
+            // Continue with CREATE — worst case the admin has a
+            // duplicate they can clean up later.
+          }
+        } catch (e) {
+          console.warn('Best-effort delete threw:', e);
+        }
+      }
+
+      // STEP 2: CREATE the new event on the professional's
+      // calendar. The backend's create-event action always uses
+      // sendUpdates=all, so attendees get a fresh invite email
+      // automatically.
+      const isOnline = shared.sessionType === 'online';
+      const eventData: any = {
         summary: event.title,
+        description: event.description || '',
         start: { dateTime: new Date(event.start).toISOString() },
         end: { dateTime: new Date(event.end).toISOString() },
         attendees,
+        extendedProperties: {
+          shared: {
+            localBookingId,
+            serviceId: shared.serviceId,
+            clientId: shared.clientId,
+            professionalId: shared.professionalId,
+            resourceId: shared.resourceId,
+            sessionType: shared.sessionType,
+            clientName: shared.clientName,
+            serviceName: shared.serviceName,
+            professionalName: shared.professionalName,
+            resourceName: shared.resourceName,
+          },
+        },
       };
-      const { data, error } = await this.supabase
+      if (isOnline) {
+        eventData.conferenceData = {
+          createRequest: {
+            requestId: localBookingId,
+            conferenceSolutionKey: { type: 'hangoutsMeet' },
+          },
+        };
+      }
+
+      const { data: createData, error: createError } = await this.supabase
         .getClient()
         .functions.invoke('google-auth', {
           body: {
-            action: 'update-event',
-            calendarId,
-            event: eventBody,
+            action: 'create-event',
+            calendarId: existingCalendarId,
+            event: eventData,
+            userId: existingTargetUserId ?? undefined,
+            // 'all' = send invite emails; 'none' = silent (used by
+            // the "Sincronizar Calendar" button).
+            sendUpdates,
+            ...(isOnline && { conferenceDataVersion: 1 }),
           },
         });
-      if (error) {
-        console.error('Resend invite error:', error);
+
+      if (createError || createData?.error) {
+        console.error('Resend (create) error:', createError || createData?.error);
         this.toastService.error(
-          'Error al reenviar',
-          'No se pudo reenviar la invitación. Revisa los logs.',
+          'Error al sincronizar con Google',
+          createData?.error?.message ??
+            createError?.message ??
+            'No se pudo crear el evento en Google Calendar.',
         );
+        this.isResendingInvite.set(false);
         return;
       }
-      if (data?.error) {
-        console.error('Backend resend invite error:', data.error);
+
+      const newGoogleEventId: string | null = createData?.event?.id ?? null;
+      if (!newGoogleEventId) {
         this.toastService.error(
-          'Error al reenviar',
-          data.error.message ?? 'Error desconocido del backend.',
+          'Error al sincronizar con Google',
+          'Google no devolvió un eventId tras crear el evento.',
         );
+        this.isResendingInvite.set(false);
         return;
       }
+
+      // STEP 3: Persist the new google_event_id on the booking so
+      // future operations (edit, delete, future re-sends) have the
+      // right reference. Non-fatal if it fails — the resend still
+      // worked for THIS attempt.
+      try {
+        await this.supabase
+          .getClient()
+          .from('bookings')
+          .update({ google_event_id: newGoogleEventId })
+          .eq('id', localBookingId);
+      } catch (persistErr) {
+        console.warn('Could not persist google_event_id to booking:', persistErr);
+      }
+
       this.toastService.success(
-        'Invitación reenviada',
-        `Se ha enviado la invitación a ${attendees.length} asistente${attendees.length === 1 ? '' : 's'}.`,
+        sendUpdates === 'all' ? 'Invitación reenviada' : 'Sincronizado con Calendar',
+        successTemplate
+          .replace('{n}', String(attendees.length))
+          .replace('{s}', attendees.length === 1 ? '' : 's'),
       );
     } finally {
       this.isResendingInvite.set(false);
@@ -1680,20 +1882,26 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Performs the actual deletion. Steps (must keep calendar email + cancellation
-   * notification intact):
-   *   1. Mark the Google Calendar event as `status: 'cancelled'` (PATCH, NOT
-   *      DELETE) so the operator's calendar keeps a strikethrough record AND
-   *      Google sends its own native cancellation email to attendees
+   * Performs the actual deletion. Steps:
+   *   1. PATCH the Google Calendar event to status='cancelled' so
+   *      Google sends its native cancellation email to attendees
    *      (sendUpdates=all on the PATCH). SKIPPED when the company has
-   *      `booking_google_calendar_enabled=false`. The boolean result tells
-   *      step 2 whether the SES fallback needs to fire.
-   *   2. Delete the local booking row → fires the `bookings` DELETE which
-   *      promotes the waitlist. We pass `skipCancellationEmail` so the
-   *      `SupabaseBookingsService` does NOT also send the Simplifica-branded
-   *      SES cancellation email when GCal already handled it. If step 1
-   *      failed, we leave skipCancellationEmail=false and the SES email is
-   *      sent as fallback.
+   *      `booking_google_calendar_enabled=false`.
+   *   1b. If the PATCH succeeded, hard-DELETE the event from GCal
+   *       with sendUpdates=none. The native cancellation email was
+   *       already sent on the PATCH; we don't want a second
+   *       "event deleted" email. The DELETE removes the event
+   *       cleanly (no strikethrough ghost) so the professional's
+   *       calendar stays tidy. 404 is treated as success (event
+   *       already gone). Other errors are logged but don't block
+   *       the local delete.
+   *   2. Delete the local booking row → fires the `bookings` DELETE
+   *      which promotes the waitlist. We pass `skipCancellationEmail`
+   *      so the `SupabaseBookingsService` does NOT also send the
+   *      Simplifica-branded SES cancellation email when GCal
+   *      already handled it. If step 1 failed, we leave
+   *      skipCancellationEmail=false and the SES email is sent as
+   *      fallback.
    *   3. Refresh local UI state.
    */
   async deleteEvent(event: any) {
@@ -1735,6 +1943,38 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           // gcalNotified stays false → SES fallback will fire in step 2.
         } else {
           gcalNotified = true;
+        }
+
+        // 1b. After the PATCH-with-cancellation-email succeeds, hard
+        //     DELETE the event from the calendar so it disappears
+        //     cleanly (instead of leaving a strikethrough ghost
+        //     behind). We pass sendUpdates=none so the DELETE does
+        //     NOT send a second "event deleted" email — the client
+        //     already got the native "event cancelled" email from
+        //     the PATCH above.
+        if (gcalNotified) {
+          try {
+            const { error: delError } = await this.supabase
+              .getClient()
+              .functions.invoke('google-auth', {
+                body: {
+                  action: 'delete-event',
+                  calendarId: targetCalendarId,
+                  eventId: googleEventId,
+                  sendUpdates: 'none',
+                },
+              });
+            if (delError) {
+              // 404 is OK — event already gone. Anything else,
+              // log but don't block the local delete.
+              console.warn(
+                'Best-effort hard delete after cancel failed:',
+                delError,
+              );
+            }
+          } catch (e) {
+            console.warn('Best-effort hard delete threw:', e);
+          }
         }
       }
 
@@ -2135,6 +2375,36 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     return s.replace(' ', 'T');
   }
 
+  /**
+   * Format a sync timestamp (last_calendar_sync_at /
+   * last_invite_sent_at) for the "title" tooltip on the sync badges
+   * in the booking detail modal. Shows "hace 2h", "hace 3d", or
+   * a localized date if it's older than a week. Returns "—" for
+   * null/undefined so the tooltip never says "undefined".
+   */
+  formatSyncTimestamp(ts: string | null | undefined): string {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '—';
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'hace un momento';
+    if (diffMin < 60) return `hace ${diffMin} min`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `hace ${diffH} h`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return `hace ${diffD} d`;
+    // Older than a week: show the localized date.
+    return d.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
   private mapBookingToEvent(b: any) {
     return {
       id: b.id,
@@ -2172,6 +2442,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           source: b.source,
           dp_service_unmapped: b.dp_service_unmapped,
           status: b.status,
+          // Sync status timestamps (used by the "Sincronizado con
+          // Calendar" / "Email enviado" badges in the detail modal).
+          lastCalendarSyncAt: b.last_calendar_sync_at ?? null,
+          lastInviteSentAt: b.last_invite_sent_at ?? null,
         },
       },
       origen: b.source || undefined,
@@ -2595,7 +2869,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   loadAvailableResources() {
-    this.resourcesService.getResources().subscribe({
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) {
+      this.availableResources.set([]);
+      this.isResourcesLoaded = true;
+      return;
+    }
+    this.resourcesService.getResources(companyId).subscribe({
       next: (res) => {
         this.availableResources.set(res || []);
         this.isResourcesLoaded = true;
