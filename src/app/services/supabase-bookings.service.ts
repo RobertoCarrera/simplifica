@@ -774,4 +774,38 @@ export class SupabaseBookingsService {
       console.error('[syncRoomCalendars] Exception:', msg);
     }
   }
+
+  /**
+   * Returns the count of future bookings (start_time > now) split by
+   * Google Calendar sync status. One query, three counts via FILTER.
+   * Used by the reconciliation widget's "Reservas futuras" KPI.
+   *
+   * Returns null if the query fails so the UI can render a neutral
+   * placeholder instead of a hard error.
+   */
+  getFutureBookingsSyncStats(companyId: string): Observable<{
+    total: number;
+    synced: number;
+    notSynced: number;
+  } | null> {
+    return from(
+      this.supabase
+        .from('bookings')
+        .select('id, google_event_id', { count: 'exact' })
+        .eq('company_id', companyId)
+        .gt('start_time', new Date().toISOString()),
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          console.error('[getFutureBookingsSyncStats] query error:', result.error);
+          return null;
+        }
+        const rows = result.data ?? [];
+        const total = result.count ?? rows.length;
+        const notSynced = rows.filter((r: any) => !r.google_event_id).length;
+        const synced = total - notSynced;
+        return { total, synced, notSynced };
+      }),
+    );
+  }
 }
