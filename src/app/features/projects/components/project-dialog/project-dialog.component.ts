@@ -110,7 +110,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                 [completedTasks]="completedTasks"
                 [completedTasksCount]="getCompletedTasks()"
                 [professionals]="professionals"
-                [clientName]="getClientDisplayName(project?.client, null)"
+                [clientName]="getClientDisplayName(project?.client, undefined)"
                 [clientAuthUserId]="project?.client?.auth_user_id || null"
                 [projectId]="project?.id || ''"
                 [canCreate]="canCreateTask()"
@@ -1314,6 +1314,9 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
   `,
 })
 export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, AfterViewChecked {
+  // Expose helper for template usage
+  protected readonly getClientDisplayName = getClientDisplayName;
+
   @Input() visible = false;
   @Input() project: Project | null = null;
   @Input() stages: ProjectStage[] = [];

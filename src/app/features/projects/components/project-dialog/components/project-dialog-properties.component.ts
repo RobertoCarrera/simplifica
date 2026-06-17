@@ -171,6 +171,9 @@ export interface TeamMember {
   `,
 })
 export class ProjectDialogPropertiesComponent {
+  // Expose helper for template usage
+  protected readonly getClientDisplayName = getClientDisplayName;
+
   @Input() formData: Partial<Project> = {};
   @Input() stages: ProjectStage[] = [];
   @Input() clients: Customer[] = [];
