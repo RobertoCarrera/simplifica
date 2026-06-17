@@ -2,7 +2,18 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": ["jasmine"]
+    "types": ["node", "jest"],
+    "noPropertyAccessFromIndexSignature": false,
+    "noImplicitAny": false,
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "isolatedModules": true
   },
-  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+  "include": [
+    "src/app/shared/utils/**/*.ts",
+    "src/__mocks__/**/*.ts"
+  ]
 }

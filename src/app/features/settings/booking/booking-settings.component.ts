@@ -18,6 +18,7 @@ import {
   Professional,
 } from '../../../services/supabase-professionals.service';
 import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { buildCleanExtendedProperties } from '../../../shared/utils/booking-sync-helpers';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../../services/professional-blocked-dates.service';
 import { SupabaseResourcesService, Resource } from '../../../services/supabase-resources.service';
@@ -1858,13 +1859,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const isOnline = shared.sessionType === 'online';
       // Build extendedProperties.shared WITHOUT null values. Google
       // Calendar API rejects the create-event payload with 400
-      // "Required" when any of these keys is the literal JSON null
-      // (verified: bookings whose customer has no linked `clients`
-      // row — i.e. clientId is null — fail to sync, while bookings
-      // with a real clientId succeed). Omit the keys entirely when
-      // their value is null/undefined/empty so Google doesn't see
-      // them and doesn't reject the request.
-      const sharedProps: Record<string, string | undefined> = {
+      // "Required" when any of these keys is the literal JSON null.
+      // The logic lives in buildCleanExtendedProperties (tested in
+      // booking-sync-helpers.spec.ts) so both this flow and the
+      // event-form create flow share the same fix.
+      const cleanShared = buildCleanExtendedProperties({
         localBookingId,
         serviceId: shared.serviceId,
         clientId: shared.clientId,
@@ -1875,13 +1874,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         serviceName: shared.serviceName,
         professionalName: shared.professionalName,
         resourceName: shared.resourceName,
-      };
-      const cleanShared: Record<string, string> = {};
-      for (const [k, v] of Object.entries(sharedProps)) {
-        if (v !== null && v !== undefined && v !== '') {
-          cleanShared[k] = v;
-        }
-      }
+      });
       const eventData: any = {
         summary: event.title,
         description: event.description || '',
