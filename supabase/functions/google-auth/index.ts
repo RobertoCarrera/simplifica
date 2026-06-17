@@ -333,6 +333,7 @@ serve(async (req)=>{
       if (conferenceDataVersion != null) {
         createEventParams.set('conferenceDataVersion', String(conferenceDataVersion));
       }
+      console.log('[CREATE-EVENT-INBOUND] calendarId:', calendarId, 'sendUpdates:', sendUpdatesParam || 'all', 'attendees:', JSON.stringify(event?.attendees || []), 'summary:', event?.summary, 'start:', event?.start?.dateTime, 'end:', event?.end?.dateTime, 'localBookingId:', (event as any)?.extendedProperties?.shared?.localBookingId);
       const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${createEventParams.toString()}`, {
         method: 'POST',
         headers: {
@@ -342,6 +343,7 @@ serve(async (req)=>{
         body: JSON.stringify(event)
       });
       if (!response.ok) {
+        console.error('[CREATE-EVENT-GOOGLE-ERR] status:', response.status, 'body:', JSON.stringify(await response.clone().json()));
         const err = await response.json();
         console.error('Google Create Event Error:', err);
         return new Response(JSON.stringify(err), {
@@ -353,6 +355,8 @@ serve(async (req)=>{
         });
       }
       const createdEvent = await response.json();
+
+      console.log('[CREATE-EVENT-GOOGLE-OK] eventId:', createdEvent.id, 'attendees:', JSON.stringify(createdEvent.attendees || []), 'localBookingId:', (event as any)?.extendedProperties?.shared?.localBookingId);
 
       // After a successful create, write the sync timestamps back
       // to the booking row so the frontend can show "Email enviado"
