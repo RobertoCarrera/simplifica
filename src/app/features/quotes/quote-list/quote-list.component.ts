@@ -258,10 +258,37 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
             <i class="fas fa-heartbeat text-[10px]"></i>
             {{ 'quotes.list.live' | transloco }}: {{ liveQuotesCount() }}
           </span>
+          @if (acceptedButNotInvoicedCount() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.acceptedButNotInvoicedHint' | transloco"
+            >
+              <i class="fas fa-file-signature text-[10px]"></i>
+              {{ 'quotes.list.acceptedButNotInvoiced' | transloco }}: {{ acceptedButNotInvoicedCount() }}
+            </span>
+          }
           @if (quotesWithoutTotal() > 0) {
             <span class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium">
               <i class="fas fa-exclamation-triangle text-[10px]"></i>
               {{ 'quotes.list.withoutTotal' | transloco }}: {{ quotesWithoutTotal() }}
+            </span>
+          }
+          @if (quotesForPastConfirmedBookings() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-zinc-100 dark:bg-zinc-700/40 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.quotesForPastConfirmedBookingsHint' | transloco"
+            >
+              <i class="fas fa-history text-[10px]"></i>
+              {{ 'quotes.list.quotesForPastConfirmedBookings' | transloco }}: {{ quotesForPastConfirmedBookings() }}
+            </span>
+          }
+          @if (quotesForCancelledBookings() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-700/40 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.quotesForCancelledBookingsHint' | transloco"
+            >
+              <i class="fas fa-ban text-[10px]"></i>
+              {{ 'quotes.list.quotesForCancelledBookings' | transloco }}: {{ quotesForCancelledBookings() }}
             </span>
           }
 
@@ -269,6 +296,29 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
           <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
 
           <!-- Group 2: Booking universe (sky / emerald / rose) -->
+          <span
+            class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-700/40 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-full font-medium"
+            [title]="'quotes.list.activeBookingsHint' | transloco"
+          >
+            <i class="fas fa-calendar text-[10px]"></i>
+            {{ 'quotes.list.activeBookings' | transloco }}: {{ activeBookings() }}
+          </span>
+          <span
+            class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full font-medium"
+            [title]="'quotes.list.totalBookingsHint' | transloco"
+          >
+            <i class="fas fa-layer-group text-[10px]"></i>
+            {{ 'quotes.list.totalBookings' | transloco }}: {{ totalBookings() }}
+          </span>
+          @if (cancelledBookings() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-700/40 text-stone-700 dark:text-stone-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.cancelledBookingsHint' | transloco"
+            >
+              <i class="fas fa-ban text-[10px]"></i>
+              {{ cancelledBookings() }} {{ 'quotes.list.cancelledBookings' | transloco }}
+            </span>
+          }
           @if (futureBookings() > 0) {
             <span
               class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
@@ -690,6 +740,55 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   });
 
   /**
+   * Count of "accepted but not yet invoiced" quotes — the client said yes
+   * but we haven't generated the invoice yet. These are the ones sitting
+   * in the "vivos" pill that are actually ready to be billed.
+   */
+  acceptedButNotInvoicedCount = computed(() =>
+    this.quotes().filter(
+      (q) => (q.status || '').toLowerCase() === 'accepted' && !q.invoice_id
+    ).length
+  );
+
+  /**
+   * Total bookings in the company regardless of status. Includes
+   * cancelled, no_show, and any other state. The "all-time" count.
+   */
+  totalBookings = signal<number>(0);
+
+  /**
+   * Bookings whose status is cancelled/no_show/anulada. Excluded from
+   * the active count and from the future-bookings pipeline. Shown
+   * separately so the user can see "X of Y total are cancelled".
+   */
+  cancelledBookings = signal<number>(0);
+
+  /**
+   * Quotes linked to a cancelled/no_show booking. Historical: they
+   * were created when the booking was active but the booking was
+   * later cancelled. They count toward the "Total" pill but should
+   * be excluded from any active-pipeline reconciliation. Surfaced
+   * so the user can see how much of the "Total" is historical.
+   */
+  quotesForCancelledBookings = signal<number>(0);
+
+  /**
+   * Quotes linked to a confirmed booking whose start_time is in the
+   * past. These are quotes that should normally be invoiced — they
+   * represent work that has happened. Combined with `invoiced` count
+   * gives the "should-be-invoiced" universe on the quote side.
+   */
+  quotesForPastConfirmedBookings = signal<number>(0);
+
+  /**
+   * Total active bookings in the company: NOT cancelled, NOT no_show.
+   * This is the "true size" of the booking universe — used as a sanity
+   * check against the quote count (a quote should normally exist for
+   * each of these, modulo draft quotes and orphan quotes).
+   */
+  activeBookings = signal<number>(0);
+
+  /**
    * Bookings whose `start_time` is in the future. These are sessions
    * that have NOT yet happened. Loaded via `loadFutureBookingsCount()`
    * because it is a property of `bookings`, not of `quotes`.
@@ -759,26 +858,81 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private async loadFutureBookingsCount(): Promise<void> {
     try {
       const now = new Date().toISOString();
+      // Cancelled bookings don't need a quote — exclude them so the badge
+      // doesn't show a non-issue (e.g. a Docplanner-cancelled booking whose
+      // client_id was wiped by the sync). Same filter applied to both
+      // counters so total == withQ + withoutQ stays consistent.
       const { count: total, error: e1 } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
-        .gt('start_time', now);
+        .gt('start_time', now)
+        .neq('status', 'cancelled');
       if (e1) throw e1;
       this.futureBookings.set(total ?? 0);
 
       // Future bookings WITH a quote: filter by quote_id IS NOT NULL.
-      // Filter status 'cancelled' is NOT applied here — the question "have a quote?"
-      // is about the link, not about the quote lifecycle. A cancelled quote is
-      // still a quote attached to the booking.
       const { count: withQ, error: e2 } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
         .gt('start_time', now)
+        .neq('status', 'cancelled')
         .not('quote_id', 'is', null);
       if (e2) throw e2;
       this.futureBookingsWithQuote.set(withQ ?? 0);
 
       this.futureBookingsWithoutQuote.set((total ?? 0) - (withQ ?? 0));
+
+      // Total bookings (regardless of status). The "all-time" universe
+      // size. Used for the "Reservas totales" pill so the user can see
+      // "X activas + Y canceladas = Z totales".
+      const { count: nTotal, error: eTotal } = await this.supabaseClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true });
+      if (eTotal) throw eTotal;
+      this.totalBookings.set(nTotal ?? 0);
+
+      // Cancelled / no_show bookings only. The rest of the lifecycle
+      // treats these as "out of pipeline", so we surface them as a
+      // single counter for transparency.
+      const { count: cancelled, error: eCancelled } = await this.supabaseClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['cancelled', 'no_show', 'no-show', 'canceled', 'anulada', 'anulado']);
+      if (eCancelled) throw eCancelled;
+      this.cancelledBookings.set(cancelled ?? 0);
+
+      // Total active bookings (no time filter, just exclude cancelled /
+      // no_show). Gives a single "true size" of the booking universe for
+      // the quote-list pill. Computed in parallel with the future counts.
+      const { count: active, error: eActive } = await this.supabaseClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .not('status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)');
+      if (eActive) throw eActive;
+      this.activeBookings.set(active ?? 0);
+
+      // Quotes linked to cancelled / no_show bookings. Historical
+      // counter — these quotes no longer represent an open business
+      // conversation. Surfaced so the user can see how much of the
+      // "Total" quote count is historical baggage.
+      // RLS scopes to the current company automatically.
+      const { count: qCancelled, error: eQCancelled } = await this.supabaseClient.instance
+        .from('quotes')
+        .select('id, bookings!inner(status)', { count: 'exact', head: true })
+        .in('bookings.status', ['cancelled', 'no_show', 'no-show', 'canceled', 'anulada', 'anulado']);
+      if (eQCancelled) throw eQCancelled;
+      this.quotesForCancelledBookings.set(qCancelled ?? 0);
+
+      // Quotes linked to past confirmed bookings. These are quotes
+      // that should normally be invoiced. Combined with invoiced count
+      // gives the "should-be-invoiced" universe on the quote side.
+      const { count: qPast, error: eQPast } = await this.supabaseClient.instance
+        .from('quotes')
+        .select('id, bookings!inner(status, start_time)', { count: 'exact', head: true })
+        .not('bookings.status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)')
+        .lt('bookings.start_time', now);
+      if (eQPast) throw eQPast;
+      this.quotesForPastConfirmedBookings.set(qPast ?? 0);
     } catch (e) {
       console.warn('Could not load future bookings count', e);
     }

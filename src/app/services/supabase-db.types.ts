@@ -13132,7 +13132,7 @@ export type Database = {
         | 'email_marketing';
       lead_status: 'new' | 'contacted' | 'no_answer' | 'meeting_scheduled' | 'won' | 'lost';
       module_status: 'activado' | 'desactivado' | 'en_desarrollo';
-      payment_method: 'cash' | 'bank_transfer' | 'card' | 'direct_debit' | 'paypal' | 'other';
+      payment_method: 'cash' | 'bank_transfer' | 'card' | 'direct_debit' | 'paypal' | 'other' | 'bizum' | 'online';
       quote_status:
         | 'draft'
         | 'sent'
@@ -13323,7 +13323,7 @@ export const Constants = {
       ],
       lead_status: ['new', 'contacted', 'no_answer', 'meeting_scheduled', 'won', 'lost'],
       module_status: ['activado', 'desactivado', 'en_desarrollo'],
-      payment_method: ['cash', 'bank_transfer', 'card', 'direct_debit', 'paypal', 'other'],
+      payment_method: ['cash', 'bank_transfer', 'card', 'direct_debit', 'paypal', 'other', 'bizum', 'online'],
       quote_status: [
         'draft',
         'sent',
