@@ -1,0 +1,4 @@
+first_name,surname,patient_id,episode_id,sequence,date,title,value
+Ana,García,PAT-DEMO-001,EP-DEMO-001,1,2026-06-10,Control mensual,Paciente evoluciona favorablemente. Dolor en escala EVA 2/10. Continuar plan establecido.
+Luis,Martín,PAT-DEMO-002,EP-DEMO-002,1,2026-06-12,Seguimiento,Revisión post-operatoria. ROM completo. Alta médica recomendada con plan de mantenimiento.
+Marta,López,PAT-DEMO-003,EP-DEMO-003,2,2026-06-14,Segunda sesión,Mejoría subjetiva del 40%. Reducción de frecuencia de cefaleas. Continuar tratamiento.
