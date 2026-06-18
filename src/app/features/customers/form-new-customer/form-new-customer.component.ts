@@ -553,12 +553,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
           }
         }
         // Common
-        if (!this.formData.email) {
-          this.toastService.error('Faltan datos', 'El email es obligatorio');
+        if (!this.formData.phone) {
+          this.toastService.error('Faltan datos', 'El teléfono es obligatorio');
           return false;
         }
-        // Basic Email validation
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
+        // Optional Email format validation (only when provided)
+        if (this.formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
           this.toastService.error('Datos inválidos', 'El formato del email no es correcto');
           return false;
         }
@@ -962,16 +962,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
     // Validate form
     if (this.formData.client_type === 'business') {
-      if (!this.formData.business_name || !this.formData.cif_nif || !this.formData.email) {
+      if (!this.formData.business_name || !this.formData.cif_nif || !this.formData.phone) {
         this.toastService.error(
           'Faltan datos obligatorios',
-          'Por favor completa Razón Social, CIF/NIF y Email.',
+          'Por favor completa Razón Social, CIF/NIF y Teléfono.',
         );
         return;
       }
     } else {
-      if (!this.formData.name || !this.formData.email) {
-        this.toastService.error('Faltan datos obligatorios', 'Por favor completa Nombre y Email.');
+      if (!this.formData.name || !this.formData.phone) {
+        this.toastService.error(
+          'Faltan datos obligatorios',
+          'Por favor completa Nombre y Teléfono.',
+        );
         return;
       }
     }

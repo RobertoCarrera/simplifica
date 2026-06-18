@@ -29,6 +29,11 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     availableCalendars = input<any[]>([]);
     availableResources = input<Resource[]>([]);
+    @Output() resourcesReloaded = new EventEmitter<Resource[]>();
+    resourcesOverride = signal<Resource[] | null>(null);
+    readonly currentResources = computed<Resource[]>(() =>
+        this.resourcesOverride() ?? this.availableResources()
+    );
 
     professionals = signal<Professional[]>([]);
     loading = signal<boolean>(false);
@@ -318,6 +323,25 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     openModal(professional?: Professional) {
         this.editingId = professional?.id || null;
         this.selectedServiceIds = professional?.services?.map(s => s.id) || [];
+
+        // Refetch resources defensively on every modal open. The parent
+        // (booking-settings) caches resources once per tab visit, but its
+        // cached list can be empty/stale (e.g. when switching companies or
+        // when the first load races the modal opening). Doing a direct fetch
+        // here guarantees the "Sala por Defecto" section renders with fresh
+        // data even if the parent's input never gets updated.
+        const companyId = this.authService.currentCompanyId();
+        if (companyId) {
+            this.supabaseClient.instance
+                .from('resources')
+                .select('id, name, type, is_active')
+                .eq('company_id', companyId)
+                .then(({ data, error }) => {
+                    if (!error && data) {
+                        this.resourcesOverride.set(data as any);
+                    }
+                });
+        }
 
         if (professional) {
             this.form.patchValue({

@@ -216,13 +216,12 @@
                   <div class="form-group">
                     <label
                       class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >{{ 'gdpr.formNew.fields.email' | transloco }} *</label
+                      >{{ 'gdpr.formNew.fields.email' | transloco }}</label
                     >
                     <input
                       type="email"
                       name="email"
                       [(ngModel)]="formData.email"
-                      required
                       (blur)="validateEmail()"
                       [class.border-red-500]="emailError()"
                       class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
@@ -235,12 +234,13 @@
                   <div class="form-group">
                     <label
                       class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >{{ 'gdpr.formNew.fields.telefono' | transloco }}</label
+                      >{{ 'gdpr.formNew.fields.telefono' | transloco }} *</label
                     >
                     <input
                       type="tel"
                       name="telefono"
                       [(ngModel)]="formData.phone"
+                      required
                       class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                       placeholder="{{ 'gdpr.formNew.placeholders.telefono' | transloco }}"
                     />

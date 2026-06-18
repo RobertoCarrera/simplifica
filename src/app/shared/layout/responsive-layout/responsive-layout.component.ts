@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
 import { MobileBottomNavComponent } from '../mobile-bottom-nav/mobile-bottom-nav.component';
+import { InboundOnboardingBannerComponent } from '../../../features/admin/inbound-mail/inbound-onboarding-banner.component';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { AuthService } from '../../../services/auth.service';
 @Component({
   selector: 'app-responsive-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent],
+  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent, InboundOnboardingBannerComponent],
   template: `
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
     <!-- NOTE: Only show the blank loading screen on *private* routes.
@@ -33,13 +34,16 @@ import { AuthService } from '../../../services/auth.service';
 
         <!-- Main content area -->
         <div class="main-content-area flex flex-col h-full" [class.collapsed]="mainAreaClasses() === 'collapsed'">
+          <!-- Inbound mail onboarding banner (only shown if needed) -->
+          <app-inbound-onboarding-banner></app-inbound-onboarding-banner>
+
           <!-- Page content -->
           <main class="flex-1" [ngClass]="[getMainContentPadding(), getOverflowClass()]">
             <div [ngClass]="getContentWrapperClasses()">
               <router-outlet></router-outlet>
             </div>
           </main>
-          
+
           <!-- Mobile bottom navigation -->
           <app-mobile-bottom-nav></app-mobile-bottom-nav>
         </div>
@@ -171,7 +175,7 @@ export class ResponsiveLayoutComponent {
     if (isCustomScrollRoute || this.currentUrl().includes('/configuracion')) {
       return 'p-0';
     }
-    return 'p-6';
+    return 'p-0';
   }
 
   getOverflowClass(): string {
