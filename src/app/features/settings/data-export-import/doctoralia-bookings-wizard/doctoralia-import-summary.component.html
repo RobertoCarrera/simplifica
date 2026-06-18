@@ -1,0 +1,90 @@
+<div class="text-center py-4">
+  <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+       [ngClass]="hasFailures() ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'">
+    <i class="fas text-2xl"
+       [ngClass]="hasFailures() ? 'fa-exclamation-triangle text-amber-600 dark:text-amber-400' : 'fa-check-circle text-emerald-600 dark:text-emerald-400'">
+    </i>
+  </div>
+
+  <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+    {{ hasFailures()
+        ? ('doctoraliaBookingsImport.summary.titlePartial' | transloco)
+        : ('doctoraliaBookingsImport.summary.titleComplete' | transloco) }}
+  </h3>
+  <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+    {{ 'doctoraliaBookingsImport.summary.elapsed' | transloco }}: <strong>{{ elapsedSec }}</strong>
+  </p>
+
+  <!-- Stat cards: 6 stat boxes (one row of 3, one row of 3) -->
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto mb-6">
+    <div class="bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-3">
+      <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ newCount }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.new' | transloco }}</div>
+    </div>
+    <div class="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-3">
+      <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ result.deduped }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.deduped' | transloco }}</div>
+    </div>
+    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+      <div class="text-2xl font-bold text-gray-700 dark:text-gray-300">{{ result.total }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.attempted' | transloco }}</div>
+    </div>
+    <div *ngIf="hasNotesImported()" class="bg-indigo-50 dark:bg-indigo-900/10 rounded-lg p-3">
+      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ result.notesImported }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.notesImported' | transloco }}</div>
+    </div>
+    <div *ngIf="hasNotesDropped()" class="bg-orange-50 dark:bg-orange-900/10 rounded-lg p-3">
+      <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ result.notesDropped }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.notesDropped' | transloco }}</div>
+    </div>
+    <div class="rounded-lg p-3"
+         [ngClass]="hasFailures() ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-800/50'">
+      <div class="text-2xl font-bold"
+           [ngClass]="hasFailures() ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'">
+        {{ result.failed.length }}
+      </div>
+      <div class="text-xs text-gray-600 dark:text-gray-400">{{ 'doctoraliaBookingsImport.summary.failed' | transloco }}</div>
+    </div>
+  </div>
+
+  <!-- Failures preview -->
+  <div *ngIf="hasFailures()"
+       class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 rounded-lg p-4 mb-4 text-left max-w-2xl mx-auto">
+    <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2 flex items-center gap-2">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ 'doctoraliaBookingsImport.summary.failuresTitle' | transloco }} ({{ result.failed.length }})
+    </h4>
+    <ul class="text-xs text-red-700 dark:text-red-300 space-y-1 max-h-40 overflow-y-auto">
+      <li *ngFor="let f of result.failed.slice(0, 10)">
+        <strong>Fila {{ f.rowIndex }}</strong> · {{ f.errorCode }}: {{ f.errorMessage }}
+      </li>
+    </ul>
+    <p *ngIf="result.failed.length > 10" class="text-xs text-red-600 dark:text-red-400 mt-2 italic">
+      + {{ result.failed.length - 10 }} más en el reporte descargable.
+    </p>
+  </div>
+
+  <!-- Security notice: no notifications, no quotes, no invoices -->
+  <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-3 mb-4 text-left max-w-2xl mx-auto">
+    <p class="text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
+      <i class="fas fa-shield-alt mt-0.5"></i>
+      <span>
+        {{ 'doctoraliaBookingsImport.summary.securityNote' | transloco }}
+      </span>
+    </p>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-center gap-3">
+    <button *ngIf="hasFailures()"
+            (click)="downloadFailures.emit()"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm flex items-center gap-2">
+      <i class="fas fa-download"></i>
+      {{ 'doctoraliaBookingsImport.summary.downloadFailures' | transloco }}
+    </button>
+    <button (click)="closed.emit()"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium">
+      {{ 'doctoraliaBookingsImport.summary.close' | transloco }}
+    </button>
+  </div>
+</div>
