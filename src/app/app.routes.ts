@@ -8,7 +8,6 @@ import {
   GuestGuard,
   OwnerAdminGuard,
   StrictAdminGuard,
-  SuperAdminGuard,
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
 import { MfaStepUpGuard } from "./core/guards/mfa-stepup.guard";
@@ -226,6 +225,18 @@ export const routes: Routes = [
     title: "Reservas | Simplifica CRM",
   },
 
+  // Booking conciliation — bookings <-> quotes conciliation view
+  {
+    path: "reservas/conciliacion",
+    loadComponent: () =>
+      import("./features/bookings/reconciliation/reconciliation.component").then(
+        (m) => m.ReconciliationComponent,
+      ),
+    canActivate: [AuthGuard, ModuleGuard],
+    data: { moduleKey: "moduloReservas" },
+    title: "Conciliación de reservas | Simplifica CRM",
+  },
+
   // Confirm Session — session close workflow
   // Triggered by HIGH priority notification after a session ends.
   {
@@ -360,6 +371,26 @@ export const routes: Routes = [
         (m) => m.EmailAccountsComponent,
       ),
     canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+
+  // Inbound mail (owner-editable behavior)
+  {
+    path: "settings/inbound-mail",
+    loadComponent: () =>
+      import("./features/admin/inbound-mail/inbound-mail-settings.component").then(
+        (m) => m.InboundMailSettingsComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+
+  // Inbound mail admin (superadmin only)
+  {
+    path: "admin/inbound-mail",
+    loadComponent: () =>
+      import("./features/admin/inbound-mail/inbound-mail-admin.component").then(
+        (m) => m.InboundMailAdminComponent,
+      ),
+    canActivate: [AuthGuard, AdminGuard],
   },
   {
     path: "admin/email-accounts/oauth-callback",

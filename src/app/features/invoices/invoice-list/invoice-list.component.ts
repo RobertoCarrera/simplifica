@@ -233,8 +233,15 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
       <div
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
-        <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-4">
-          <span>{{ invoices().length }} {{ 'invoices.list.invoices' | transloco }}</span>
+        <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-3">
+          <!-- Group 1: Invoice universe (indigo / red / amber) -->
+          <span
+            class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
+            [title]="'invoices.list.totalInvoicesHint' | transloco"
+          >
+            <i class="fas fa-file-invoice-dollar text-[10px]"></i>
+            {{ 'invoices.list.totalInvoices' | transloco }}: {{ invoices().length }}
+          </span>
           @if (zeroTotalCount() > 0) {
             <span class="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-full font-medium">
               <i class="fas fa-exclamation-circle text-[10px]"></i>
@@ -247,16 +254,46 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
               {{ unpaidAndPastInvoiceDateCount() }} {{ 'invoices.list.unpaidPast' | transloco }}
             </span>
           }
-          @if (pastBookings() > 0) {
+          @if (orphanInvoices() > 0) {
             <span
-              class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
-              [title]="'invoices.list.pastBookingsHint' | transloco"
+              class="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'invoices.list.orphanInvoicesHint' | transloco"
             >
-              <i class="fas fa-calendar-check text-[10px]"></i>
-              {{ pastBookings() }} {{ 'invoices.list.pastBookings' | transloco }}
+              <i class="fas fa-unlink text-[10px]"></i>
+              {{ orphanInvoices() }} {{ 'invoices.list.orphanInvoices' | transloco }}
             </span>
           }
-        </div>
+
+          <!-- Visual divider between universes -->
+          <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
+
+          <!-- Group 2: Booking universe (sky / emerald / rose) -->
+          <span
+            class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-medium"
+            [title]="'invoices.list.pastBookingsTotalHint' | transloco"
+          >
+            <i class="fas fa-calendar-check text-[10px]"></i>
+            {{ 'invoices.list.pastBookingsTotal' | transloco }}: {{ pastBookingsTotal() }}
+          </span>
+          @if (pastBookingsWithInvoice() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'invoices.list.pastBookingsWithInvoiceHint' | transloco"
+            >
+              <i class="fas fa-link text-[10px]"></i>
+              {{ pastBookingsWithInvoice() }} {{ 'invoices.list.pastBookingsWithInvoice' | transloco }}
+            </span>
+          }
+          @if (pastBookingsWithoutInvoice() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-rose-100 dark:bg-rose-900/20 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'invoices.list.pastBookingsWithoutInvoiceHint' | transloco"
+            >
+              <i class="fas fa-exclamation-triangle text-[10px]"></i>
+               {{ pastBookingsWithoutInvoice() }} {{ 'invoices.list.pastBookingsWithoutInvoice' | transloco }}
+             </span>
+           }
+         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
@@ -303,14 +340,14 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {{ inv.invoice_date | date: 'dd/MM/yyyy' }}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                      [ngClass]="getStatusClass(inv)"
-                    >
-                      {{ getStatusLabel(inv) }}
-                    </span>
-                  </td>
+                   <td class="px-6 py-4 whitespace-nowrap">
+                     <span
+                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                       [ngClass]="getStatusClass(inv)"
+                     >
+                       {{ getStatusI18nKey(inv) | transloco }}
+                     </span>
+                   </td>
                   <td
                     class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-100"
                   >
@@ -419,7 +456,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
                 [ngClass]="getStatusClass(inv)"
               >
-                {{ getStatusLabel(inv) }}
+                {{ getStatusI18nKey(inv) | transloco }}
               </span>
             </div>
 
@@ -544,16 +581,26 @@ export class InvoiceListComponent {
   });
 
   /**
-   * Bookings whose `start_time` is in the past (already performed).
-   * This is the time-based snapshot of "sessions already held".
-   * In an ideal system this number should match `invoices().length`,
-   * because every past session should produce one invoice. The visible
-   * gap between this counter and the invoices counter is what
-   * `unpaidAndPastInvoiceDateCount` already accounts for (and more).
-   * Loaded via `loadPastBookingsCount()` because it is a property of
-   * `bookings`, not of `invoices`.
+   * Reconciliation pills for the booking→invoice flow. Mirrors the
+   * quote-list pill group: a past, non-cancelled booking should normally
+   * have an invoice attached.
+   *
+   * Counts are of *bookings*, not invoices:
+   *  - pastBookingsTotal: bookings with start_time < now AND status NOT IN
+   *    (cancelled, no_show). The "universe" that should be invoiced.
+   *  - pastBookingsWithInvoice: of those, how many have invoice_id set.
+   *  - pastBookingsWithoutInvoice: of those, how many DON'T have invoice_id.
+   *    Non-zero = drift to fix (booking confirmed but never billed).
+   *
+   * The orphan counter is of *invoices*:
+   *  - orphanInvoices: invoices whose linked quote is missing or whose
+   *    booking is not in the "past facturable" universe. Includes manual
+   *    invoices, pre-payments, and recurring invoices without a 1:1 booking.
    */
-  pastBookings = signal<number>(0);
+  pastBookingsTotal = signal<number>(0);
+  pastBookingsWithInvoice = signal<number>(0);
+  pastBookingsWithoutInvoice = signal<number>(0);
+  orphanInvoices = signal<number>(0);
 
   async markAsPaid(inv: Invoice): Promise<void> {
     if (!this.canMarkAsPaid(inv)) return;
@@ -697,18 +744,77 @@ export class InvoiceListComponent {
   }
 
   /**
-   * Counts bookings with `start_time` less than or equal to now.
-   * Time-bucketed snapshot: "sessions already performed".
-   * Non-fatal: counter stays at 0 if the query fails.
+   * Counts the four signals that drive the invoice reconciliation pills:
+   *   - pastBookingsTotal: bookings with start_time < now AND status not
+   *     in (cancelled, no_show, canceled). The "should-be-invoiced" universe.
+   *   - pastBookingsWithInvoice: of those, how many have invoice_id set.
+   *   - pastBookingsWithoutInvoice: the gap, the drift to fix.
+   *   - orphanInvoices: invoices with no quote, or whose quote has no
+   *     booking, or whose booking is not in the past-facturable set.
+   *     Manual invoices, pre-payments, recurring without booking all land here.
+   *
+   * The "descuadre" pill surfaces the absolute sum of (without invoice)
+   * and (orphan invoices) as a single number to surface what needs review.
+   *
+   * Non-fatal: counters stay at 0 if any query fails.
    */
   private async loadPastBookingsCount(): Promise<void> {
     try {
-      const { count, error } = await this.supabase.instance
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .lte('start_time', new Date().toISOString());
-      if (error) throw error;
-      this.pastBookings.set(count ?? 0);
+      const now = new Date().toISOString();
+      const supabase = this.supabase.instance;
+
+      // Past facturable bookings — the universe that should be invoiced.
+      // Excludes cancelled/no_show because they should NEVER produce an invoice.
+      const [
+        { count: total, error: eTotal },
+        { count: withInv, error: eWith },
+        { count: withoutInv, error: eWithout },
+      ] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .lt('start_time', now)
+          .not('status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)'),
+        supabase
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .lt('start_time', now)
+          .not('status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)')
+          .not('invoice_id', 'is', null),
+        supabase
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .lt('start_time', now)
+          .not('status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)')
+          .is('invoice_id', null),
+      ]);
+
+      if (eTotal) throw eTotal;
+      if (eWith) throw eWith;
+      if (eWithout) throw eWithout;
+
+      this.pastBookingsTotal.set(total ?? 0);
+      this.pastBookingsWithInvoice.set(withInv ?? 0);
+      this.pastBookingsWithoutInvoice.set(withoutInv ?? 0);
+
+      // Orphan invoices: count of invoices whose linked booking is not
+      // in the past-facturable set. Includes:
+      //   - invoices with no source_quote_id (manual)
+      //   - invoices whose quote has no booking
+      //   - invoices whose booking is future or cancelled/no_show
+      //
+      // Computed by a SECURITY DEFINER RPC that joins the three tables
+      // server-side. Resolves the company from auth.uid() so no client
+      // parameter is needed.
+      const { data: orphans, error: eOrphans } = await supabase.rpc(
+        'count_orphan_invoices'
+      );
+      if (eOrphans) {
+        console.warn('Could not load orphan invoices count', eOrphans);
+        this.orphanInvoices.set(0);
+      } else {
+        this.orphanInvoices.set(orphans ?? 0);
+      }
     } catch (e) {
       console.warn('Could not load past bookings count', e);
     }
@@ -760,28 +866,44 @@ export class InvoiceListComponent {
     return formatInvoiceNumber(inv);
   }
 
-  getStatusLabel(inv: Invoice): string {
+  /**
+   * Returns the i18n key for the invoice status, NOT the translated value.
+   * Use this in templates with the `| transloco` pipe so Angular waits for
+   * the translation to be loaded before rendering — otherwise
+   * `translocoService.translate()` can return the key itself as a fallback
+   * (which is what was happening, leaking `invoices.status.draft` into
+   * the UI when the active language hadn't been loaded yet).
+   */
+  getStatusI18nKey(inv: Invoice): string {
     if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
-      return this.translocoService.translate('invoices.status.rectificative');
+      return 'invoices.status.rectificative';
     }
     if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
-      return this.translocoService.translate('invoices.status.issued');
+      return 'invoices.status.issued';
     }
-    const status = inv.status;
     const map: Record<string, string> = {
-      draft: this.translocoService.translate('invoices.status.draft'),
-      approved: this.translocoService.translate('invoices.status.approved'),
-      issued: this.translocoService.translate('invoices.status.issued'),
-      final: this.translocoService.translate('invoices.status.issued'),
-      sent: this.translocoService.translate('invoices.status.sent'),
-      paid: this.translocoService.translate('invoices.status.paid'),
-      partial: this.translocoService.translate('invoices.status.partial'),
-      overdue: this.translocoService.translate('invoices.status.overdue'),
-      cancelled: this.translocoService.translate('invoices.status.cancelled'),
-      void: this.translocoService.translate('invoices.status.void'),
-      rectified: this.translocoService.translate('invoices.status.rectified'),
+      draft: 'invoices.status.draft',
+      approved: 'invoices.status.approved',
+      issued: 'invoices.status.issued',
+      final: 'invoices.status.issued',
+      sent: 'invoices.status.sent',
+      paid: 'invoices.status.paid',
+      partial: 'invoices.status.partial',
+      overdue: 'invoices.status.overdue',
+      cancelled: 'invoices.status.cancelled',
+      void: 'invoices.status.void',
+      rectified: 'invoices.status.rectified',
     };
-    return map[status] || status;
+    return map[inv.status] || inv.status;
+  }
+
+  /**
+   * Convenience: returns the translated label directly, without going
+   * through the template. Used by the CSV exporter. For template
+   * rendering, prefer `getStatusI18nKey(inv) | transloco`.
+   */
+  getStatusLabel(inv: Invoice): string {
+    return this.translocoService.translate(this.getStatusI18nKey(inv));
   }
 
   getStatusClass(inv: Invoice): string {

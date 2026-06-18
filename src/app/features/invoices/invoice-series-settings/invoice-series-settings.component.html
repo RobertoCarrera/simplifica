@@ -2,12 +2,11 @@
   <div class="container mx-auto py-6 px-4">
     <h1 class="text-2xl font-semibold mb-4 flex items-center gap-2">
       <i class="fas fa-layer-group text-blue-600 dark:text-blue-400"></i>
-      Series de facturación
+      {{ 'invoices.seriesSettings.title' | transloco }}
     </h1>
 
     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-      Configura las series de facturas de tu empresa. Debe haber como mínimo una serie activa y una
-      marcada como predeterminada.
+      {{ 'invoices.seriesSettings.description' | transloco }}
     </p>
 
     @if (error()) {
@@ -23,38 +22,55 @@
           (click)="startCreate()"
         >
           <i class="fas fa-plus mr-1"></i>
-          Nueva serie
+          {{ 'invoices.seriesSettings.new' | transloco }}
         </button>
       }
       @if (loading()) {
-        <div class="text-sm text-gray-500 dark:text-gray-400">Cargando...</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400">{{ 'invoices.seriesSettings.loading' | transloco }}</div>
       }
     </div>
 
     @if (creating()) {
       <div class="mb-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
-        <h2 class="font-semibold mb-3 text-sm text-gray-900 dark:text-white">Crear nueva serie</h2>
+        <h2 class="font-semibold mb-3 text-sm text-gray-900 dark:text-white">{{ 'invoices.seriesSettings.createTitle' | transloco }}</h2>
+
+        <!-- Info panel: hard constraints to keep in mind when creating a new series -->
+        <div
+          class="mb-4 flex gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200"
+          role="note"
+        >
+          <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5 shrink-0"></i>
+          <div>
+            <p class="font-medium mb-1">{{ 'invoices.seriesSettings.createInfoTitle' | transloco }}</p>
+            <ul class="list-disc pl-4 space-y-0.5">
+              <li>{{ 'invoices.seriesSettings.createInfoUniqueness' | transloco }}</li>
+              <li>{{ 'invoices.seriesSettings.createInfoDefault' | transloco }}</li>
+              <li>{{ 'invoices.seriesSettings.createInfoNoGap' | transloco }}</li>
+            </ul>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
           <div>
-            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Código</label>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.code' | transloco }}</label>
             <input
               class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
               [(ngModel)]="newSeries.series_code"
               name="series_code"
-              placeholder="Ej: A"
+              [placeholder]="'invoices.seriesSettings.codePlaceholder' | transloco"
             />
           </div>
           <div class="md:col-span-2">
-            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.name' | transloco }}</label>
             <input
               class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
               [(ngModel)]="newSeries.series_name"
               name="series_name"
-              placeholder="Ej: Serie General"
+              [placeholder]="'invoices.seriesSettings.namePlaceholder' | transloco"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Año</label>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.year' | transloco }}</label>
             <input
               type="number"
               class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
@@ -63,23 +79,27 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Prefijo</label>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.prefix' | transloco }}</label>
             <input
               class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
               [(ngModel)]="newSeries.prefix"
               name="prefix"
-              placeholder="Ej: F"
+              [placeholder]="'invoices.seriesSettings.prefixPlaceholder' | transloco"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Siguiente número</label>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.nextNumber' | transloco }}</label>
             <input
               type="number"
               min="1"
               class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
               [(ngModel)]="newSeries.next_number"
               name="next_number"
+              [placeholder]="'invoices.seriesSettings.nextNumberPlaceholder' | transloco"
             />
+            <p class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+              {{ 'invoices.seriesSettings.nextNumberHint' | transloco }}
+            </p>
           </div>
           <div class="flex items-center gap-2 mt-5">
             <input
@@ -88,7 +108,7 @@
               name="is_active"
               class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
             />
-            <span class="text-xs text-gray-700 dark:text-gray-300">Activa</span>
+            <span class="text-xs text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.active' | transloco }}</span>
           </div>
           <div class="flex items-center gap-2 mt-5">
             <input
@@ -97,7 +117,11 @@
               name="is_default"
               class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
             />
-            <span class="text-xs text-gray-700 dark:text-gray-300">Predeterminada</span>
+            <span class="text-xs text-gray-700 dark:text-gray-300">{{ 'invoices.seriesSettings.default' | transloco }}</span>
+            <i
+              class="fas fa-info-circle text-gray-400 dark:text-gray-500 cursor-help"
+              [title]="'invoices.seriesSettings.defaultHint' | transloco"
+            ></i>
           </div>
           <div class="flex items-center gap-2 mt-5">
             <input
@@ -111,14 +135,14 @@
         </div>
         <div class="mt-4 flex gap-2 justify-end text-sm">
           <button type="button" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors" (click)="cancelCreate()">
-            Cancelar
+            {{ 'invoices.seriesSettings.cancel' | transloco }}
           </button>
           <button
             type="button"
             class="px-4 py-1 rounded bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
             (click)="createSeries()"
           >
-            Guardar
+            {{ 'invoices.seriesSettings.save' | transloco }}
           </button>
         </div>
       </div>
@@ -128,15 +152,16 @@
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-700/50">
           <tr>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Código</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Nombre</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Año</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Prefijo</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Siguiente Nº</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Activa</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Predeterminada</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.code' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.name' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.year' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.prefix' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.nextNumber' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.invoicesCount' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.active' | transloco }}</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.default' | transloco }}</th>
             <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">VeriFactu</th>
-            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Actualizado</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'invoices.seriesSettings.updated' | transloco }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -145,20 +170,135 @@
               <td class="px-3 py-2 font-medium text-gray-900 dark:text-white">{{ s.series_code }}</td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.series_name }}</td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.year }}</td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.prefix }}</td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.next_number }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">
+                @if (editingPrefix() !== null) {
+                  <div class="flex items-center gap-1">
+                    <input
+                      type="text"
+                      [value]="editingPrefix()"
+                      (input)="onPrefixInputChange($any($event.target).value)"
+                      (keyup.enter)="commitEditPrefix(s)"
+                      (keyup.escape)="cancelEditPrefix()"
+                      maxlength="16"
+                      class="w-24 border border-gray-300 dark:border-gray-600 rounded px-2 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                    <button
+                      type="button"
+                      (click)="commitEditPrefix(s)"
+                      class="px-2 py-0.5 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                      [title]="'invoices.seriesSettings.save' | transloco">
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="cancelEditPrefix()"
+                      class="px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
+                      [title]="'invoices.seriesSettings.cancel' | transloco">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  @if (prefixError()) {
+                    <p class="mt-1 text-[10px] text-red-600 dark:text-red-400">
+                      {{ prefixError() | transloco }}
+                    </p>
+                  } @else {
+                    <p class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                      {{ 'invoices.seriesSettings.prefixHint' | transloco }}
+                    </p>
+                  }
+                } @else {
+                  <button
+                    type="button"
+                    (click)="startEditPrefix(s)"
+                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white transition-colors"
+                    [title]="'invoices.seriesSettings.editPrefix' | transloco">
+                    <span class="font-mono">{{ s.prefix || '—' }}</span>
+                    <i class="fas fa-pen text-[10px] text-gray-400"></i>
+                  </button>
+                }
+              </td>
+              <td class="px-3 py-2">
+                @if (editingSeriesId() === s.id) {
+                  <div class="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="1"
+                      [value]="editingValue()"
+                      (input)="onEditInputChange($any($event.target).value)"
+                      (keyup.enter)="commitEditNextNumber(s)"
+                      (keyup.escape)="cancelEditNextNumber()"
+                      class="w-24 border border-gray-300 dark:border-gray-600 rounded px-2 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                    <button
+                      type="button"
+                      (click)="commitEditNextNumber(s)"
+                      [disabled]="!currentValidation().valid"
+                      class="px-2 py-0.5 rounded text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white transition-colors"
+                      [title]="'invoices.seriesSettings.save' | transloco">
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="cancelEditNextNumber()"
+                      class="px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
+                      [title]="'invoices.seriesSettings.cancel' | transloco">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="startEditNextNumber(s)"
+                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white transition-colors"
+                    [title]="'invoices.seriesSettings.editNextNumber' | transloco">
+                    <span class="font-mono">{{ s.next_number }}</span>
+                    <i class="fas fa-pen text-[10px] text-gray-400"></i>
+                  </button>
+                }
+                @if (editingSeriesId() === s.id) {
+                  <div class="mt-1 text-[10px]">
+                    @if (inlineError()) {
+                      <p class="text-red-600 dark:text-red-400">{{ inlineError() | transloco }}</p>
+                    } @else if (inlineWarning()) {
+                      <p class="text-amber-600 dark:text-amber-400">
+                        {{ inlineWarning() | transloco }}
+                        @if (currentStats() && currentStats()!.max_invoice_number !== null) {
+                          ({{ (currentStats()!.max_invoice_number! + 1) }} – {{ editingValue() }})
+                        }
+                      </p>
+                    } @else {
+                      <p class="text-gray-500 dark:text-gray-400">
+                        {{ 'invoices.seriesSettings.nextWillBe' | transloco }}:
+                        <span class="font-mono">{{ nextInvoicePreview(s.prefix, editingValue()!) }}</span>
+                      </p>
+                    }
+                  </div>
+                }
+              </td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">
+                @if (getStats(s.id); as st) {
+                  <span class="font-mono">{{ st.invoice_count }}</span>
+                  @if (st.max_invoice_number !== null) {
+                    <span class="text-[10px] text-gray-500 dark:text-gray-400 ml-1">
+                      ({{ 'invoices.seriesSettings.max' | transloco }} {{ st.max_invoice_number }})
+                    </span>
+                  }
+                } @else {
+                  —
+                }
+              </td>
               <td class="px-3 py-2">
                 <button
                   type="button"
                   class="px-2 py-1 rounded text-xs font-medium transition-colors"
                   [ngClass]="
-                    s.is_active 
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' 
+                    s.is_active
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200'
                       : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                   "
                   (click)="toggleActive(s)"
                 >
-                  {{ s.is_active ? 'Activa' : 'Inactiva' }}
+                  {{ s.is_active ? ('invoices.seriesSettings.active' | transloco) : ('invoices.seriesSettings.inactive' | transloco) }}
                 </button>
               </td>
               <td class="px-3 py-2">
@@ -166,13 +306,13 @@
                   type="button"
                   class="px-2 py-1 rounded text-xs font-medium transition-colors"
                   [ngClass]="
-                    s.is_default 
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200' 
+                    s.is_default
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
                       : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                   "
                   (click)="toggleDefault(s)"
                 >
-                  {{ s.is_default ? 'Por defecto' : 'Marcar' }}
+                  {{ s.is_default ? ('invoices.seriesSettings.isDefault' | transloco) : ('invoices.seriesSettings.mark' | transloco) }}
                 </button>
               </td>
               <td class="px-3 py-2">
@@ -186,7 +326,7 @@
                   "
                   (click)="toggleVerifactu(s)"
                 >
-                  {{ s.verifactu_enabled ? 'Sí' : 'No' }}
+                  {{ s.verifactu_enabled ? ('invoices.seriesSettings.yes' | transloco) : ('invoices.seriesSettings.no' | transloco) }}
                 </button>
               </td>
               <td class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
@@ -196,10 +336,10 @@
           }
           @if (!loading() && series.length === 0) {
             <tr>
-              <td class="px-3 py-8 text-center" colspan="9">
+              <td class="px-3 py-8 text-center" colspan="10">
                 <div class="flex flex-col items-center justify-center text-gray-400">
                   <i class="fas fa-layer-group fa-3x mb-3 opacity-20"></i>
-                  <span class="text-sm">No hay series configuradas todavía.</span>
+                  <span class="text-sm">{{ 'invoices.seriesSettings.empty' | transloco }}</span>
                 </div>
               </td>
             </tr>
