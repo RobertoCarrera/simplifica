@@ -308,6 +308,45 @@ async function handleGet(
         });
         // Update the local variable so the response reflects 'verified'
         verificationStatus = 'verified';
+
+        // Auto-provision inbound mail (SES receipt rule + MX record) so the
+        // owner doesn't have to touch AWS by hand. Fire-and-forget: failure
+        // is logged but doesn't block the verification response.
+        try {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+          const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+          if (supabaseUrl && serviceKey) {
+            const hookResp = await fetch(
+              `${supabaseUrl}/functions/v1/ses-inbound-provision/start`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+                body: JSON.stringify({ companyId, domain }),
+              }
+            );
+            if (!hookResp.ok) {
+              const txt = await hookResp.text();
+              console.warn(
+                '[ses-domain-verification] auto-provision hook failed:',
+                hookResp.status,
+                txt
+              );
+            } else {
+              console.log(
+                '[ses-domain-verification] auto-provision hook triggered for',
+                domain
+              );
+            }
+          }
+        } catch (hookErr: any) {
+          console.warn(
+            '[ses-domain-verification] auto-provision hook error:',
+            hookErr?.message
+          );
+        }
       }
     }
   } catch (err) {
