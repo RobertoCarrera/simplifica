@@ -1,0 +1,300 @@
+<div class="space-y-4">
+  <!-- Counts header -->
+  <div class="flex flex-wrap items-center gap-3 px-2 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+    <span class="inline-flex items-center gap-1 text-sm">
+      <i class="fas fa-check-circle text-emerald-600"></i>
+      {{ countMatched }} {{ 'doctoraliaBookingsImport.status.matched' | transloco }}
+    </span>
+    <span *ngIf="countAmbiguous > 0" class="inline-flex items-center gap-1 text-sm">
+      <i class="fas fa-question-circle text-amber-600"></i>
+      {{ countAmbiguous }} {{ 'doctoraliaBookingsImport.status.ambiguous' | transloco }}
+    </span>
+    <span *ngIf="countUnresolved > 0" class="inline-flex items-center gap-1 text-sm">
+      <i class="fas fa-exclamation-circle text-red-600"></i>
+      {{ countUnresolved }} {{ 'doctoraliaBookingsImport.status.unresolved' | transloco }}
+    </span>
+    <!-- Toggle for hiding/showing resolved rows. Always visible so the user
+         can see that the filter exists; defaults to off (rows hidden). -->
+    <button *ngIf="hiddenResolvedCount > 0"
+            type="button"
+            (click)="toggleShowResolved()"
+            class="ml-auto text-xs px-2 py-1 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-1"
+            [attr.aria-pressed]="showResolved()">
+      <i class="fas" [ngClass]="showResolved() ? 'fa-eye-slash' : 'fa-eye'"></i>
+      <ng-container *ngIf="!showResolved()">
+        {{ 'doctoraliaBookingsImport.resolution.showResolved' | transloco: { count: hiddenResolvedCount } }}
+      </ng-container>
+      <ng-container *ngIf="showResolved()">
+        {{ 'doctoraliaBookingsImport.resolution.hideResolved' | transloco }}
+      </ng-container>
+    </button>
+  </div>
+
+  <!-- Per-row resolution -->
+  <div *ngFor="let row of visibleRows()" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+    <!-- Row header -->
+    <div class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Fila {{ row.rowIndex }}</span>
+        <span class="font-medium text-gray-900 dark:text-white">
+          {{ row.firstName }} {{ row.lastName }}
+        </span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">·</span>
+        <span class="text-xs text-gray-600 dark:text-gray-400">
+          {{ row.startTime | date:'short' }} → {{ row.endTime | date:'short' }}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded text-xs"
+              [ngClass]="statusClass(row.status)">
+          {{ statusLabelKey(row.status) | transloco }}
+        </span>
+        <button *ngIf="row.status !== 'skipped'"
+                (click)="skipRow(row)"
+                class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300">
+          {{ 'doctoraliaBookingsImport.resolution.skip' | transloco }}
+        </button>
+      </div>
+    </div>
+
+    <!-- 3 sections per row -->
+    <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+      <!-- Client -->
+      <div class="border border-gray-100 dark:border-gray-700 rounded p-3">
+        <div class="flex items-center justify-between mb-1">
+          <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            {{ 'doctoraliaBookingsImport.resolution.sectionClient' | transloco }}
+          </h5>
+          <i class="fas" [ngClass]="sectionStatusIcon(clientSection(row).status) + ' ' + sectionStatusClass(clientSection(row).status)"></i>
+        </div>
+        <ng-container *ngIf="clientSection(row).status === 'matched'">
+          <p class="text-xs text-gray-600 dark:text-gray-400">{{ clientSection(row).candidates[0].label }}</p>
+        </ng-container>
+        <ng-container *ngIf="clientSection(row).status === 'ambiguous'">
+          <div class="space-y-1 max-h-24 overflow-y-auto mb-2">
+            <label *ngFor="let c of clientSection(row).candidates" class="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="radio" [name]="'cli-' + row.rowIndex" [value]="c.id" (change)="pickClient(row, c.id)">
+              <span>{{ c.label }}</span>
+            </label>
+          </div>
+          <div class="flex gap-1 mt-2">
+            <button (click)="openLinkPicker(row, 'client')"
+                    class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+              <i class="fas fa-search mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+            </button>
+            <button (click)="openCreateClient(row)"
+                    class="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50">
+              <i class="fas fa-plus mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.createNew' | transloco }}
+            </button>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="clientSection(row).status === 'unresolved'">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ row.firstName }} {{ row.lastName }}</p>
+          <div class="flex gap-1">
+            <button (click)="openLinkPicker(row, 'client')"
+                    class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+              <i class="fas fa-search mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+            </button>
+            <button (click)="openCreateClient(row)"
+                    class="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50">
+              <i class="fas fa-plus mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.createNew' | transloco }}
+            </button>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- Professional -->
+      <div class="border border-gray-100 dark:border-gray-700 rounded p-3">
+        <div class="flex items-center justify-between mb-1">
+          <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            {{ 'doctoraliaBookingsImport.resolution.sectionProfessional' | transloco }}
+          </h5>
+          <i class="fas" [ngClass]="sectionStatusIcon(professionalSection(row).status) + ' ' + sectionStatusClass(professionalSection(row).status)"></i>
+        </div>
+        <ng-container *ngIf="professionalSection(row).status === 'matched'">
+          <p class="text-xs text-gray-600 dark:text-gray-400">{{ professionalSection(row).candidates[0].label }}</p>
+          <button (click)="openLinkPicker(row, 'professional')"
+                  class="mt-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+            <i class="fas fa-search mr-1"></i>
+            {{ 'doctoraliaBookingsImport.resolution.change' | transloco }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="professionalSection(row).status === 'ambiguous'">
+          <div class="space-y-1 max-h-24 overflow-y-auto mb-2">
+            <label *ngFor="let c of professionalSection(row).candidates" class="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="radio" [name]="'prof-' + row.rowIndex" [value]="c.id" (change)="pickProfessional(row, c.id)">
+              <span>{{ c.label }}</span>
+            </label>
+          </div>
+          <button (click)="openLinkPicker(row, 'professional')"
+                  class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+            <i class="fas fa-search mr-1"></i>
+            {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="professionalSection(row).status === 'unresolved'">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ row.agenda }}</p>
+          <button (click)="openLinkPicker(row, 'professional')"
+                  class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 mb-2 w-full">
+            <i class="fas fa-search mr-1"></i>
+            {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+          </button>
+          <p class="text-xs text-gray-400 dark:text-gray-500 italic">
+            {{ 'doctoraliaBookingsImport.resolution.professionalUnresolvedHint' | transloco }}
+          </p>
+        </ng-container>
+      </div>
+
+      <!-- Service -->
+      <div class="border border-gray-100 dark:border-gray-700 rounded p-3">
+        <div class="flex items-center justify-between mb-1">
+          <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            {{ 'doctoraliaBookingsImport.resolution.sectionService' | transloco }}
+          </h5>
+          <i class="fas" [ngClass]="sectionStatusIcon(serviceSection(row).status) + ' ' + sectionStatusClass(serviceSection(row).status)"></i>
+        </div>
+        <ng-container *ngIf="serviceSection(row).status === 'matched'">
+          <p class="text-xs text-gray-600 dark:text-gray-400">{{ serviceSection(row).candidates[0].label }}</p>
+          <button (click)="openLinkPicker(row, 'service')"
+                  class="mt-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+            <i class="fas fa-search mr-1"></i>
+            {{ 'doctoraliaBookingsImport.resolution.change' | transloco }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="serviceSection(row).status === 'ambiguous'">
+          <div class="space-y-1 max-h-24 overflow-y-auto mb-2">
+            <label *ngFor="let c of serviceSection(row).candidates" class="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="radio" [name]="'svc-' + row.rowIndex" [value]="c.id" (change)="pickService(row, c.id)">
+              <span>{{ c.label }}</span>
+            </label>
+          </div>
+          <button (click)="openLinkPicker(row, 'service')"
+                  class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+            <i class="fas fa-search mr-1"></i>
+            {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="serviceSection(row).status === 'unresolved'">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ row.serviceName }}</p>
+          <div *ngIf="!serviceSection(row).creating" class="flex gap-1">
+            <button (click)="openLinkPicker(row, 'service')"
+                    class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
+              <i class="fas fa-search mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+            </button>
+            <button (click)="openCreateService(row)"
+                    class="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50">
+              <i class="fas fa-plus mr-1"></i>
+              {{ 'doctoraliaBookingsImport.resolution.createNew' | transloco }}
+            </button>
+          </div>
+          <div *ngIf="serviceSection(row).creating" class="mt-2 space-y-2">
+            <input [(ngModel)]="newServiceName"
+                   (ngModelChange)="newServiceName.set($event)"
+                   class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800">
+            <div class="flex gap-1">
+              <button (click)="confirmCreateService()"
+                      class="text-xs px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+                <i class="fas fa-check"></i>
+              </button>
+              <button (click)="cancelCreateService()"
+                      class="text-xs px-2 py-1 bg-gray-300 dark:bg-gray-600 rounded hover:bg-gray-400">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-end gap-3 pt-4">
+    <button (click)="onCancel()"
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded text-sm">
+      {{ 'doctoraliaBookingsImport.resolution.cancel' | transloco }}
+    </button>
+    <button (click)="onConfirm()"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium">
+      {{ 'doctoraliaBookingsImport.resolution.confirm' | transloco }}
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Vincular existente (CRM entity picker) -->
+<div *ngIf="linkPicker()"
+     class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+     (click)="closeLinkPicker()">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+       (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+        <i class="fas fa-search mr-1 text-blue-500"></i>
+        {{ linkPicker()?.section === 'client' ? ('doctoraliaBookingsImport.resolution.sectionClient' | transloco)
+          : linkPicker()?.section === 'professional' ? ('doctoraliaBookingsImport.resolution.sectionProfessional' | transloco)
+          : ('doctoraliaBookingsImport.resolution.sectionService' | transloco) }}
+        — {{ 'doctoraliaBookingsImport.resolution.linkExisting' | transloco }}
+      </h3>
+      <button (click)="closeLinkPicker()"
+              class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <!-- Search -->
+    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <input type="search"
+             [ngModel]="linkPickerFilter()"
+             (ngModelChange)="linkPickerFilter.set($event)"
+             [placeholder]="'doctoraliaBookingsImport.resolution.searchPlaceholder' | transloco"
+             class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+             autofocus>
+    </div>
+    <!-- Broadcast checkbox: only when there's >1 row sharing this CSV value -->
+    <div *ngIf="linkPicker() && currentPickerBroadcastCount > 0"
+         class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10">
+      <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+        <input type="checkbox"
+               [checked]="linkPickerBroadcast()"
+               (change)="linkPickerBroadcast.set($any($event.target).checked)">
+        <ng-container *ngIf="linkPicker()?.section === 'service'">
+          {{ 'doctoraliaBookingsImport.resolution.broadcastServiceCheckbox' | transloco: { count: currentPickerBroadcastCount } }}
+        </ng-container>
+        <ng-container *ngIf="linkPicker()?.section === 'professional'">
+          {{ 'doctoraliaBookingsImport.resolution.broadcastProfessionalCheckbox' | transloco: { count: currentPickerBroadcastCount } }}
+        </ng-container>
+        <ng-container *ngIf="linkPicker()?.section === 'client'">
+          {{ 'doctoraliaBookingsImport.resolution.broadcastClientCheckbox' | transloco: { name: currentPickerClientNameLabel, count: currentPickerBroadcastCount } }}
+        </ng-container>
+      </label>
+      <p *ngIf="linkPicker()?.section === 'client'"
+         class="text-[11px] text-gray-500 dark:text-gray-400 italic mt-1 ml-6">
+        {{ 'doctoraliaBookingsImport.resolution.broadcastClientHint' | transloco }}
+      </p>
+    </div>
+    <!-- Results -->
+    <div class="flex-1 overflow-y-auto p-2">
+      <ng-container *ngIf="linkPickerLoading()">
+        <div class="flex items-center justify-center py-8 text-sm text-gray-500">
+          <i class="fas fa-spinner fa-spin mr-2"></i>
+          {{ 'doctoraliaBookingsImport.resolution.loading' | transloco }}
+        </div>
+      </ng-container>
+      <ng-container *ngIf="!linkPickerLoading() && filteredLinkPickerItems.length === 0">
+        <p class="text-center py-6 text-sm text-gray-500 italic">
+          {{ 'doctoraliaBookingsImport.resolution.noResults' | transloco }}
+        </p>
+      </ng-container>
+      <div *ngFor="let item of filteredLinkPickerItems"
+           (click)="pickFromLinkPicker(item)"
+           class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer text-sm">
+        <div class="font-medium text-gray-900 dark:text-white">{{ item.label }}</div>
+        <div *ngIf="item.sublabel" class="text-xs text-gray-500 dark:text-gray-400">{{ item.sublabel }}</div>
+      </div>
+    </div>
+  </div>
+</div>
