@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output, signal, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-export type PaymentMethodChoice = 'cash' | 'card' | 'bizum' | 'online';
+export type PaymentMethodChoice = 'cash' | 'card' | 'bank_transfer' | 'bizum' | 'online';
 
 export interface PaymentMethodSelection {
   method: PaymentMethodChoice;
@@ -11,13 +11,13 @@ export interface PaymentMethodSelection {
 
 /**
  * Modal dialog for choosing a payment method when creating a booking
- * with "Crear y marcar como pagado". Lists the four methods the
- * business uses today: efectivo, tarjeta, bizum, online.
+ * with "Crear y marcar como pagado". Lists the five methods the
+ * business uses today: efectivo, tarjeta, transferencia, bizum, online.
  *
  * The methods map directly to the public.payment_method enum values
- * (cash, card, bizum, online) — see the migration that added the
- * latter two. Selecting one emits a PaymentMethodSelection upward;
- * cancelling emits void so the parent can close without saving.
+ * (cash, card, bank_transfer, bizum, online) — see the migration that
+ * added bank_transfer. Selecting one emits a PaymentMethodSelection
+ * upward; cancelling emits void so the parent can close without saving.
  *
  * Why a dedicated dialog: the event-form's footer is already dense
  * (Cancel / Crear) and adding 4 option buttons there would clutter
@@ -112,6 +112,12 @@ export class PaymentMethodDialogComponent {
       label: 'Tarjeta',
       description: 'Pago con tarjeta (TPV)',
       icon: '<i class="fas fa-credit-card text-lg"></i>',
+    },
+    {
+      value: 'bank_transfer',
+      label: 'Transferencia bancaria',
+      description: 'Transferencia a la cuenta de la clínica',
+      icon: '<i class="fas fa-building-columns text-lg"></i>',
     },
     {
       value: 'bizum',
