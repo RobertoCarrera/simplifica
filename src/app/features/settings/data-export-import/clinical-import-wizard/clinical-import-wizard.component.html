@@ -1,0 +1,120 @@
+<div class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-fadeIn"
+     role="dialog" aria-modal="true" [attr.aria-label]="'clinicalImport.title' | transloco">
+
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+          <i class="fas fa-notes-medical text-lg"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            {{ 'clinicalImport.title' | transloco }}
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ 'clinicalImport.subtitle' | transloco }}
+          </p>
+        </div>
+      </div>
+      <button (click)="closed.emit()"
+              class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              [attr.aria-label]="'clinicalImport.close' | transloco">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Body: step-dependent -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+      <!-- ERROR -->
+      <div *ngIf="step() === 'error'" class="text-center py-8">
+        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-exclamation-triangle text-2xl text-red-600 dark:text-red-400"></i>
+        </div>
+        <p class="text-red-700 dark:text-red-300 mb-4">{{ errorMessage() }}</p>
+        <button (click)="closed.emit()"
+                class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg">
+          {{ 'clinicalImport.close' | transloco }}
+        </button>
+      </div>
+
+      <!-- MFA GATE -->
+      <div *ngIf="step() === 'mfa-gate'" class="text-center py-8 max-w-md mx-auto">
+        <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-shield-alt text-2xl text-amber-600 dark:text-amber-400"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {{ 'clinicalImport.mfaRequired.title' | transloco }}
+        </h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          {{ 'clinicalImport.mfaRequired.description' | transloco }}
+        </p>
+        <button (click)="onMfaAcknowledge()"
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">
+          {{ 'clinicalImport.mfaRequired.acknowledge' | transloco }}
+        </button>
+      </div>
+
+      <!-- MAPPER -->
+      <div *ngIf="step() === 'mapper'">
+        <app-csv-header-mapper
+            [visible]="true"
+            [csvHeaders]="stableHeaders"
+            [csvData]="stablePreviewRows"
+            [fieldOptions]="clinicalFieldOptions"
+            [requiredFields]="clinicalRequiredFields"
+            [aliasMap]="clinicalAliasMap"
+            (mappingConfirmed)="onMappingConfirmed($event)"
+            (cancelled)="onMappingCancelled()">
+        </app-csv-header-mapper>
+      </div>
+
+      <!-- RESOLUTION -->
+      <div *ngIf="step() === 'resolution'">
+        <app-clinical-import-resolution
+            [rows]="matchedRows()"
+            (confirmed)="onResolutionConfirmed($event)"
+            (cancelled)="onResolutionCancelled()">
+        </app-clinical-import-resolution>
+      </div>
+
+      <!-- IMPORTING -->
+      <div *ngIf="step() === 'importing'" class="max-w-xl mx-auto text-center py-8">
+        <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <i class="fas fa-cog fa-spin text-2xl text-emerald-600 dark:text-emerald-400"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {{ 'clinicalImport.importing.title' | transloco }}
+        </h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {{ 'clinicalImport.importing.processed' | transloco }}:
+          <strong>{{ importingProgress().processed }}</strong> /
+          {{ importingProgress().total }}
+        </p>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-6">
+          <div class="bg-emerald-500 h-3 rounded-full transition-all duration-300"
+               [style.width.%]="importingProgress().total > 0
+                 ? (importingProgress().processed / importingProgress().total) * 100
+                 : 0">
+          </div>
+        </div>
+        <button (click)="onAbortImport()"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm">
+          {{ 'clinicalImport.importing.abort' | transloco }}
+        </button>
+      </div>
+
+      <!-- SUMMARY -->
+      <div *ngIf="step() === 'summary' && importResult()">
+        <app-clinical-import-summary
+            [result]="importResult()!"
+            (downloadFailures)="onDownloadFailureReport()"
+            (closed)="onSummaryClose()">
+        </app-clinical-import-summary>
+      </div>
+
+    </div>
+  </div>
+</div>
