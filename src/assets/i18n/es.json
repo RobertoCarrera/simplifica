@@ -1617,13 +1617,18 @@
       "no": "No",
       "updated": "Actualizado",
       "editNextNumber": "Editar siguiente número",
+      "editPrefix": "Editar prefijo",
+      "prefixHint": "El prefijo es decorativo. El número de factura se construye como serie + guión + número. Cambiar el prefijo no renumera facturas existentes.",
       "nextWillBe": "La siguiente factura será",
       "cancel": "Cancelar",
       "save": "Guardar",
       "empty": "No hay series configuradas todavía.",
       "errors": {
         "mustBePositive": "El siguiente número debe ser un entero positivo.",
-        "wouldOverwrite": "Ese número ya está ocupado por facturas existentes. Elige un número mayor que el máximo actual."
+        "wouldOverwrite": "Ese número ya está ocupado por facturas existentes. Elige un número mayor que el máximo actual.",
+        "prefixEmpty": "El prefijo no puede estar vacío.",
+        "prefixWhitespace": "El prefijo no puede contener espacios.",
+        "prefixTooLong": "El prefijo es demasiado largo (máx. 16 caracteres)."
       },
       "warnings": {
         "gap": "Vas a dejar un hueco entre las facturas existentes y la siguiente"

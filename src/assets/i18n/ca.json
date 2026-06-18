@@ -1613,13 +1613,18 @@
       "no": "No",
       "updated": "Actualitzat",
       "editNextNumber": "Editar següent número",
+      "editPrefix": "Editar prefix",
+      "prefixHint": "El prefix és decoratiu. El número de factura es construeix com a sèrie + guió + número. Canviar el prefix no renumera factures existents.",
       "nextWillBe": "La següent factura serà",
       "cancel": "Cancel·lar",
       "save": "Desar",
       "empty": "No hi ha sèries configurades encara.",
       "errors": {
         "mustBePositive": "El següent número ha de ser un enter positiu.",
-        "wouldOverwrite": "Aquest número ja està ocupat per factures existents. Tria un número més gran que el màxim actual."
+        "wouldOverwrite": "Aquest número ja està ocupat per factures existents. Tria un número més gran que el màxim actual.",
+        "prefixEmpty": "El prefix no pot estar buit.",
+        "prefixWhitespace": "El prefix no pot contenir espais.",
+        "prefixTooLong": "El prefix és massa llarg (màx. 16 caràcters)."
       },
       "warnings": {
         "gap": "Deixaràs un buit entre les factures existents i la següent"

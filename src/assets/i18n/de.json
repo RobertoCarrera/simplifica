@@ -1389,13 +1389,18 @@
       "no": "Nein",
       "updated": "Aktualisiert",
       "editNextNumber": "Nächste Nummer bearbeiten",
+      "editPrefix": "Präfix bearbeiten",
+      "prefixHint": "Das Präfix ist dekorativ. Die Rechnungsnummer setzt sich aus Serie + Bindestrich + Nummer zusammen. Eine Änderung des Präfixes nummeriert vorhandene Rechnungen nicht um.",
       "nextWillBe": "Die nächste Rechnung wird sein",
       "cancel": "Abbrechen",
       "save": "Speichern",
       "empty": "Noch keine Serien konfiguriert.",
       "errors": {
         "mustBePositive": "Die nächste Nummer muss eine positive Ganzzahl sein.",
-        "wouldOverwrite": "Diese Nummer ist bereits durch vorhandene Rechnungen belegt. Wählen Sie eine höhere Nummer als das aktuelle Maximum."
+        "wouldOverwrite": "Diese Nummer ist bereits durch vorhandene Rechnungen belegt. Wählen Sie eine höhere Nummer als das aktuelle Maximum.",
+        "prefixEmpty": "Das Präfix darf nicht leer sein.",
+        "prefixWhitespace": "Das Präfix darf keine Leerzeichen enthalten.",
+        "prefixTooLong": "Das Präfix ist zu lang (max. 16 Zeichen)."
       },
       "warnings": {
         "gap": "Sie hinterlassen eine Lücke zwischen den vorhandenen Rechnungen und der nächsten"
