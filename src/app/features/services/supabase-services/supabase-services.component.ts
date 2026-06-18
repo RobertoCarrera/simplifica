@@ -746,8 +746,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     // If service uses variants, base_price is managed per-variant and is not required here
     if (!this.formData.has_variants) {
-      if (!this.formData.base_price || this.formData.base_price < 0) {
-        this.formErrors['base_price'] = 'El precio debe ser mayor a 0';
+      // 0€ is allowed (free service / courtesy / sample). Only negative values are rejected.
+      if (this.formData.base_price == null || this.formData.base_price < 0) {
+        this.formErrors['base_price'] = 'El precio no puede ser negativo';
       }
     }
 

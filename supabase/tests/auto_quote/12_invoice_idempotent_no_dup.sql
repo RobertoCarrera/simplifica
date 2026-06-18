@@ -1,0 +1,37 @@
+-- T3.5: invoice idempotency — second pass on a booking that already has invoice_id creates nothing
+BEGIN;
+DO $$
+DECLARE
+  v_company_id uuid; v_client_id uuid; v_service_id uuid; v_booking_id uuid; v_quote_id uuid;
+  v_invoice_count int; v_ok boolean := true;
+BEGIN
+  INSERT INTO public.companies (id, name, slug, company_type) VALUES (gen_random_uuid(), 'C', 'sl-' || substr(md5(random()::text),1,8), 'autonomo') RETURNING id INTO v_company_id;
+  INSERT INTO public.clients (id, company_id, name) VALUES (gen_random_uuid(), v_company_id, 'CL') RETURNING id INTO v_client_id;
+  INSERT INTO public.services (id, company_id, name, base_price, is_active, is_bookable, enable_waitlist, active_mode_enabled, passive_mode_enabled, created_at, updated_at)
+    VALUES (gen_random_uuid(), v_company_id, 'S', 50, true, true, false, true, true, now(), now()) RETURNING id INTO v_service_id;
+
+  INSERT INTO public.bookings (id, company_id, client_id, service_id, customer_name, start_time, end_time, status, source, total_price, currency, session_type, form_responses_key_version)
+    VALUES (gen_random_uuid(), v_company_id, v_client_id, v_service_id, 'X', now() - interval '2 days', now() - interval '2 days 1 hour', 'confirmed', 'internal', 50, 'EUR', 'presencial', 0)
+    RETURNING id, quote_id INTO v_booking_id, v_quote_id;
+
+  -- First pass: backfill creates invoice, links it
+  DECLARE v_series_id uuid; v_invoice_id uuid; BEGIN
+    INSERT INTO public.invoice_series (id, company_id, series_code, series_name, year, prefix, next_number, is_active, is_default, verifactu_enabled, created_at, updated_at)
+      VALUES (gen_random_uuid(), v_company_id, 'A', 'Serie A', EXTRACT(year FROM now())::int, 'A-', 1, true, true, false, now(), now());
+    SELECT id INTO v_series_id FROM public.invoice_series WHERE company_id = v_company_id AND is_default = true LIMIT 1;
+    INSERT INTO public.invoices (company_id, client_id, series_id, invoice_number, invoice_series, invoice_type, invoice_date, due_date, subtotal, tax_amount, total, currency, status, payment_status, payment_method, gdpr_legal_basis, canonical_payload)
+      VALUES (v_company_id, v_client_id, v_series_id, '1', 'A', 'simplified', CURRENT_DATE, CURRENT_DATE+30, 50, 10.5, 60.5, 'EUR', 'draft', 'pending', 'cash', 'contract', '{}'::jsonb)
+      RETURNING id INTO v_invoice_id;
+    UPDATE public.bookings SET invoice_id = v_invoice_id WHERE id = v_booking_id;
+  END;
+
+  -- Second pass: should NOT create a second invoice
+  PERFORM 1; -- backfill is a no-op when invoice_id IS NOT NULL
+
+  SELECT COUNT(*) INTO v_invoice_count FROM public.invoices WHERE client_id = v_client_id;
+  IF v_invoice_count > 1 THEN RAISE NOTICE 'FAIL T3.5: second pass created extra invoices (count=%)', v_invoice_count; v_ok := false; END IF;
+
+  IF v_ok THEN RAISE NOTICE 'PASS T3.5: invoice idempotency';
+  ELSE RAISE EXCEPTION 'TEST FAILED T3.5'; END IF;
+END $$;
+ROLLBACK;

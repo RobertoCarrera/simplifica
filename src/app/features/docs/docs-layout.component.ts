@@ -105,7 +105,7 @@ export class DocsLayoutComponent implements OnInit, AfterViewInit {
   readonly gridColsClass = computed(() => {
     if (this.activeArticleSlug()) {
       // Article view: 3 cols (sidebar + main + ToC).
-      return 'grid-cols-1 md:grid-cols-[clamp(180px,18vw,260px)_minmax(0,1fr)] xl:grid-cols-[clamp(180px,18vw,260px)_minmax(0,1fr)_clamp(160px,16vw,220px)]';
+      return 'grid-cols-1 md:grid-cols-[clamp(180px,18vw,260px)_minmax(0,1fr)]';
     }
     // Index or category view: 2 cols (sidebar + main, no ToC).
     return 'grid-cols-1 md:grid-cols-[clamp(180px,18vw,240px)_minmax(0,1fr)]';
