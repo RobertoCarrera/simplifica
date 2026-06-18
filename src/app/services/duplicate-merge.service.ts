@@ -19,7 +19,7 @@ export interface DuplicatePair {
   phone_b: string | null;
   created_b: string;
   is_active_b: boolean;
-  match_reason: 'email_and_name' | 'email' | 'name';
+  match_reason: 'email_and_name' | 'email' | 'phone' | 'name' | 'name_fuzzy';
 }
 
 export interface ClientMergeData {
@@ -41,6 +41,42 @@ export interface MergeResult {
     invoices: number;
     quotes: number;
   };
+}
+
+/**
+ * Outcome of `bulk_merge_safe_duplicates` (v2 — cluster-aware).
+ * Returned by the SQL RPC as jsonb; we type-narrow it here.
+ */
+export interface BulkClusterPlan {
+  cluster_key: string;
+  keep_id: string;
+  keep_name: string | null;
+  keep_email: string | null;
+  discard_ids: string[];
+  member_count: number;
+  reason: string;
+  /**
+   * When set, this cluster was NOT processed because the user
+   * deselected it in the preview (or it was excluded via the
+   * p_exclude_cluster_keys parameter). UI can use this to render
+   * the cluster with a "skipped" badge.
+   */
+  skip_reason?: 'deselected';
+}
+
+export interface BulkMergeResult {
+  dry_run: boolean;
+  total_clusters: number;
+  total_to_discard: number;
+  merged: number;
+  skipped_clusters: number;
+  plan: BulkClusterPlan[];
+  reassigned: {
+    bookings: number | null;   // null in dry-run
+    invoices: number | null;
+    quotes: number | null;
+  };
+  errors: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -77,6 +113,65 @@ export class DuplicateMergeService {
       map(({ data, error }) => {
         if (error) throw error;
         return data as MergeResult;
+      })
+    );
+  }
+
+  /**
+   * Dry-run: returns the merge plan without writing anything.
+   * Same shape as `bulkMergeSafeDuplicates` but `merged = 0` and
+   * `reassigned` fields are `null` (the server doesn't run merge_clients
+   * in dry-run mode, so it can't know exact reattach counts).
+   */
+  previewBulkMerge(companyId: string): Observable<BulkMergeResult> {
+    return this.invokeBulkMerge(companyId, true, null, null);
+  }
+
+  /**
+   * Real merge: collapses every safe duplicate cluster into one row,
+   * soft-deleting the rest. Idempotent.
+   *
+   * Pass `selectedClusterKeys` to act on a subset of the clusters
+   * shown in the preview. Pass `null` (default) to act on all.
+   */
+  bulkMergeSafeDuplicates(
+    companyId: string,
+    selectedClusterKeys?: string[] | null
+  ): Observable<BulkMergeResult> {
+    return this.invokeBulkMerge(companyId, false, selectedClusterKeys ?? null, null);
+  }
+
+  private invokeBulkMerge(
+    companyId: string,
+    dryRun: boolean,
+    includeClusterKeys: string[] | null,
+    excludeClusterKeys: string[] | null
+  ): Observable<BulkMergeResult> {
+    return from(
+      this.supabase.rpc('bulk_merge_safe_duplicates', {
+        p_company_id: companyId,
+        p_dry_run: dryRun,
+        p_include_cluster_keys: includeClusterKeys,
+        p_exclude_cluster_keys: excludeClusterKeys
+      })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        const r = (data ?? {}) as Partial<BulkMergeResult>;
+        return {
+          dry_run:          r.dry_run          ?? dryRun,
+          total_clusters:   r.total_clusters   ?? 0,
+          total_to_discard: r.total_to_discard ?? 0,
+          merged:           r.merged           ?? 0,
+          skipped_clusters: r.skipped_clusters ?? 0,
+          plan:             r.plan             ?? [],
+          reassigned: {
+            bookings: r.reassigned?.bookings ?? (dryRun ? null : 0),
+            invoices: r.reassigned?.invoices ?? (dryRun ? null : 0),
+            quotes:   r.reassigned?.quotes   ?? (dryRun ? null : 0)
+          },
+          errors:           r.errors           ?? []
+        } satisfies BulkMergeResult;
       })
     );
   }
