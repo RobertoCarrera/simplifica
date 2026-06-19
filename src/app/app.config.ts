@@ -38,6 +38,37 @@ function initGlobalInputs() {
   return () => service.init();
 }
 
+/**
+ * Dev-only: unregister any previously registered Service Worker and clear
+ * its caches. This is necessary because a production-deployed SW (with
+ * aggressive caching rules that include /assets/* under a 1-hour freshness
+ * cache) can persist in the browser across sessions and serve stale
+ * runtime-config.json responses even when running locally with `ng serve`.
+ * Without this cleanup, the dev experience shows confusing "supabaseUrl is
+ * required" errors caused by SW-cached empty config responses.
+ */
+function unregisterDevServiceWorker() {
+  return async () => {
+    if (isDevMode() && 'serviceWorker' in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) {
+            // Only clear caches that look like Angular SW caches
+            if (k.startsWith('ngsw:') || k.includes('ngsw')) {
+              await caches.delete(k);
+            }
+          }
+        }
+      } catch { /* noop — non-critical cleanup */ }
+    }
+  };
+}
+
 function initLanguage() {
   const languageService = inject(LanguageService);
   const translocoService = inject(TranslocoService);
@@ -69,6 +100,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: initGlobalInputs,
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: unregisterDevServiceWorker,
       multi: true,
     },
     {
