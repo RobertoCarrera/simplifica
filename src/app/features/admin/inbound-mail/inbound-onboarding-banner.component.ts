@@ -19,7 +19,7 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterModule, TranslocoModule],
   template: `
-    @if (needsAttention().length > 0 && !dismissed()) {
+    @if (isAllowedRole() && needsAttention().length > 0 && !dismissed()) {
       <div class="bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i class="fas fa-exclamation-triangle text-amber-600"></i>
@@ -80,9 +80,24 @@ export class InboundOnboardingBannerComponent implements OnInit {
     this.needsAttention().map(c => c.domain).join(', ')
   );
 
+  /**
+   * Banner visibility — only shown to users who can act on it:
+   * owner, super_admin, or supervisor.
+   */
+  private allowedRoles = new Set(['owner', 'super_admin', 'supervisor']);
+
+  isAllowedRole = computed(() => {
+    const u = this.auth.userProfileSignal();
+    const role = this.auth.userRole();
+    if (this.allowedRoles.has(role)) return true;
+    return !!u?.is_super_admin || (u as any)?.app_role?.name === 'super_admin';
+  });
+
   isSuperAdmin = computed(() => {
     const u = this.auth.userProfileSignal();
-    return !!u?.is_super_admin || (u as any)?.app_role?.name === 'super_admin';
+    return !!u?.is_super_admin
+      || (u as any)?.app_role?.name === 'super_admin'
+      || this.auth.userRole() === 'super_admin';
   });
 
   async ngOnInit() {
