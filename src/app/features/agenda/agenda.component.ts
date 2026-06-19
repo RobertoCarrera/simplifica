@@ -225,6 +225,23 @@ export class AgendaComponent implements OnInit, OnDestroy {
   showSalas = signal(false);
   showCancelled = signal(false);
 
+  /**
+   * When the parent calendar toolbar owns the "show cancelled" toggle,
+   * it passes the current value here AND sets `showCancelledControlled = true`
+   * to hide the internal toggle and prevent two controls fighting over the same state.
+   */
+  private _showCancelledControlled = signal(false);
+  showCancelledControlled = computed(() => this._showCancelledControlled());
+
+  @Input() set externalShowCancelled(value: boolean | null | undefined) {
+    if (value === null || value === undefined) {
+      this._showCancelledControlled.set(false);
+      return;
+    }
+    this._showCancelledControlled.set(true);
+    this.showCancelled.set(value);
+  }
+
   // Blocked dates
   blockedDates = signal<ProfessionalBlockedDate[]>([]);
   serviceBlockedDates = signal<ServiceBlockedDate[]>([]);
