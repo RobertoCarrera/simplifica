@@ -815,7 +815,7 @@ export class CalendarComponent implements OnInit {
   // Debug visibility: only owner sees debug elements
   isSupervisorDebug(): boolean {
     const role = this.authService.userRole();
-    return role === 'owner' || !!this.authService.userProfile?.is_super_admin || this.authService.isRoberto();
+    return role === 'owner' || !!this.authService.userProfile?.is_super_admin || this.authService.isEmergencySuperAdmin();
   }
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
