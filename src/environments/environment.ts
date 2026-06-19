@@ -1,10 +1,13 @@
 export const environment = {
   production: false,
   supabase: {
-    // Loaded at runtime from src/assets/runtime-config.json (gitignored).
-    // These are placeholders; the actual values come from RuntimeConfigService.
-    url: "",
-    anonKey: "",
+    // Direct values that ship in the bundle. RuntimeConfigService still
+    // tries to fetch /assets/runtime-config.json at startup to allow
+    // runtime key rotation, but if that fetch fails for any reason the
+    // app must still boot — these values are the final fallback. The
+    // anon key is public by design (it ships in the JS bundle).
+    url: "https://ufutyjbqfjrlzkprvyvs.supabase.co",
+    anonKey: "sb_publishable_2vzsHFfDJiXv7RK6ttGUNw__9ZR4czN",
   },
   // Portal URL for client invitations (dev: localhost:4201, prod: portal.simplificacrm.es)
   portalUrl: 'http://localhost:4201',
