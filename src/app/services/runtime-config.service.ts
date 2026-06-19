@@ -25,9 +25,18 @@ export class RuntimeConfigService {
 
   async load(): Promise<void> {
     try {
-      // Add a cache-buster to avoid CDN caching old keys after rotations/deploys
+      // Add a cache-buster AND bypass HTTP cache + Service Worker cache.
+      // The Angular Service Worker (ngsw) caches all /assets/* paths under
+      // the "api-freshness" data group for up to 1 hour, which means a stale
+      // or empty runtime-config.json can be served indefinitely. We force a
+      // fresh fetch from the network by using cache: 'no-store' on the
+      // request. This is critical for the runtime config because rotating
+      // keys requires the new value to be picked up immediately.
       const cacheBuster = `ts=${Date.now()}`;
-      const response = await fetch(`/assets/runtime-config.json?${cacheBuster}`);
+      const response = await fetch(`/assets/runtime-config.json?${cacheBuster}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
