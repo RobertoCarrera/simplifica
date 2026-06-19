@@ -109,7 +109,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   // Debug visibility: only owner sees debug elements
   isSupervisorDebug = computed(() => {
     const role = this.authService.userRole();
-    return role === 'owner' || this.authService.userProfile?.is_super_admin || this.authService.isRoberto();
+    return role === 'owner' || this.authService.userProfile?.is_super_admin || this.authService.isEmergencySuperAdmin();
   });
 
   // Only owner/admin/supervisor/super_admin can block by SERVICE (a service-level
