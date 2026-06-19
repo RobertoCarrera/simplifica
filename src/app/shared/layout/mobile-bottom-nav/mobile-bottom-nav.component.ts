@@ -387,8 +387,6 @@ interface NavItem {
   ],
 })
 export class MobileBottomNavComponent implements OnInit {
-  // Hardcoded emergency superadmin — never changes, no signal/subscription needed
-  private static readonly ROBERTO_EMAIL = 'roberto@simplificacrm.es';
   pwaService = inject(PWAService);
   authService = inject(AuthService);
   private devRoleService = inject(DevRoleService);
@@ -482,11 +480,9 @@ export class MobileBottomNavComponent implements OnInit {
   readonly unreadCount = this.notificationStore.unreadCount;
   // Public debug accessors for template (so bindings don't reference private fields)
   readonly debugRole = computed(() => this.authService.userRole());
-  readonly isRobertoDetected = computed(() => {
-    const role = this.authService.userRole();
-    return role === 'super_admin'
-      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
-      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
+  readonly isEmergencySuperAdmin = computed(() => {
+    return !!this.authService.userProfile?.is_super_admin
+      || this.authService.userRole() === 'super_admin';
   });
   readonly debugModules = computed(() => {
     const s = this._allowedModuleKeys();
@@ -495,22 +491,19 @@ export class MobileBottomNavComponent implements OnInit {
   // Secondary sheet items derived from role / modules
   moreMenuItems = computed<MoreMenuItem[]>(() => {
     const role = this.authService.userRole();
-    // Direct email check — bypasses any signal/subscription timing issues
-    const isRoberto = role === 'super_admin'
-      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
-      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
+    // SECURITY: super-admin determined solely by DB-backed is_super_admin flag.
+    // No email-based bypass.
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || role === 'supervisor' || isSuperAdmin;
     const isProfessional = role === 'professional';
-    const isAdmin = isSuperAdmin; // Includes Roberto via isSuperAdmin flag
+    const isAdmin = isSuperAdmin;
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
 
-    // Roberto sees ALL items — no filtering
-    if (isRoberto) {
-      console.warn('[MobileNav] ROBERTO BYPASS in moreMenuItems — returning all items', { role, isRoberto, isSuperAdmin });
+    // Super-admin sees ALL items — no filtering
+    if (isSuperAdmin) {
       items.push(
         { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos', sidebarKey: 'moduloProductos' },
         { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos', sidebarKey: 'moduloSAT' },
@@ -529,7 +522,7 @@ export class MobileBottomNavComponent implements OnInit {
       return this.sortBySidebarOrder(items);
     }
 
-    console.debug('[MobileNav] moreMenuItems', { role, isRoberto, isSuperAdmin, allowed: allowed ? Array.from(allowed) : null, isClient });
+    console.debug('[MobileNav] moreMenuItems', { role, isSuperAdmin, allowed: allowed ? Array.from(allowed) : null, isClient });
 
     if (!isClient) {
       // Módulos de producción (solo si están habilitados)
@@ -726,18 +719,15 @@ export class MobileBottomNavComponent implements OnInit {
 
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
-    const isRoberto = role === 'super_admin'
-      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
-      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
+    // SECURITY: super-admin determined solely by DB-backed is_super_admin flag.
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || role === 'supervisor' || isSuperAdmin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
 
-    // Roberto or Super Admin sees everything — bypass module checks entirely
-    if (isSuperAdmin || isRoberto) {
-      console.warn('[MobileNav] SUPER ADMIN / ROBERTO BYPASS in filteredNavItems', { role, isRoberto, isSuperAdmin });
+    // Super Admin sees everything — bypass module checks entirely
+    if (isSuperAdmin) {
       return this.sortBySidebarOrder([...this.baseItems]);
     }
 

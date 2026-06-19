@@ -102,7 +102,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Permission: GDPR and Edit options visible only to owner
     isOwner = computed(() => this.auth.userRole() === 'owner');
-    isSupervisor = computed(() => this.auth.userRole() === 'supervisor' || this.auth.userProfile?.is_super_admin || this.auth.isRoberto());
+    isSupervisor = computed(() => this.auth.userRole() === 'supervisor' || this.auth.userProfile?.is_super_admin || this.auth.isEmergencySuperAdmin());
     isProfessional = computed(() => this.auth.userRole() === 'professional');
 
     // Client type dropdown - Refactored to child component

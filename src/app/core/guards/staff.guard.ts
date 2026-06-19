@@ -29,11 +29,6 @@ export class StaffGuard implements CanActivate {
       timeout(8000),
       switchMap(([profile]) => {
         if (!profile) {
-          // ── EMERGENCY BYPASS: Roberto with null profile (race condition on load) ──
-          if (this.auth.isRoberto()) {
-            console.warn('🛡️ [StaffGuard] EMERGENCY BYPASS: Roberto detected with null profile — allowing through');
-            return of(true as boolean | UrlTree);
-          }
           console.warn(
             '🛡️ [StaffGuard] BLOCKED: User authenticated but "profile" is null/undefined. Redirecting to /complete-profile.',
           );
@@ -51,9 +46,8 @@ export class StaffGuard implements CanActivate {
           "developer",
         ];
 
-        // ── EMERGENCY BYPASS: super_admin NEVER gets blocked ──────────────────
-        if (profile.role === 'super_admin' || profile.is_super_admin || this.auth.isRoberto()) {
-          console.warn('🛡️ [StaffGuard] SUPER ADMIN / ROBERTO BYPASS — allowing through');
+        // Super-admin has DB-backed role; no separate bypass needed.
+        if (profile.role === 'super_admin' || profile.is_super_admin) {
           return of(true as boolean | UrlTree);
         }
 

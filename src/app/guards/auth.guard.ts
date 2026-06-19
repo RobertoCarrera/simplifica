@@ -91,12 +91,6 @@ export class AuthGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([user, _profile]) => {
-        // ── EMERGENCY BYPASS: Roberto — skip all auth/AAL2 checks ─────────────
-        if (this.authService.isRoberto()) {
-          console.warn('🛡️ [AuthGuard] ROBERTO BYPASS — allowing through');
-          return of(true as boolean | UrlTree);
-        }
-
         if (!user) {
           try { sessionStorage.setItem('auth_return_to', state.url); } catch { /* ignore */ }
           this.router.navigate(["/login"]);
@@ -178,12 +172,6 @@ export class AdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
-        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
-        if (this.authService.isRoberto()) {
-          console.warn('🛡️ [AdminGuard] ROBERTO BYPASS — allowing through');
-          return of(true);
-        }
-
         if (
           profile &&
           (profile.role === "owner" ||
@@ -284,12 +272,6 @@ export class StrictAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
-        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
-        if (this.authService.isRoberto()) {
-          console.warn('🛡️ [StrictAdminGuard] ROBERTO BYPASS — allowing through');
-          return of(true);
-        }
-
         const allowed =
           !!profile &&
           (profile.role === "admin" ||
@@ -349,12 +331,6 @@ export class SuperAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       map(([profile]) => {
-        // ── EMERGENCY BYPASS: Roberto ──────────────────────────────────────
-        if (this.authService.isRoberto()) {
-          console.warn('🛡️ [SuperAdminGuard] ROBERTO BYPASS — allowing through');
-          return true;
-        }
-
         const isSuperAdmin =
           !!profile &&
           (profile.role === "super_admin" || !!profile.is_super_admin);
@@ -390,12 +366,6 @@ export class OwnerAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
-        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
-        if (this.authService.isRoberto()) {
-          console.warn('🛡️ [OwnerAdminGuard] ROBERTO BYPASS — allowing through');
-          return of(true);
-        }
-
         const allowed =
           !!profile &&
           (profile.role === "owner" ||

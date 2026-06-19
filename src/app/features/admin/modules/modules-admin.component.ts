@@ -312,7 +312,7 @@ export class ModulesAdminComponent implements OnInit {
 
   isSuperAdmin(): boolean {
     const role = this.auth.userRole();
-    return role === 'super_admin' || !!this.auth.userProfile?.is_super_admin || this.auth.isRoberto();
+    return role === 'super_admin' || !!this.auth.userProfile?.is_super_admin || this.auth.isEmergencySuperAdmin();
   }
 
   switchTab(tab: 'companies' | 'sidebar' | 'pricing') {
