@@ -9,7 +9,8 @@ import { RuntimeConfigService } from './runtime-config.service';
  */
 @Injectable({ providedIn: 'root' })
 export class SupabaseClientService {
-  private client: SupabaseClient;
+  private client: SupabaseClient | null = null;
+  private initError: string | null = null;
   private cfg = inject(RuntimeConfigService);
 
   constructor() {
@@ -102,25 +103,41 @@ export class SupabaseClientService {
       return safe;
     })();
 
-    this.client = createClient(
-      rc.supabase.url,
-      rc.supabase.anonKey,
-      {
-        auth: {
-          storageKey,
-          // Provide custom storage to avoid navigator.lock coordination
-          storage: noLockStorage,
-          // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
-          persistSession: true,
-          autoRefreshToken: true,
-          // CRITICAL FIX: Disable automatic URL token detection. AuthCallbackComponent
-          // manually extracts hash tokens and calls setSession(). Letting GoTrueClient
-          // also auto-detect them causes a double-processing race: two parallel _getUser()
-          // HTTP calls, premature window.location.hash clearing, and overlapping
-          // SIGNED_IN events that cascade through setCurrentUser() and can overwhelm
-          // the browser tab (the root cause of the magic-link click crash).
-          detectSessionInUrl: false,
-          // In-process mutex — see inProcessLock above
+    // Defensive guard: if RuntimeConfigService failed to load (CDN issue,
+// missing /assets/runtime-config.json, etc.), createClient throws
+// "supabaseUrl is required". Log clearly and defer the throw to the
+// instance getter so the app shell renders and the error is shown in
+// the UI instead of crashing bootstrap with a blank page.
+    if (!rc?.supabase?.url || !rc?.supabase?.anonKey) {
+      const errorMsg =
+        '[SupabaseClientService] Runtime config is missing supabase.url or supabase.anonKey. ' +
+        'Check that /assets/runtime-config.json is served and contains the supabase config. ' +
+        'Falling back to a placeholder URL will break all auth and data calls.';
+      console.error(errorMsg, { hasUrl: !!rc?.supabase?.url, hasKey: !!rc?.supabase?.anonKey });
+      this.initError = errorMsg;
+      return;
+    }
+
+    try {
+      this.client = createClient(
+        rc.supabase.url,
+        rc.supabase.anonKey,
+        {
+          auth: {
+            storageKey,
+            // Provide custom storage to avoid navigator.lock coordination
+            storage: noLockStorage,
+            // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
+            persistSession: true,
+            autoRefreshToken: true,
+            // CRITICAL FIX: Disable automatic URL token detection. AuthCallbackComponent
+            // manually extracts hash tokens and calls setSession(). Letting GoTrueClient
+            // also auto-detect them causes a double-processing race: two parallel _getUser()
+            // HTTP calls, premature window.location.hash clearing, and overlapping
+            // SIGNED_IN events that cascade through setCurrentUser() and can overwhelm
+            // the browser tab (the root cause of the magic-link click crash).
+            detectSessionInUrl: false,
+// In-process mutex — see inProcessLock above
           lock: inProcessLock,
         },
         realtime: {
@@ -135,21 +152,33 @@ export class SupabaseClientService {
               const url = typeof input === 'string' ? input : (input as any)?.url;
               if (url && (url.includes('/auth/v1') || url.includes('/rest/v1'))) {
                 // Sileced logging for auth requests to avoid leaking info
-                // const h = (init?.headers instanceof Headers)
-                //   ? init.headers
-                //   : new Headers(init?.headers as any); 
-                // console.info('[SupabaseClientService] fetch', new URL(url).pathname, { hasAuthorization: hasAuth, hasApikey });
               }
             } catch { /* ignore */ }
             return fetch(input as any, init as any);
           }
         }
-      }
-    );
+      });
+    } catch (e: any) {
+      this.initError = `Failed to initialize Supabase client: ${e?.message || e}`;
+      console.error('[SupabaseClientService]', this.initError);
+    }
   }
 
   get instance(): SupabaseClient {
-    return this.client;
+    if (this.initError) {
+      throw new Error(this.initError);
+    }
+    return this.client!;
+  }
+
+  /** Returns true if the service failed to initialize (e.g. missing runtime config). */
+  get hasInitError(): boolean {
+    return !!this.initError;
+  }
+
+  /** Returns the init error message if any. */
+  get initErrorMessage(): string | null {
+    return this.initError;
   }
 
   /** Admin client that bypasses RLS — use only for thread linking queries */
