@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, computed, signal, OnInit, HostListener, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, computed, signal, OnInit, HostListener, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
@@ -623,24 +623,94 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
           }
           @case ('agenda') {
             <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
-                <app-agenda class="w-full h-full" [constraints]="constraints" [date]="currentView().date" [eventsData]="currentDayEvents()" [sourceIconsMap]="sourceIcons()" [hasCompanyResources]="hasCompanyResources()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
+                <app-agenda class="w-full h-full" [constraints]="constraints" [date]="currentView().date" [eventsData]="currentDayEvents()" [sourceIconsMap]="sourceIcons()" [hasCompanyResources]="hasCompanyResources()" [externalShowCancelled]="showCancelled()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
             </div>
           }
         }
       </div>
-      <!-- Floating debug counter (supervisor debug) -->
-      @if (isSupervisorDebug() && (bookingsWithoutService() > 0 || bookingsWithoutResource() > 0)) {
-        <div class="absolute bottom-3 left-3 z-30 bg-gray-900/90 dark:bg-gray-700/90 backdrop-blur-sm text-white text-xs rounded-lg px-3 py-2 shadow-lg border border-gray-600/50 space-y-1">
+      <!-- Floating issues counter with click-toggle popover (quick-edit shortcuts) -->
+      @if (bookingsWithoutService() > 0 || bookingsWithoutResource() > 0) {
+        <div #issuesCounter class="absolute bottom-3 left-3 z-30 bg-gray-900/90 dark:bg-gray-700/90 backdrop-blur-sm text-white text-xs rounded-lg shadow-lg border border-gray-600/50">
           @if (bookingsWithoutService() > 0) {
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
-              <span>{{ bookingsWithoutService() }} sin servicio</span>
+            <div class="relative">
+              <button type="button"
+                      (click)="toggleIssuesPopover('service', $event)"
+                      [class.bg-white\/10]="openIssuesPopover() === 'service'"
+                      class="w-full flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg hover:bg-white/5 transition-colors">
+                <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
+                <span>{{ bookingsWithoutService() }} sin servicio</span>
+                <i class="fas text-[8px] opacity-70"
+                   [class.fa-chevron-down]="openIssuesPopover() === 'service'"
+                   [class.fa-chevron-up]="openIssuesPopover() !== 'service'"></i>
+              </button>
+              <div class="absolute bottom-full left-0 mb-2 w-72 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 z-50"
+                   [class.hidden]="openIssuesPopover() !== 'service'">
+                <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm">
+                  <div class="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reservas sin servicio</div>
+                </div>
+                @for (event of bookingsWithoutServiceList().slice(0, 8); track event.id) {
+                  <button type="button"
+                          (click)="openIssueEvent(event, $event)"
+                          class="w-full text-left px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors">
+                    <div class="flex items-start gap-2">
+                      <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold flex-shrink-0 mt-0.5">!</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs font-medium truncate">{{ formatEventTime(event) }} · {{ $any(event).extendedProps?.shared?.customerName || event.title || 'Sin nombre' }}</div>
+                        @if ($any(event).extendedProps?.shared?.professionalName) {
+                          <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ $any(event).extendedProps.shared.professionalName }}</div>
+                        }
+                      </div>
+                      <i class="fas fa-external-link-alt text-[10px] text-gray-400 mt-1"></i>
+                    </div>
+                  </button>
+                }
+                @if (bookingsWithoutServiceList().length > 8) {
+                  <div class="px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900/50">
+                    +{{ bookingsWithoutServiceList().length - 8 }} más
+                  </div>
+                }
+              </div>
             </div>
           }
           @if (bookingsWithoutResource() > 0) {
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
-              <span>{{ bookingsWithoutResource() }} sin recurso</span>
+            <div class="relative">
+              <button type="button"
+                      (click)="toggleIssuesPopover('resource', $event)"
+                      [class.bg-white\/10]="openIssuesPopover() === 'resource'"
+                      class="w-full flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg hover:bg-white/5 transition-colors border-t border-gray-600/30">
+                <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
+                <span>{{ bookingsWithoutResource() }} sin recurso</span>
+                <i class="fas text-[8px] opacity-70"
+                   [class.fa-chevron-down]="openIssuesPopover() === 'resource'"
+                   [class.fa-chevron-up]="openIssuesPopover() !== 'resource'"></i>
+              </button>
+              <div class="absolute bottom-full left-0 mb-2 w-72 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 z-50"
+                   [class.hidden]="openIssuesPopover() !== 'resource'">
+                <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm">
+                  <div class="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reservas sin recurso</div>
+                </div>
+                @for (event of bookingsWithoutResourceList().slice(0, 8); track event.id) {
+                  <button type="button"
+                          (click)="openIssueEvent(event, $event)"
+                          class="w-full text-left px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors">
+                    <div class="flex items-start gap-2">
+                      <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold flex-shrink-0 mt-0.5">!</span>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs font-medium truncate">{{ formatEventTime(event) }} · {{ $any(event).extendedProps?.shared?.customerName || event.title || 'Sin nombre' }}</div>
+                        @if ($any(event).extendedProps?.shared?.professionalName) {
+                          <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ $any(event).extendedProps.shared.professionalName }}</div>
+                        }
+                      </div>
+                      <i class="fas fa-external-link-alt text-[10px] text-gray-400 mt-1"></i>
+                    </div>
+                  </button>
+                }
+                @if (bookingsWithoutResourceList().length > 8) {
+                  <div class="px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900/50">
+                    +{{ bookingsWithoutResourceList().length - 8 }} más
+                  </div>
+                }
+              </div>
             </div>
           }
         </div>
@@ -660,7 +730,9 @@ export class CalendarComponent implements OnInit {
   
   // Computed property to safely cache current day's events instead of recreating array every CD cycle
   currentDayEvents = computed(() => {
-    return (this._events() ?? []).filter(e => this.isSameDay(e.start, this.currentView().date));
+    const sameDay = (this._events() ?? []).filter(e => this.isSameDay(e.start, this.currentView().date));
+    if (this.showCancelled()) return sameDay;
+    return sameDay.filter(e => (e.extendedProps?.shared as any)?.status !== 'cancelled');
   });
   @Input() set events(val: CalendarEvent[]) { this._events.set(val ?? []); }
   get events() { return this._events(); }
@@ -1094,10 +1166,17 @@ ngOnInit() {
   ));
 
   bookingsWithoutService = computed(() =>
-    this.events.filter((e: CalendarEvent) => 
+    this.events.filter((e: CalendarEvent) =>
       (e.extendedProps?.shared as any)?.status !== 'cancelled' &&
       !e.extendedProps?.shared?.serviceId && !e.extendedProps?.shared?.serviceName
     ).length
+  );
+
+  bookingsWithoutServiceList = computed(() =>
+    this.events.filter((e: CalendarEvent) =>
+      (e.extendedProps?.shared as any)?.status !== 'cancelled' &&
+      !e.extendedProps?.shared?.serviceId && !e.extendedProps?.shared?.serviceName
+    )
   );
 
   bookingsWithoutResource = computed(() => {
@@ -1107,6 +1186,53 @@ ngOnInit() {
       !!e.extendedProps?.shared?.professionalId && !e.extendedProps?.shared?.resourceId && !e.extendedProps?.shared?.resourceName
     ).length;
   });
+
+  bookingsWithoutResourceList = computed(() => {
+    if (!this.hasCompanyResources()) return [];
+    return this.events.filter((e: CalendarEvent) =>
+      (e.extendedProps?.shared as any)?.status !== 'cancelled' &&
+      !!e.extendedProps?.shared?.professionalId && !e.extendedProps?.shared?.resourceId && !e.extendedProps?.shared?.resourceName
+    );
+  });
+
+  /**
+   * Quick-edit shortcut from the issues counter popover.
+   * Reuses onEventClick so the parent opens the standard event-details modal
+   * (booking-settings.component.html listens to (eventClick) and sets
+   * selectedEventDetails, which renders the modal at @if (selectedEventDetails)).
+   */
+  openIssueEvent(event: CalendarEvent, e: MouseEvent) {
+    e.stopPropagation();
+    this.openIssuesPopover.set(null);
+    this.onEventClick(event, e);
+  }
+
+  /**
+   * Click-toggle state for the issues counter popovers.
+   * Values: null (closed) | 'service' | 'resource'.
+   * Only one popover is open at a time — clicking one closes the other.
+   */
+  openIssuesPopover = signal<'service' | 'resource' | null>(null);
+
+  toggleIssuesPopover(which: 'service' | 'resource', e: MouseEvent) {
+    e.stopPropagation();
+    this.openIssuesPopover.update(current => current === which ? null : which);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(e: MouseEvent) {
+    if (this.openIssuesPopover() === null) return;
+    const target = e.target as HTMLElement | null;
+    if (target && this.issuesCounterEl?.nativeElement?.contains(target)) return;
+    this.openIssuesPopover.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.openIssuesPopover() !== null) this.openIssuesPopover.set(null);
+  }
+
+  @ViewChild('issuesCounter') issuesCounterEl?: ElementRef<HTMLElement>;
 
   missingFields(e: CalendarEvent): string[] {
     const shared = e.extendedProps?.shared;
