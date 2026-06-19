@@ -11,7 +11,7 @@ import {
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
 import { MfaStepUpGuard } from "./core/guards/mfa-stepup.guard";
-import { NoRobertoGuard } from "./core/guards/no-roberto.guard";
+import { NotEmergencySuperAdminGuard } from "./core/guards/not-emergency-guard";
 import { ModuleGuard } from "./guards/module.guard";
 import { InviteTokenGuard } from "./guards/invite-token.guard";
 
@@ -459,7 +459,7 @@ export const routes: Routes = [
       import("./features/auth/complete-profile/complete-profile.component").then(
         (m) => m.CompleteProfileComponent,
       ),
-    canActivate: [AuthGuard, NoRobertoGuard],
+    canActivate: [AuthGuard, NotEmergencySuperAdminGuard],
   },
   {
     path: "accept-dpa",

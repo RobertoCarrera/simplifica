@@ -615,7 +615,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
-    const isSuperAdmin = userRole === 'super_admin' || !!profile?.is_super_admin || this.authService.isRoberto();
+    const isSuperAdmin = userRole === 'super_admin' || !!profile?.is_super_admin || this.authService.isEmergencySuperAdmin();
     const isAdmin = userRole === 'admin' || userRole === 'supervisor' || isSuperAdmin;
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
