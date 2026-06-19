@@ -1152,9 +1152,13 @@ async function handleSyncBookings(
 
     } catch (e) {
 
-      // If 403 "address does not belong to this doctor", re-resolve and retry once
+      const errMsg = String(e);
 
-      if (String(e).includes('403') && String(e).includes('address')) {
+      // Case 1: 403 "address does not belong to this doctor" — recoverable.
+      // The stored address_id is stale (points to a different doctor or no longer
+      // belongs to this doctor). Re-resolve via the doctor's addresses endpoint
+      // and retry once with the corrected address_id.
+      if (errMsg.includes('403') && errMsg.includes('address')) {
 
         console.log(`[sync] 403 for doctor ${mapping.dp_doctor_id} with address ${addressId}, re-resolving...`);
 
@@ -1200,9 +1204,36 @@ async function handleSyncBookings(
 
       }
 
+      // Case 2: 403 "not authorized" — NOT recoverable by re-resolving.
+      // DocPlanner rejected the request because the OAuth integration no longer
+      // has access to this doctor on this facility (revoked, doctor left the
+      // clinic, etc.). Skip silently except for a clear actionable message so
+      // the user knows to remove the mapping or re-authorize the doctor.
+      if (errMsg.includes('403') && (errMsg.includes('not authorized') || errMsg.includes('see this doctor'))) {
+
+        const docLabel = mapping.dp_doctor_name || `id ${mapping.dp_doctor_id}`;
+
+        console.warn(`[sync] Doctor ${docLabel} (${mapping.dp_doctor_id}) not authorized on facility ${integration.facility_id} — skipping. Full error: ${errMsg}`);
+
+        errors.push(
+
+          `Doctor ${docLabel} (id ${mapping.dp_doctor_id}): no autorizado por DocPlanner en facility ${integration.facility_id}. ` +
+
+          `Quítalo del mapeo o reautorízalo en https://integrations.docplanner.com/`
+
+        );
+
+        totalFailed++;
+
+        continue;
+
+      }
+
+      // Case 3: any other error — report as before.
+
       totalFailed++;
 
-      errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id}: ${String(e)}`);
+      errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id}: ${errMsg}`);
 
     }
 
@@ -2645,7 +2676,16 @@ async function handleImportPatients(
 
     let addressRetried = false;
 
+    // Set to true when DocPlanner returns 403 "not authorized" — aborts all
+    // remaining chunks for this mapping because we already know no chunk will
+    // succeed. Saves rate-limit budget and avoids spamming diagnostics.
+    let mappingUnauthorized = false;
+
     for (const chunk of chunks) {
+
+      // Abort early: this mapping is not authorized, no point in continuing.
+
+      if (mappingUnauthorized) break;
 
       try {
 
@@ -2691,7 +2731,8 @@ async function handleImportPatients(
 
         const msg = e?.message || String(e);
 
-        // On 403 "address does not belong to this doctor", re-resolve once
+        // Case 1: 403 "address does not belong to this doctor" — recoverable.
+        // Re-resolve address_id once and retry the current chunk.
 
         if (!addressRetried && msg.includes('403') && msg.includes('address')) {
 
@@ -2755,7 +2796,36 @@ async function handleImportPatients(
 
         }
 
-        diagnostics.push(`Error doctor=${mapping.dp_doctor_id} chunk=${chunk.start}: ${msg}`);
+        // Case 2: 403 "not authorized" — NOT recoverable by re-resolving.
+        // DocPlanner rejected the request because the OAuth integration no
+        // longer has access to this doctor on this facility. Abort all
+        // remaining chunks for this mapping and emit a single clear,
+        // actionable diagnostic. Do not retry: no chunk will succeed.
+        else if (msg.includes('403') && (msg.includes('not authorized') || msg.includes('see this doctor'))) {
+
+          mappingUnauthorized = true;
+
+          const docLabel = mapping.dp_doctor_name || `id ${mapping.dp_doctor_id}`;
+
+          console.warn(`[import-patients] Doctor ${docLabel} (${mapping.dp_doctor_id}) not authorized on facility ${integration.facility_id} — aborting remaining chunks. Full error: ${msg}`);
+
+          diagnostics.push(
+
+            `Doctor ${docLabel} (id ${mapping.dp_doctor_id}): no autorizado por DocPlanner en facility ${integration.facility_id}. ` +
+
+            `Quítalo del mapeo o reautorízalo en https://integrations.docplanner.com/`
+
+          );
+
+        }
+
+        // Case 3: any other error — report as before.
+
+        else {
+
+          diagnostics.push(`Error doctor=${mapping.dp_doctor_id} chunk=${chunk.start}: ${msg}`);
+
+        }
 
       }
 
