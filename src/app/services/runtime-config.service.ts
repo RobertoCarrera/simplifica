@@ -33,14 +33,18 @@ export class RuntimeConfigService {
       // request. This is critical for the runtime config because rotating
       // keys requires the new value to be picked up immediately.
       const cacheBuster = `ts=${Date.now()}`;
-      const response = await fetch(`/assets/runtime-config.json?${cacheBuster}`, {
+      const url = `/assets/runtime-config.json?${cacheBuster}`;
+      console.log('[RuntimeConfigService] Fetching:', url);
+      const response = await fetch(url, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
       });
+      console.log('[RuntimeConfigService] Response status:', response.status, 'ok:', response.ok);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const cfg = (await response.json()) as RuntimeConfig;
+      console.log('[RuntimeConfigService] Parsed cfg:', JSON.stringify(cfg).slice(0, 200));
 
       // Defaults from compile-time environment for local/dev, or as fallback
       const defaults: RuntimeConfig = {
