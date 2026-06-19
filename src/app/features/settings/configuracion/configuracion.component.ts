@@ -230,17 +230,30 @@ savingCompanyOnboardingPolicy = false;
         return this.permissionsService.hasPermissionSync('settings.billing');
     }
 
-    get isSuperAdmin(): boolean {
-        return this.authService.userRole() === 'super_admin';
+get isSuperAdmin(): boolean {
+        // SECURITY: super-admin status comes from the DB-backed
+        // public.users.app_role_id -> public.app_roles.name = 'super_admin'.
+        // The userRole() signal reflects the company-scoped effective role
+        // (which is 'owner' when the user is owner of their company) and
+        // does NOT reliably equal 'super_admin' for global super-admins.
+        // Use userProfile.is_super_admin which is set from the DB join.
+        return !!this.userProfile?.is_super_admin
+            || this.authService.userRole() === 'super_admin';
     }
 
     /** Staff roles that can manage their own MFA/security settings. */
     get canAccessSecuritySettings(): boolean {
+        // SECURITY: also accept DB-backed is_super_admin flag for global admins
+        // whose effectiveRole is 'owner' (super-admin who owns their company).
+        if (!!this.userProfile?.is_super_admin) return true;
         const role = this.authService.userRole();
         return ['super_admin', 'owner', 'admin', 'professional', 'member', 'agent', 'developer'].includes(role);
     }
 
-    get isOwnerOrSuperAdmin(): boolean {
+get isOwnerOrSuperAdmin(): boolean {
+        // SECURITY: DB-backed is_super_admin flag covers global admins
+        // whose effectiveRole is 'owner' (super-admin who owns their company).
+        if (!!this.userProfile?.is_super_admin) return true;
         const role = this.authService.userRole();
         return role === 'owner' || role === 'super_admin';
     }
