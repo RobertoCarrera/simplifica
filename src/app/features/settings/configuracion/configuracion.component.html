@@ -127,6 +127,16 @@
           </button>
         }
 
+        <!-- Idioma preferido: visible para todos los usuarios autenticados. -->
+        <button (click)="activeTab = 'idioma'" role="tab" [attr.aria-selected]="activeTab === 'idioma'"
+          class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+          [class]="activeTab === 'idioma'
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+          <i class="fas fa-language text-base leading-none"></i>
+          <span class="whitespace-nowrap">Idioma</span>
+        </button>
+
         @if (canManageSettings || isSuperAdmin) {
           <button (click)="activeTab = 'clientes-datos'; clientesDatosSubTab = 'duplicados'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
@@ -967,6 +977,13 @@
   @if ((isOwnerOrSuperAdmin || isSuperAdmin) && activeTab === "emails") {
     <div class="animate-fadeIn">
       <app-email-accounts></app-email-accounts>
+    </div>
+  }
+
+  <!-- Idioma preferido: disponible para todos los roles. -->
+  @if (activeTab === "idioma") {
+    <div class="animate-fadeIn">
+      <app-language-preferences></app-language-preferences>
     </div>
   }
 
