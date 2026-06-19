@@ -1,19 +1,14 @@
 export const environment = {
   production: true,
   supabase: {
-    // Orden de resolución: variables estándar del dashboard de Vercel -> variantes legacy
-    url:
-      process.env["SUPABASE_URL"] ||
-      process.env["VITE_SUPABASE_URL"] ||
-      process.env["NG_APP_SUPABASE_URL"] ||
-      "",
-    anonKey:
-      process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-      process.env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"] ||
-      process.env["SUPABASE_ANON_KEY"] ||
-      process.env["VITE_SUPABASE_ANON_KEY"] ||
-      process.env["NG_APP_SUPABASE_ANON_KEY"] ||
-      "",
+    // Direct values for production. The anon key is public by design
+    // (it ships in the JS bundle). These values match runtime-config.json
+    // written by scripts/generate-runtime-config.mjs. Using direct
+    // values (not process.env) because Angular CLI's process.env
+    // replacement removes undefined entries, leaving process.env.X as
+    // a runtime reference that fails in the browser.
+    url: "https://ufutyjbqfjrlzkprvyvs.supabase.co",
+    anonKey: "sb_publishable_2vzsHFfDJiXv7RK6ttGUNw__9ZR4czN",
   },
   siteUrl: "https://app.simplificacrm.es",
   portalUrl: "https://portal.simplificacrm.es",
