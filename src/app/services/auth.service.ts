@@ -878,59 +878,16 @@ export class AuthService {
         }
       }
       
-      // EMERGENCY BYPASS: if everything failed but emailCandidate identifies a known super_admin
-      // This covers the case where internalUser = null (query failed, RLS block, missing row, etc.)
-      if (!appUser && emailCandidate === 'roberto@simplificacrm.es') {
-        console.warn(
-          '🚨 [AuthService] NULL BYPASS ACTIVATED for:', emailCandidate,
-          '| internalUser:', internalUser ? 'present' : 'NULL',
-          '| authId prefix:', authId.substring(0, 8)
-        );
-        appUser = {
-          id: internalUser?.id || authId,
-          auth_user_id: internalUser?.auth_user_id || authId,
-          email: emailCandidate,
-          name: internalUser?.name || 'Roberto',
-          surname: internalUser?.surname || '',
-          full_name: `${internalUser?.name || 'Roberto'} ${internalUser?.surname || ''}`.trim() || emailCandidate,
-          permissions: { all: true },
-          active: true,
-          role: 'super_admin' as const,
-          company_id: internalUser?.company_id || null,
-          company: internalUser?.company || null,
-          is_super_admin: true,
-          app_role_id: internalUser?.app_role_id || undefined,
-          client_id: null,
-          favorite_company_id: internalUser?.favorite_company_id ?? null,
-          favorite_professional_id: internalUser?.favorite_professional_id ?? null,
-        } as AppUser;
-      }
-
+      // SECURITY: No email-based bypass. Super-admin status is read from
+      // public.users.app_role_id joining to public.app_roles.name = 'super_admin'.
+      // If appUser is null here, the user cannot log in as super-admin.
       return appUser;
 
     } catch (error) {
       console.warn('⚠️ [AuthService] Error in fetchAppUserByAuthId:', error);
-      // Emergency: even on exception, allow the known super_admin to log in
-      if (emailCandidate === 'roberto@simplificacrm.es') {
-        console.warn('🚨 [AuthService] CATCH BYPASS for:', emailCandidate, '| error:', error);
-        return {
-          id: authId,
-          auth_user_id: authId,
-          email: emailCandidate,
-          name: 'Roberto',
-          surname: '',
-          full_name: emailCandidate,
-          permissions: { all: true },
-          active: true,
-          role: 'super_admin' as const,
-          company_id: null,
-          company: null,
-          is_super_admin: true,
-          client_id: null,
-          favorite_company_id: null,
-          favorite_professional_id: null,
-        } as AppUser;
-      }
+      // SECURITY: No email-based bypass on exception. Return null so the
+      // caller treats the user as unauthenticated. Super-admin status
+      // must come from the DB-backed app_role join.
       return null;
     }
   }
@@ -1593,10 +1550,15 @@ export class AuthService {
     return this.userProfileSubject.value;
   }
 
-  /** Returns true for the emergency super-admin account (Roberto). */
-  isRoberto(): boolean {
-    return this.userProfileSignal()?.email === 'roberto@simplificacrm.es'
-      || this.currentUser?.email === 'roberto@simplificacrm.es';
+  /**
+   * Returns true when the current user is a super-admin per the DB-backed
+   * app_role join (public.users.app_role_id -> public.app_roles.name = 'super_admin').
+   * SECURITY: no email-based bypass. The previous isRoberto() method was
+   * removed because it granted super-admin purely by client-side email match,
+   * which is a privilege-escalation vector.
+   */
+  isEmergencySuperAdmin(): boolean {
+    return !!this.userProfileSignal()?.is_super_admin;
   }
 
   get isLoading(): boolean {
@@ -2336,41 +2298,13 @@ export class AuthService {
       const globalRoleName = appRole?.name;
       const companyRole = activeMembership.role;
 
-      // EMERGENCY BYPASS: roberto@simplificacrm.es siempre es super_admin
-      // independientemente del rol de membresía. Este bypass garantiza que pueda
-      // hacer login aunque la query de perfil falle parcialmente.
-      const isEmergency = internalUser.email === 'roberto@simplificacrm.es';
-      const isGlobalSuperAdmin = globalRoleName === 'super_admin';
-      if (isEmergency || isGlobalSuperAdmin) {
-        if (isEmergency && !isGlobalSuperAdmin) {
-          console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
-        }
-        const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
-        return {
-          id: internalUser.id,
-          auth_user_id: internalUser.auth_user_id,
-          email: internalUser.email,
-          name: internalUser.name,
-          surname: internalUser.surname,
-          permissions: { all: true },
-          active: internalUser.active,
-          role: 'super_admin',
-          company_id: activeMembership.company_id || null,
-          company: activeMembership.company || null,
-          full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
-          is_super_admin: true,
-          app_role_id: internalUser.app_role_id,
-          client_id: linkedClient?.id || null,
-          onboarding_completed: internalUser.onboarding_completed,
-          favorite_company_id: internalUser.favorite_company_id ?? null,
-          favorite_professional_id: internalUser.favorite_professional_id ?? null,
-        };
-      }
-        
+      // SECURITY: super-admin is granted solely by DB-backed app_role.name === 'super_admin'.
+      // No email-based bypass. The real super-admin (roberto@simplificacrm.es) has
+      // app_role_id pointing to the super_admin role in public.app_roles.
       const effectiveRole = (companyRole && companyRole !== 'super_admin')
         ? companyRole
         : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
-        
+
       const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
 
       return {
@@ -2397,17 +2331,16 @@ export class AuthService {
 
   private _createSuperAdminOrFallbackUser(internalUser: any): AppUser | null {
       if (!internalUser) return null;
-      
+
       const rawAppRole = internalUser.app_role;
       const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
       const globalRole = appRoleData?.name;
-      
-      const isSuperAdmin = globalRole === 'super_admin';
-      const isEmergency = internalUser.email === 'roberto@simplificacrm.es';
 
-      if (isSuperAdmin || isEmergency) {
-        if(isEmergency && !isSuperAdmin) console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
-        
+      // SECURITY: super-admin determined solely by app_role.name === 'super_admin'.
+      // No email-based bypass.
+      const isSuperAdmin = globalRole === 'super_admin';
+
+      if (isSuperAdmin) {
         return {
           id: internalUser.id,
           auth_user_id: internalUser.auth_user_id,
@@ -2427,7 +2360,7 @@ export class AuthService {
           favorite_professional_id: internalUser.favorite_professional_id ?? null,
         };
       }
-      
+
       if (internalUser && !internalUser.company_id) {
           return null; // Guard will handle redirect
       }
