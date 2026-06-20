@@ -6,7 +6,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 function addInterval(date: Date, type: string, interval: number, day?: number): Date {
   const d = new Date(date);
@@ -297,7 +297,7 @@ serve(async (req) => {
   const rl = await checkRateLimit(`quotes-recurring-dispatcher:${ip}`, 5, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
       status: 429,
     });
   }
@@ -315,7 +315,7 @@ serve(async (req) => {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!token) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
         status: 401,
       });
     }
@@ -329,7 +329,7 @@ serve(async (req) => {
       } = await admin.auth.getUser(token);
       if (authErr || !user) {
         return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
           status: 401,
         });
       }
@@ -464,14 +464,14 @@ serve(async (req) => {
         results,
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
         status: 200,
       },
     );
   } catch (error) {
     console.error('Error in quotes-recurring-dispatcher:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       status: 500,
     });
   }

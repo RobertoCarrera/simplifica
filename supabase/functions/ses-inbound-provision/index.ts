@@ -38,7 +38,7 @@ import {
 } from 'npm:@aws-sdk/client-route-53';
 
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { isValidUUID } from '../_shared/security.ts';
+import { isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,13 +152,13 @@ async function requireAuthorizedUser(
 function jsonError(status: number, error: string, req: Request) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
   });
 }
 
 function jsonSuccess(data: unknown, req: Request) {
   return new Response(JSON.stringify({ success: true, data }), {
-    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
   });
 }
 

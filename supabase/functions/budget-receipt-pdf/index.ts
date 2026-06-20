@@ -23,7 +23,7 @@ pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
 import { corsHeaders as sharedCorsHeaders, originAllowed } from '../quotes-pdf/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 function cors(origin?: string) {
   return sharedCorsHeaders(origin, 'GET, OPTIONS');
@@ -355,7 +355,7 @@ serve(async (req) => {
   if (origin && !originAllowed(origin)) {
     return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), {
       status: 403,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -364,14 +364,14 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -381,7 +381,7 @@ serve(async (req) => {
     if (!token) {
       return new Response(JSON.stringify({ error: 'Missing Bearer token' }), {
         status: 401,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -393,7 +393,7 @@ serve(async (req) => {
     if (!paymentId && !budgetId) {
       return new Response(
         JSON.stringify({ error: 'payment_id or budget_id required' }),
-        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -402,7 +402,7 @@ serve(async (req) => {
     if (!uuidRegex.test(targetId)) {
       return new Response(
         JSON.stringify({ error: 'Invalid id format' }),
-        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -422,7 +422,7 @@ serve(async (req) => {
     const { data: { user: caller } } = await user.auth.getUser();
     if (!caller) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...headers, 'Content-Type': 'application/json' },
+        status: 401, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
     const { data: me } = await admin
@@ -432,7 +432,7 @@ serve(async (req) => {
       .single();
     if (!me?.company_id) {
       return new Response(JSON.stringify({ error: 'User has no company' }), {
-        status: 403, headers: { ...headers, 'Content-Type': 'application/json' },
+        status: 403, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -446,7 +446,7 @@ serve(async (req) => {
         .maybeSingle();
       if (!payment) {
         return new Response(JSON.stringify({ error: 'Payment not found' }), {
-          status: 404, headers: { ...headers, 'Content-Type': 'application/json' },
+          status: 404, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       }
       budgetIdResolved = payment.budget_id;
@@ -460,7 +460,7 @@ serve(async (req) => {
       .maybeSingle();
     if (bErr || !budget) {
       return new Response(JSON.stringify({ error: 'Budget not found' }), {
-        status: 404, headers: { ...headers, 'Content-Type': 'application/json' },
+        status: 404, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -522,13 +522,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ ok: true, path, bytes: pdfBytes.byteLength }),
-      { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+      { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
     );
   } catch (e) {
     console.error('[budget-receipt-pdf] unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 });

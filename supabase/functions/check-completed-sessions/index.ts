@@ -12,6 +12,8 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const DURATION_JSON = Deno.env.get('SUPABASE_URL') ? '' : ''; // unused
 
@@ -26,14 +28,14 @@ async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof create
 function jsonSuccess(status: number, data: unknown) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
   });
 }
 
 function jsonError(status: number, error: string) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
   });
 }
 

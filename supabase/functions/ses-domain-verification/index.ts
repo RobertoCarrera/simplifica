@@ -28,6 +28,8 @@ import {
 } from 'npm:@aws-sdk/client-route-53';
 
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -262,14 +264,14 @@ async function handleGet(
     console.error('[ses-domain-verification] DB query error:', dbError);
     return new Response(
       JSON.stringify({ success: false, error: 'db_error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 500, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
   if (!record) {
     return new Response(
       JSON.stringify({ success: false, error: 'not_found' }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 404, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
@@ -367,7 +369,7 @@ async function handleGet(
         sesStatus,
       },
     }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status: 200, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
   );
 }
 
@@ -387,7 +389,7 @@ async function handlePost(
   if (!domain || !domainRx.test(domain)) {
     return new Response(
       JSON.stringify({ success: false, error: 'invalid_domain' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
@@ -470,7 +472,7 @@ async function handlePost(
           'DNS records created. Allow up to 72 hours for propagation, though typically completes within minutes.',
       },
     }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status: 200, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
   );
 }
 
@@ -488,7 +490,7 @@ serve(async (req: Request) => {
   if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ success: false, error: 'missing_auth' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -506,7 +508,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'malformed_token' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -514,7 +516,7 @@ serve(async (req: Request) => {
   if (!userId) {
     return new Response(JSON.stringify({ success: false, error: 'invalid_token' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -534,7 +536,7 @@ serve(async (req: Request) => {
     if (!companyId || !accountId) {
       return new Response(
         JSON.stringify({ success: false, error: 'missing_params', message: 'companyId and accountId are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -552,7 +554,7 @@ serve(async (req: Request) => {
     } catch {
       return new Response(
         JSON.stringify({ success: false, error: 'invalid_json' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -563,14 +565,14 @@ serve(async (req: Request) => {
     if (!companyId || !accountId) {
       return new Response(
         JSON.stringify({ success: false, error: 'missing_params', message: 'companyId and accountId are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
       );
     }
 
     if (!domain) {
       return new Response(
         JSON.stringify({ success: false, error: 'missing_domain' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -580,6 +582,6 @@ serve(async (req: Request) => {
   // ── Unsupported method ───────────────────────────────────────────────────
   return new Response(
     JSON.stringify({ success: false, error: 'method_not_allowed' }),
-    { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status: 405, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
   );
 });
