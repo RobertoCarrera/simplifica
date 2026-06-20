@@ -4,7 +4,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { generateSuministroLRXml, type SistemaInformatico } from './xml-generator.ts';
 import { signXml } from './xades-signer.ts';
 import { createAEATClient } from './aeat-client.ts';
@@ -517,7 +517,7 @@ serve(async (req) => {
   const headers = cors(origin);
   if (req.method === 'OPTIONS')
     return new Response('ok', {
-      headers,
+      headers: withSecurityHeaders(headers),
     });
   if (req.method !== 'POST')
     return new Response(
@@ -526,10 +526,10 @@ serve(async (req) => {
       }),
       {
         status: 405,
-        headers: {
+        headers: withSecurityHeaders({
           ...headers,
           'Content-Type': 'application/json',
-        },
+        }),
       },
     );
 
@@ -539,7 +539,7 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -630,17 +630,17 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: auth.error === 'Admin role required' ? 403 : 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if ((auth as any).roleName !== 'super_admin')
         return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if (auth.companyId !== body.company_id)
         return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
@@ -657,7 +657,7 @@ serve(async (req) => {
             ok: false,
             error: 'No event found or database error',
           }),
-          { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+          { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
         );
       }
 
@@ -693,7 +693,7 @@ serve(async (req) => {
           after: readBack ? { attempts: readBack.attempts, last_error: readBack.last_error } : null,
           readError: readErr ? 'Read failed' : null,
         }),
-        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -703,12 +703,12 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: auth.error === 'Admin role required' ? 403 : 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if ((auth as any).roleName !== 'super_admin')
         return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       return new Response(
         JSON.stringify({
@@ -725,7 +725,7 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         },
       );
     }
@@ -736,17 +736,17 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if ((auth as any).roleName !== 'super_admin')
         return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if (auth.companyId !== body.company_id)
         return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
@@ -763,7 +763,7 @@ serve(async (req) => {
           event: lastEvent,
           error: evErr ? 'Database error' : undefined,
         }),
-        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -773,17 +773,17 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if ((auth as any).roleName !== 'super_admin')
         return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if (auth.companyId !== body.company_id)
         return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const steps: any = { step: 'init' };
       try {
@@ -812,7 +812,7 @@ serve(async (req) => {
               error: 'Certificate not found for company',
               steps,
             }),
-            { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+            { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
           );
         }
         steps.certOk = true;
@@ -896,7 +896,7 @@ serve(async (req) => {
               error: `Event query error: ${evErr.message}`,
               steps,
             }),
-            { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+            { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
           );
         }
 
@@ -907,7 +907,7 @@ serve(async (req) => {
               error: 'No pending events for this company',
               steps,
             }),
-            { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } },
+            { status: 400, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
           );
         }
 
@@ -943,7 +943,7 @@ serve(async (req) => {
               ENABLE_FALLBACK,
             },
           }),
-          { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+          { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
         );
       } catch (err) {
         return new Response(
@@ -952,7 +952,7 @@ serve(async (req) => {
             error: 'Internal server error',
             steps,
           }),
-          { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } },
+          { status: 500, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
         );
       }
     }
@@ -965,7 +965,7 @@ serve(async (req) => {
         const status = access.status || 401;
         return new Response(JSON.stringify({ ok: false, error: access.error }), {
           status,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       }
       // Find most recent rejected event for this invoice
@@ -988,10 +988,10 @@ serve(async (req) => {
           }),
           {
             status: 400,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       }
@@ -1004,10 +1004,10 @@ serve(async (req) => {
           }),
           {
             status: 200,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       }
@@ -1028,10 +1028,10 @@ serve(async (req) => {
           }),
           {
             status: 400,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       }
@@ -1042,10 +1042,10 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     }
@@ -1055,7 +1055,7 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       return new Response(
         JSON.stringify({
@@ -1068,10 +1068,10 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     }
@@ -1083,12 +1083,12 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: auth.error === 'Admin role required' ? 403 : 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       if (auth.companyId !== body.company_id)
         return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
           status: 403,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const company_id = String(body.company_id);
 
@@ -1117,7 +1117,7 @@ serve(async (req) => {
           }),
           {
             status: 200,
-            headers: { ...headers, 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
           },
         );
       };
@@ -1208,7 +1208,7 @@ serve(async (req) => {
           }),
           {
             status: 200,
-            headers: { ...headers, 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
           },
         );
       }
@@ -1306,7 +1306,7 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         },
       );
     }
@@ -1317,7 +1317,7 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const evTable = admin.schema('verifactu').from('events');
       const [pendingRes, lastRes, lastAccRes, lastRejRes] = await Promise.all([
@@ -1362,10 +1362,10 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     }
@@ -1382,10 +1382,10 @@ serve(async (req) => {
           }),
           {
             status,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       }
@@ -1403,10 +1403,10 @@ serve(async (req) => {
           }),
           {
             status: 400,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       return new Response(
@@ -1416,10 +1416,10 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     }
@@ -1437,10 +1437,10 @@ serve(async (req) => {
           }),
           {
             status,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       }
@@ -1461,10 +1461,10 @@ serve(async (req) => {
           }),
           {
             status: 400,
-            headers: {
+            headers: withSecurityHeaders({
               ...headers,
               'Content-Type': 'application/json',
-            },
+            }),
           },
         );
       return new Response(
@@ -1474,10 +1474,10 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     }
@@ -1490,7 +1490,7 @@ serve(async (req) => {
       if (!token) {
         return new Response(JSON.stringify({ ok: false, error: 'Missing Bearer token' }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       }
 
@@ -1508,7 +1508,7 @@ serve(async (req) => {
       if (authError || !user) {
         return new Response(JSON.stringify({ ok: false, error: 'Invalid token' }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       }
 
@@ -1526,7 +1526,7 @@ serve(async (req) => {
           }),
           {
             status: 400,
-            headers: { ...headers, 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
           },
         );
       }
@@ -1570,7 +1570,7 @@ serve(async (req) => {
       if (listErr) {
         return new Response(JSON.stringify({ ok: false, error: 'Failed to list invoices' }), {
           status: 400,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       }
 
@@ -1670,7 +1670,7 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         },
       );
     }
@@ -1681,7 +1681,7 @@ serve(async (req) => {
       if (auth.error)
         return new Response(JSON.stringify({ ok: false, error: auth.error }), {
           status: 401,
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
         });
       const out = {
         ok: true,
@@ -1728,10 +1728,10 @@ serve(async (req) => {
       out.backoffMinutes = BACKOFF_MIN;
       return new Response(JSON.stringify(out), {
         status: 200,
-        headers: {
+        headers: withSecurityHeaders({
           ...headers,
           'Content-Type': 'application/json',
-        },
+        }),
       });
     }
     // Pull a batch of pending events — requires admin role to prevent cross-tenant AEAT submissions
@@ -1739,7 +1739,7 @@ serve(async (req) => {
     if (batchAuth.error) {
       return new Response(JSON.stringify({ ok: false, error: batchAuth.error }), {
         status: batchAuth.error === 'Admin role required' ? 403 : 401,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -1761,10 +1761,10 @@ serve(async (req) => {
         }),
         {
           status: 400,
-          headers: {
+          headers: withSecurityHeaders({
             ...headers,
             'Content-Type': 'application/json',
-          },
+          }),
         },
       );
     const due = (events || []).filter(isDue);
@@ -1795,10 +1795,10 @@ serve(async (req) => {
       }),
       {
         status: 200,
-        headers: {
+        headers: withSecurityHeaders({
           ...headers,
           'Content-Type': 'application/json',
-        },
+        }),
       },
     );
   } catch (e) {
@@ -1809,10 +1809,10 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: {
+        headers: withSecurityHeaders({
           ...headers,
           'Content-Type': 'application/json',
-        },
+        }),
       },
     );
   }
