@@ -15,7 +15,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP, isValidUUID } from '../_shared/security.ts';
+import { getClientIP, isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
@@ -39,7 +39,7 @@ serve(withCsrf(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   const ip = getClientIP(req);
@@ -47,13 +47,13 @@ serve(withCsrf(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: corsHeaders,
+      status: 405, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -61,7 +61,7 @@ serve(withCsrf(async (req) => {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: corsHeaders,
+        status: 401, headers: withSecurityHeaders(corsHeaders),
       });
     }
     const token = authHeader.replace('Bearer ', '');
@@ -73,7 +73,7 @@ serve(withCsrf(async (req) => {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: corsHeaders,
+        status: 401, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -85,7 +85,7 @@ serve(withCsrf(async (req) => {
 
     if (!me?.company_id || !me.active) {
       return new Response(JSON.stringify({ error: 'User not found or inactive' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -93,7 +93,7 @@ serve(withCsrf(async (req) => {
     const { budget_id, notes, amount: rawAmount, provider: rawProvider } = body || {};
     if (!budget_id || !isValidUUID(budget_id)) {
       return new Response(JSON.stringify({ error: 'Invalid budget_id' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -101,7 +101,7 @@ serve(withCsrf(async (req) => {
     const provider = rawProvider === 'bank_transfer' ? 'bank_transfer' : 'cash';
     if (!['cash', 'bank_transfer'].includes(provider)) {
       return new Response(JSON.stringify({ error: 'provider debe ser cash o bank_transfer' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -114,20 +114,20 @@ serve(withCsrf(async (req) => {
       .maybeSingle();
     if (bErr || !budget) {
       return new Response(JSON.stringify({ error: 'Presupuesto no encontrado' }), {
-        status: 404, headers: corsHeaders,
+        status: 404, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
     if (budget.payment_status === 'paid' || budget.status === 'paid') {
       return new Response(JSON.stringify({ error: 'El presupuesto ya está pagado' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
     const amount = rawAmount ? Number(rawAmount) : Number(budget.total);
     if (!isFinite(amount) || amount <= 0) {
       return new Response(JSON.stringify({ error: 'Importe inválido' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -152,7 +152,7 @@ serve(withCsrf(async (req) => {
     if (rpcErr) {
       console.error('[confirm-budget-cash-payment] RPC error:', rpcErr);
       return new Response(JSON.stringify({ error: 'No se pudo registrar el pago' }), {
-        status: 500, headers: corsHeaders,
+        status: 500, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -167,12 +167,12 @@ serve(withCsrf(async (req) => {
           ? 'Pago en efectivo registrado correctamente'
           : 'Transferencia bancaria registrada correctamente',
       }),
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: withSecurityHeaders(corsHeaders) },
     );
   } catch (e: any) {
     console.error('[confirm-budget-cash-payment] Unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: corsHeaders,
+      status: 500, headers: withSecurityHeaders(corsHeaders),
     });
   }
 }));

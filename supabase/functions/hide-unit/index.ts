@@ -8,6 +8,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // CORS config
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
@@ -42,27 +44,27 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (!isOriginAllowed(origin)) {
-    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
     const token = authHeader.replace("Bearer ", "");
 
     const { p_unit_id, p_operation } = await req.json();
     if (!p_unit_id || !["hide", "unhide"].includes(p_operation)) {
-      return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -72,7 +74,7 @@ serve(async (req) => {
     // Validate user
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Resolve company_id and users.id (hidden_by) - try users first
@@ -97,13 +99,13 @@ serve(async (req) => {
     }
 
     if (uerr || !companyId) {
-      return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Only admin/owner can hide/unhide units
     const unitRoleName = urow?.app_role?.name;
     if (!['admin', 'owner', 'super_admin'].includes(unitRoleName)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
     }
     const appUserId = userId;
 
@@ -115,10 +117,10 @@ serve(async (req) => {
       .single();
 
     if (unitError || !unit) {
-      return new Response(JSON.stringify({ error: "Unit not found" }), { status: 404, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Unit not found" }), { status: 404, headers: withSecurityHeaders(corsHeaders) });
     }
     if (unit.company_id !== null) {
-      return new Response(JSON.stringify({ error: "Only generic units can be hidden" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Only generic units can be hidden" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     if (p_operation === "hide") {
@@ -134,12 +136,12 @@ serve(async (req) => {
           msg.includes('could not find the resource') ||
           (msg.includes('relation') && msg.includes('does not exist'))
         ) {
-          return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
         }
         console.error('[hide-unit] hide error:', hideErr.message);
-        return new Response(JSON.stringify({ error: 'Failed to hide unit' }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Failed to hide unit' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
       }
-      return new Response(JSON.stringify({ result: "hidden" }), { status: 200, headers: corsHeaders });
+      return new Response(JSON.stringify({ result: "hidden" }), { status: 200, headers: withSecurityHeaders(corsHeaders) });
     } else {
       // Remove hide
       const { error: unhideErr } = await supabaseAdmin
@@ -154,12 +156,12 @@ serve(async (req) => {
           msg.includes('could not find the resource') ||
           (msg.includes('relation') && msg.includes('does not exist'))
         ) {
-          return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
         }
         console.error('[hide-unit] unhide error:', unhideErr.message);
-        return new Response(JSON.stringify({ error: 'Failed to unhide unit' }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Failed to unhide unit' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
       }
-      return new Response(JSON.stringify({ result: "unhidden" }), { status: 200, headers: corsHeaders });
+      return new Response(JSON.stringify({ result: "unhidden" }), { status: 200, headers: withSecurityHeaders(corsHeaders) });
     }
   } catch (e: any) {
     console.error('[hide-unit] Internal error:', e);

@@ -4,7 +4,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import pdfMake from 'https://esm.sh/pdfmake@0.2.10/build/pdfmake.js';
 import pdfFonts from 'https://esm.sh/pdfmake@0.2.10/build/vfs_fonts.js';
 import qrcodeGenerator from 'https://esm.sh/qrcode-generator@1.4.4';
@@ -780,14 +780,14 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -798,7 +798,7 @@ serve(async (req) => {
     if (!token) {
       return new Response(JSON.stringify({ error: 'Missing Bearer token' }), {
         status: 401,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -810,7 +810,7 @@ serve(async (req) => {
     if (!invoiceId) {
       return new Response(JSON.stringify({ error: 'invoice_id required' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -819,7 +819,7 @@ serve(async (req) => {
     if (!uuidRegex.test(invoiceId)) {
       return new Response(JSON.stringify({ error: 'Invalid invoice_id format' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -830,7 +830,7 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response(
         JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY envs' }),
-        { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 500, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -854,7 +854,7 @@ serve(async (req) => {
       if (invErr) console.error('[invoices-pdf] invoice load error:', invErr.message);
       return new Response(JSON.stringify({ error: 'Invoice not found' }), {
         status: 404,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -879,7 +879,7 @@ serve(async (req) => {
       console.error('[invoices-pdf] items load error:', itErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load invoice items' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -893,7 +893,7 @@ serve(async (req) => {
       console.error('[invoices-pdf] client load error:', clErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load client data' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -907,7 +907,7 @@ serve(async (req) => {
       console.error('[invoices-pdf] company load error:', coErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load company data' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -991,7 +991,7 @@ serve(async (req) => {
           console.error('[invoices-pdf] sign cached URL error:', signErr.message);
           return new Response(JSON.stringify({ error: 'Failed to generate download link' }), {
             status: 500,
-            headers: { ...headers, 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
           });
         }
 
@@ -1002,7 +1002,7 @@ serve(async (req) => {
             console.error('[invoices-pdf] download error:', dlErr.message);
             return new Response(JSON.stringify({ error: 'Failed to download PDF' }), {
               status: 500,
-              headers: { ...headers, 'Content-Type': 'application/json' },
+              headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
             });
           }
 
@@ -1018,7 +1018,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ ok: true, cached: true, url: signed.signedUrl, path }),
-          { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+          { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
         );
       }
     }
@@ -1038,7 +1038,7 @@ serve(async (req) => {
       console.error('[invoices-pdf] upload error:', upErr.message);
       return new Response(JSON.stringify({ error: 'Failed to upload PDF' }), {
         status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -1050,7 +1050,7 @@ serve(async (req) => {
       console.error('[invoices-pdf] sign URL error:', signErr.message);
       return new Response(JSON.stringify({ error: 'Failed to generate download link' }), {
         status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -1067,13 +1067,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ ok: true, cached: false, url: signed.signedUrl, path }), {
       status: 200,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   } catch (e) {
     console.error('[invoices-pdf] unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 });

@@ -2,6 +2,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decrypt as oauthDecrypt, isEncrypted as isOAuthEncrypted, encrypt as oauthEncrypt } from '../_shared/crypto-utils.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
@@ -499,28 +501,28 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: {
+      headers: withSecurityHeaders({
         'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGINS')?.split(',')[0]?.trim() || '',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-Webhook-Signature',
-      },
+      }),
     });
   }
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
   const url = new URL(req.url);
   const companyId = url.searchParams.get('company_id');
   const token = url.searchParams.get('token');
   if (!companyId) {
-    return new Response(JSON.stringify({ error: 'Missing company_id' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Missing company_id' }), { status: 400, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
   const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data: integration, error: intErr } = await serviceClient
     .from('docplanner_integrations').select('webhook_secret, is_active, facility_id, doctor_mappings')
     .eq('company_id', companyId).single();
   if (intErr || !integration || !integration.is_active) {
-    return new Response(JSON.stringify({ error: 'Integration not found or inactive' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Integration not found or inactive' }), { status: 404, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
   const rawBody = await req.text();
   const signatureHeader = req.headers.get('X-Webhook-Signature') || req.headers.get('x-webhook-signature');
@@ -528,22 +530,22 @@ serve(async (req) => {
     const valid = await verifyHmacSignature(rawBody, signatureHeader, integration.webhook_secret);
     if (!valid) {
       console.error('[docplanner-webhook] HMAC signature verification failed');
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
     }
   } else if (token && integration.webhook_secret) {
     if (token !== integration.webhook_secret) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
     }
   } else if (!integration.webhook_secret) {
     // No webhook secret configured — accept without authentication
     console.warn('[docplanner-webhook] ⚠️ No webhook_secret configured — accepting unauthenticated requests. Set webhook_secret in Integrations.');
   } else {
-    return new Response(JSON.stringify({ error: 'Missing authentication' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Missing authentication' }), { status: 401, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
   let payload;
   try { payload = JSON.parse(rawBody); }
   catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
   const eventName = payload.name || payload.event || '';
   const eventData = payload.data || payload;
@@ -665,5 +667,5 @@ serve(async (req) => {
       error_details: errors.length ? errors : null, completed_at: new Date().toISOString(),
     }).eq('id', logEntry.id);
   }
-  return new Response(JSON.stringify({ ok: true, synced, failed }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ ok: true, synced, failed }), { status: 200, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
 });
