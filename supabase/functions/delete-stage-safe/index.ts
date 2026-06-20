@@ -11,6 +11,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // CORS config via env
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
@@ -40,28 +42,28 @@ serve(async (req) => {
 
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (!isOriginAllowed(origin)) {
-    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
     const token = authHeader.replace("Bearer ", "");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(JSON.stringify({ error: "Server configuration error" }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Server configuration error" }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
 
     const admin = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } });
@@ -69,7 +71,7 @@ serve(async (req) => {
     // Resolve user and company
     const { data: { user }, error: userErr } = await admin.auth.getUser(token);
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
     const { data: uRow, error: uErr } = await admin
       .from('users')
@@ -77,27 +79,27 @@ serve(async (req) => {
       .eq('auth_user_id', user.id)
       .single();
     if (uErr || !uRow?.company_id) {
-      return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
     const companyId = uRow.company_id as string;
 
     // Only admin/owner can delete stages
     const roleName = uRow.app_role?.name;
     if (!['admin', 'owner', 'super_admin'].includes(roleName)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
     }
 
     const body = await req.json().catch(() => ({}));
     const p_stage_id: string | undefined = body?.p_stage_id;
     const p_reassign_to: string | undefined = body?.p_reassign_to;
     if (!p_stage_id) {
-      return new Response(JSON.stringify({ error: "Missing required field p_stage_id" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing required field p_stage_id" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(p_stage_id) || (p_reassign_to && !uuidRegex.test(p_reassign_to))) {
-      return new Response(JSON.stringify({ error: "Invalid stage ID format" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid stage ID format" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Quick pre-check: if no reassignment provided and tickets reference the stage, return 409
@@ -113,7 +115,7 @@ serve(async (req) => {
           code: 'REASSIGN_REQUIRED',
           stage_id: p_stage_id,
           tickets_count: refCount
-        }), { status: 409, headers: corsHeaders });
+        }), { status: 409, headers: withSecurityHeaders(corsHeaders) });
       }
     }
 
@@ -130,28 +132,28 @@ serve(async (req) => {
         console.error('[delete-stage-safe] RPC function missing:', msg);
         return new Response(
           JSON.stringify({ error: 'Database configuration error', code: 'FUNCTION_MISSING' }),
-          { status: 500, headers: corsHeaders }
+          { status: 500, headers: withSecurityHeaders(corsHeaders) }
         );
       }
       // If we hit an operator/type error, surface as syntax error (not coverage)
       if (/operator does not exist|cannot cast|invalid input value for enum/i.test(msg)) {
         console.error('[delete-stage-safe] SQL error:', msg);
-        return new Response(JSON.stringify({ error: 'Error processing stage deletion', code: 'SYNTAX_ERROR' }), { status: 400, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Error processing stage deletion', code: 'SYNTAX_ERROR' }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
       }
       // Map known conditions to 409
       if (msg.includes('Debe existir al menos') || msg.toLowerCase().includes('coverage') || msg.toLowerCase().includes('categor')) {
-        return new Response(JSON.stringify({ error: 'Deleting would break category coverage', code: 'COVERAGE_BREAK' }), { status: 409, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Deleting would break category coverage', code: 'COVERAGE_BREAK' }), { status: 409, headers: withSecurityHeaders(corsHeaders) });
       }
       if (msg.toLowerCase().includes('referenc') || msg.toLowerCase().includes('reassign')) {
-        return new Response(JSON.stringify({ error: 'Tickets reference this stage; reassignment required', code: 'REASSIGN_REQUIRED' }), { status: 409, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Tickets reference this stage; reassignment required', code: 'REASSIGN_REQUIRED' }), { status: 409, headers: withSecurityHeaders(corsHeaders) });
       }
       console.error('[delete-stage-safe] delete error:', msg);
-      return new Response(JSON.stringify({ error: 'Failed to delete stage' }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: 'Failed to delete stage' }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
-    return new Response(JSON.stringify({ result: data || { deleted: true, stageId: p_stage_id, companyId } }), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify({ result: data || { deleted: true, stageId: p_stage_id, companyId } }), { status: 200, headers: withSecurityHeaders(corsHeaders) });
   } catch (e: any) {
     console.error('[delete-stage-safe] Internal error:', e);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
   }
 });

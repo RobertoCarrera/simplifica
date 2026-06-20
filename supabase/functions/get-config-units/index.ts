@@ -8,6 +8,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
@@ -41,19 +43,19 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
   if (req.method !== "GET") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: withSecurityHeaders(corsHeaders) });
   }
   if (!isOriginAllowed(origin)) {
-    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
     const token = authHeader.replace("Bearer ", "");
 
@@ -64,7 +66,7 @@ serve(async (req) => {
     // User and company
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: withSecurityHeaders(corsHeaders) });
     }
     
     // Try users table first
@@ -75,7 +77,7 @@ serve(async (req) => {
       .maybeSingle();
     if (uerr) {
       console.error('Error querying users table:', uerr);
-      return new Response(JSON.stringify({ error: "Database error" }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Database error" }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
     
     let companyId = urow?.company_id || null;
@@ -94,7 +96,7 @@ serve(async (req) => {
     }
     
     if (!companyId) {
-      return new Response(JSON.stringify({ error: "company_id required", hint: "User not found in users or clients table" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "company_id required", hint: "User not found in users or clients table" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Generic units
@@ -107,7 +109,7 @@ serve(async (req) => {
       .limit(500);
     if (unitsError) {
       console.error('Error querying service_units:', unitsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch units' }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: 'Failed to fetch units' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Hidden per company
@@ -129,7 +131,7 @@ serve(async (req) => {
           // leave hiddenIds empty
         } else {
           console.error('Error querying hidden_units:', hiddenError);
-          return new Response(JSON.stringify({ error: 'Failed to fetch hidden units' }), { status: 500, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: 'Failed to fetch hidden units' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
         }
       } else {
         hiddenIds = new Set((hidden || []).map((h: any) => h.unit_id));
@@ -141,9 +143,9 @@ serve(async (req) => {
     
     const result = (units || []).map((u: any) => ({ ...u, is_hidden: hiddenIds.has(u.id) }));
 
-    return new Response(JSON.stringify({ units: result }), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify({ units: result }), { status: 200, headers: withSecurityHeaders(corsHeaders) });
   } catch (e: any) {
     console.error('[get-config-units] Unhandled error:', e);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
   }
 });

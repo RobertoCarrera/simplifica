@@ -60,7 +60,7 @@ import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 import { decrypt as oauthDecrypt, isEncrypted as isOAuthEncrypted, encrypt as oauthEncrypt } from '../_shared/crypto-utils.ts';
 
@@ -3507,7 +3507,7 @@ function jsonResponse(status: number, body: any): Response {
 
     status,
 
-    headers: { ..._corsHeaders, 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ..._corsHeaders, 'Content-Type': 'application/json' }),
 
   });
 
@@ -3981,7 +3981,7 @@ serve(async (req) => {
 
       status: 429,
 
-      headers: { ...corsHeaders, ...getRateLimitHeaders(rl), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl), 'Content-Type': 'application/json' }),
 
     });
 
@@ -4152,7 +4152,7 @@ serve(async (req) => {
 
             status: 429,
 
-            headers: { ...corsHeaders, ...getRateLimitHeaders(credRl), 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(credRl), 'Content-Type': 'application/json' }),
 
           });
 

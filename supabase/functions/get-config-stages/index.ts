@@ -9,6 +9,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // Configuración CORS (mismo patrón que hide-stage)
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
@@ -45,20 +47,20 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== "GET") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   if (!isOriginAllowed(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), {
       status: 403,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -68,7 +70,7 @@ serve(async (req) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     const token = authHeader.replace("Bearer ", "");
@@ -78,7 +80,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(JSON.stringify({ error: "Server configuration error" }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -91,7 +93,7 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -108,7 +110,7 @@ serve(async (req) => {
         .eq('auth_user_id', user.id)
         .single();
       if (uErr || !uRow?.company_id || uRow.company_id !== qCompany) {
-        return new Response(JSON.stringify({ error: 'Forbidden company_id' }), { status: 403, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: 'Forbidden company_id' }), { status: 403, headers: withSecurityHeaders(corsHeaders) });
       }
       companyId = qCompany;
     } else {
@@ -120,7 +122,7 @@ serve(async (req) => {
       if (userRowError || !userRow?.company_id) {
         return new Response(JSON.stringify({ error: "User not associated with a company" }), {
           status: 400,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         });
       }
       companyId = userRow.company_id;
@@ -139,7 +141,7 @@ serve(async (req) => {
       console.error('[get-config-stages] Stages error:', stagesError.message);
       return new Response(JSON.stringify({ error: 'Failed to load stages' }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -153,7 +155,7 @@ serve(async (req) => {
       console.error('[get-config-stages] Hidden stages error:', hiddenError.message);
       return new Response(JSON.stringify({ error: 'Failed to load hidden stages' }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -166,7 +168,7 @@ serve(async (req) => {
       console.error('[get-config-stages] Stage order error:', oErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load stage order' }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -184,13 +186,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ stages: result }), {
       status: 200,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   } catch (e: any) {
     console.error('[get-config-stages] Unhandled error:', e);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 });

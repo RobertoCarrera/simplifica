@@ -24,6 +24,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from './cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 /* ── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!;
@@ -434,7 +436,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -451,7 +453,7 @@ serve(async (req: Request) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
   }
@@ -475,7 +477,7 @@ serve(async (req: Request) => {
     console.error('[docplanner-reconciliation-cron] Failed to fetch integrations:', fetchErr);
     return new Response(JSON.stringify({ error: 'DB error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -486,7 +488,7 @@ serve(async (req: Request) => {
       scope,
     }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -579,6 +581,6 @@ serve(async (req: Request) => {
     results,
   }), {
     status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
   });
 });
