@@ -17,7 +17,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP, isValidUUID } from '../_shared/security.ts';
+import { getClientIP, isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
@@ -173,7 +173,7 @@ serve(withCsrf(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   const ip = getClientIP(req);
@@ -181,14 +181,14 @@ serve(withCsrf(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -197,7 +197,7 @@ serve(withCsrf(async (req) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     const token = authHeader.replace('Bearer ', '');
@@ -210,7 +210,7 @@ serve(withCsrf(async (req) => {
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -224,7 +224,7 @@ serve(withCsrf(async (req) => {
     if (!me?.company_id || !me.active) {
       return new Response(JSON.stringify({ error: 'User not found or inactive' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -235,19 +235,19 @@ serve(withCsrf(async (req) => {
     if (!budget_id || !provider) {
       return new Response(JSON.stringify({ error: 'budget_id and provider required' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (!isValidUUID(budget_id)) {
       return new Response(JSON.stringify({ error: 'Invalid budget_id format' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (!['paypal', 'stripe', 'cash', 'bank_transfer'].includes(provider)) {
       return new Response(JSON.stringify({ error: 'Invalid provider' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -268,7 +268,7 @@ serve(withCsrf(async (req) => {
     if (bErr || !budget) {
       return new Response(JSON.stringify({ error: 'Presupuesto no encontrado' }), {
         status: 404,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -276,13 +276,13 @@ serve(withCsrf(async (req) => {
     if (budget.payment_status === 'paid' || budget.status === 'paid') {
       return new Response(JSON.stringify({ error: 'El presupuesto ya está pagado' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (budget.status === 'cancelled') {
       return new Response(JSON.stringify({ error: 'El presupuesto está cancelado' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -298,7 +298,7 @@ serve(withCsrf(async (req) => {
         console.error('[create-budget-payment-link] generate_budget_payment_token error:', tokenErr);
         return new Response(JSON.stringify({ error: 'No se pudo generar el link de pago' }), {
           status: 500,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         });
       }
 
@@ -326,7 +326,7 @@ serve(withCsrf(async (req) => {
             ? 'Confirma el pago en el panel para registrar el cobro en efectivo.'
             : 'Confirma la transferencia desde el panel para registrar el cobro.',
         }),
-        { status: 200, headers: corsHeaders },
+        { status: 200, headers: withSecurityHeaders(corsHeaders) },
       );
     }
 
@@ -342,7 +342,7 @@ serve(withCsrf(async (req) => {
     if (intErr || !integration) {
       return new Response(
         JSON.stringify({ error: `No hay integración activa de ${provider} en esta empresa` }),
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: withSecurityHeaders(corsHeaders) },
       );
     }
 
@@ -355,7 +355,7 @@ serve(withCsrf(async (req) => {
     if (tokenErr || !tokenRow) {
       return new Response(JSON.stringify({ error: 'No se pudo generar el token de pago' }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     const paymentToken = (tokenRow as any).token;
@@ -380,7 +380,7 @@ serve(withCsrf(async (req) => {
     if ('error' in result) {
       return new Response(JSON.stringify({ error: result.error }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -404,13 +404,13 @@ serve(withCsrf(async (req) => {
         token: paymentToken,
         expires_at: (tokenRow as any).expires_at,
       }),
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: withSecurityHeaders(corsHeaders) },
     );
   } catch (e: any) {
     console.error('[create-budget-payment-link] Unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 }));

@@ -7,7 +7,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -43,7 +43,7 @@ serve(withCsrf(async (req: Request) => {
     try {
       console.log('import-services OPTIONS preflight', { origin });
     } catch {}
-    return new Response('ok', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+    return new Response('ok', { headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'text/plain' }) });
   }
 
   // Health-check GET
@@ -51,19 +51,19 @@ serve(withCsrf(async (req: Request) => {
     if (!isAllowedOrigin(origin)) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
     return new Response(JSON.stringify({ ok: true, function: 'import-services' }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed', allowed: ['GET', 'POST', 'OPTIONS'] }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 405, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
@@ -71,7 +71,7 @@ serve(withCsrf(async (req: Request) => {
   if (!isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
       status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -81,7 +81,7 @@ serve(withCsrf(async (req: Request) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -92,7 +92,7 @@ serve(withCsrf(async (req: Request) => {
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       return new Response(JSON.stringify({ error: 'Missing Supabase env configuration' }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -105,7 +105,7 @@ serve(withCsrf(async (req: Request) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Authorization Bearer token required' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
     const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim();
@@ -115,7 +115,7 @@ serve(withCsrf(async (req: Request) => {
     if (userErr || !userRes?.user) {
       return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -148,7 +148,7 @@ serve(withCsrf(async (req: Request) => {
     if (!tenantCompanyId) {
       return new Response(JSON.stringify({ error: 'User has no associated company_id' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -162,7 +162,7 @@ serve(withCsrf(async (req: Request) => {
     if (!['owner', 'admin'].includes(roleName)) {
       return new Response(JSON.stringify({ error: 'Only owner or admin can import services' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -172,13 +172,13 @@ serve(withCsrf(async (req: Request) => {
     if (rows.length === 0) {
       return new Response(JSON.stringify({ inserted: [] }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
     if (rows.length > 2000) {
       return new Response(JSON.stringify({ error: 'Maximum 2000 rows per import' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -406,13 +406,13 @@ serve(withCsrf(async (req: Request) => {
 
     return new Response(JSON.stringify({ inserted }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   } catch (e: any) {
     console.error('import-services exception', e);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 }));

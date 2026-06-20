@@ -16,7 +16,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || '';
@@ -55,7 +55,7 @@ function safeRedirect(target: string, corsHeaders: HeadersInit): Response {
   } catch {
     safe = `${PUBLIC_SITE_URL}/`;
   }
-  return new Response(null, { status: 302, headers: { ...corsHeaders, Location: safe } });
+  return new Response(null, { status: 302, headers: withSecurityHeaders({ ...corsHeaders, Location: safe }) });
 }
 
 async function decrypt(encryptedBase64: string): Promise<string> {
@@ -171,14 +171,14 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`public-budget-payment-redirect:${ip}`, 30, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429, headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+      status: 429, headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -191,12 +191,12 @@ serve(async (req) => {
 
     if (!token || !isValidToken(token)) {
       return new Response(JSON.stringify({ error: 'Token inválido' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (!['success', 'cancelled'].includes(status)) {
       return new Response(JSON.stringify({ error: 'Estado inválido' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -210,7 +210,7 @@ serve(async (req) => {
   // POST → mint checkout session
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: corsHeaders,
+      status: 405, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -218,12 +218,12 @@ serve(async (req) => {
     const { token, provider } = await req.json();
     if (!token || typeof token !== 'string' || !isValidToken(token)) {
       return new Response(JSON.stringify({ error: 'Token inválido' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (!['stripe', 'paypal', 'cash', 'bank_transfer'].includes(provider)) {
       return new Response(JSON.stringify({ error: 'Provider inválido' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -243,12 +243,12 @@ serve(async (req) => {
 
     if (error || !budget) {
       return new Response(JSON.stringify({ error: 'Presupuesto no encontrado' }), {
-        status: 404, headers: corsHeaders,
+        status: 404, headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (budget.payment_status === 'paid' || budget.status === 'paid') {
       return new Response(JSON.stringify({ error: 'Este presupuesto ya está pagado' }), {
-        status: 400, headers: corsHeaders,
+        status: 400, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -262,7 +262,7 @@ serve(async (req) => {
             ? 'Acude a la empresa para realizar el pago en efectivo. Una vez recibido, se confirmará desde el panel.'
             : 'Realiza la transferencia con los datos de la empresa. Una vez recibida, se confirmará desde el panel.',
         }),
-        { status: 200, headers: corsHeaders },
+        { status: 200, headers: withSecurityHeaders(corsHeaders) },
       );
     }
 
@@ -277,7 +277,7 @@ serve(async (req) => {
     if (intErr || !integration) {
       return new Response(
         JSON.stringify({ error: `No hay integración activa de ${provider}` }),
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: withSecurityHeaders(corsHeaders) },
       );
     }
 
@@ -301,7 +301,7 @@ serve(async (req) => {
 
     if ('error' in result) {
       return new Response(JSON.stringify({ error: result.error }), {
-        status: 500, headers: corsHeaders,
+        status: 500, headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -316,12 +316,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, provider, payment_url: paymentUrl }),
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: withSecurityHeaders(corsHeaders) },
     );
   } catch (e: any) {
     console.error('[public-budget-payment-redirect] Unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: corsHeaders,
+      status: 500, headers: withSecurityHeaders(corsHeaders),
     });
   }
 });

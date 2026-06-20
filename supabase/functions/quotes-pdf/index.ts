@@ -5,7 +5,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as sharedCorsHeaders, originAllowed } from './cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 // pdfmake imports
 import pdfMake from 'https://esm.sh/pdfmake@0.2.10/build/pdfmake.js';
@@ -661,7 +661,7 @@ serve(async (req) => {
   if (origin && !originAllowed(origin)) {
     return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), {
       status: 403,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -671,14 +671,14 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -688,7 +688,7 @@ serve(async (req) => {
     if (!token) {
       return new Response(JSON.stringify({ error: 'Missing Bearer token' }), {
         status: 401,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -700,7 +700,7 @@ serve(async (req) => {
     if (!quoteId) {
       return new Response(JSON.stringify({ error: 'quote_id required' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -709,7 +709,7 @@ serve(async (req) => {
     if (!uuidRegex.test(quoteId)) {
       return new Response(JSON.stringify({ error: 'Invalid quote_id format' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -720,7 +720,7 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response(
         JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY envs' }),
-        { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } },
+        { status: 500, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -743,7 +743,7 @@ serve(async (req) => {
       if (qErr) console.error('[quotes-pdf] quote load error:', qErr.message);
       return new Response(JSON.stringify({ error: 'Quote not found' }), {
         status: 404,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -770,7 +770,7 @@ serve(async (req) => {
       console.error('[quotes-pdf] items load error:', itErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load quote items' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -784,7 +784,7 @@ serve(async (req) => {
       console.error('[quotes-pdf] client load error:', clErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load client data' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -798,7 +798,7 @@ serve(async (req) => {
       console.error('[quotes-pdf] company load error:', coErr.message);
       return new Response(JSON.stringify({ error: 'Failed to load company data' }), {
         status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -857,7 +857,7 @@ serve(async (req) => {
           console.error('[quotes-pdf] sign cached URL error:', signErr.message);
           return new Response(JSON.stringify({ error: 'Failed to generate download link' }), {
             status: 500,
-            headers: { ...headers, 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
           });
         }
 
@@ -868,7 +868,7 @@ serve(async (req) => {
             console.error('[quotes-pdf] download error:', dlErr.message);
             return new Response(JSON.stringify({ error: 'Failed to download PDF' }), {
               status: 500,
-              headers: { ...headers, 'Content-Type': 'application/json' },
+              headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
             });
           }
 
@@ -884,7 +884,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ ok: true, cached: true, url: signed.signedUrl, path }),
-          { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } },
+          { status: 200, headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }) },
         );
       }
     }
@@ -904,7 +904,7 @@ serve(async (req) => {
       console.error('[quotes-pdf] upload error:', upErr.message);
       return new Response(JSON.stringify({ error: 'Failed to upload PDF' }), {
         status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -916,7 +916,7 @@ serve(async (req) => {
       console.error('[quotes-pdf] sign URL error:', signErr.message);
       return new Response(JSON.stringify({ error: 'Failed to generate download link' }), {
         status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -933,13 +933,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ ok: true, cached: false, url: signed.signedUrl, path }), {
       status: 200,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   } catch (e) {
     console.error('[quotes-pdf] unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 });
