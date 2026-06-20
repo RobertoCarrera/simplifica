@@ -9,7 +9,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -53,7 +53,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }), {
       status: 429,
-      headers: { 'Content-Type': 'application/json', ...cors, ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors, ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -61,7 +61,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -70,7 +70,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'NO_AUTH' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -87,7 +87,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (userErr || !userData?.user) {
     return new Response(JSON.stringify({ error: 'INVALID_TOKEN' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
   const authUserId = userData.user.id;
@@ -103,20 +103,20 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (mapErr) {
     return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
   if (!appUser?.company_id) {
     return new Response(JSON.stringify({ error: 'NO_COMPANY' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
   const role = ((appUser as any).app_role?.name || '').toLowerCase();
   if (!['owner', 'admin'].includes(role)) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), {
       status: 403,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -126,14 +126,14 @@ Deno.serve(withCsrf(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: 'INVALID_JSON' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
   if (!body.software_code || !body.issuer_nif) {
     return new Response(JSON.stringify({ error: 'INVALID_PAYLOAD' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -144,7 +144,7 @@ Deno.serve(withCsrf(async (req: Request) => {
         error: 'MISSING_PLAIN_CERT_OR_KEY',
         hint: 'Provide cert_pem and key_pem (PEM format). Encryption is handled server-side.',
       }),
-      { status: 400, headers: { 'Content-Type': 'application/json', ...cors } },
+      { status: 400, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }) },
     );
   }
 
@@ -156,7 +156,7 @@ Deno.serve(withCsrf(async (req: Request) => {
         error: 'PAYLOAD_TOO_LARGE',
         hint: 'PEM fields exceed maximum allowed size.',
       }),
-      { status: 413, headers: { 'Content-Type': 'application/json', ...cors } },
+      { status: 413, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }) },
     );
   }
   const PEM_HEADER_RE = /-----BEGIN [A-Z ]+-----/;
@@ -166,7 +166,7 @@ Deno.serve(withCsrf(async (req: Request) => {
         error: 'INVALID_PEM_FORMAT',
         hint: 'cert_pem and key_pem must be valid PEM-encoded data.',
       }),
-      { status: 400, headers: { 'Content-Type': 'application/json', ...cors } },
+      { status: 400, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }) },
     );
   }
 
@@ -207,7 +207,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (fetchExistingErr) {
     return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -251,7 +251,7 @@ Deno.serve(withCsrf(async (req: Request) => {
         error: 'MISSING_ENC_KEY',
         hint: 'Set VERIFACTU_CERT_ENC_KEY (base64-encoded 32-byte key) in environment.',
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...cors } },
+      { status: 500, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }) },
     );
   }
   let aesKey: CryptoKey;
@@ -260,7 +260,7 @@ Deno.serve(withCsrf(async (req: Request) => {
   } catch (e) {
     return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
@@ -286,13 +286,13 @@ Deno.serve(withCsrf(async (req: Request) => {
   if (upsertErr) {
     return new Response(JSON.stringify({ error: 'UPSERT_FAILED' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
     });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json', ...cors },
+    headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors }),
   });
 }));
 

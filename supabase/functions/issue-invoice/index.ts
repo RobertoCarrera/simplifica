@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -19,7 +19,7 @@ serve(withCsrf(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -41,7 +41,7 @@ serve(withCsrf(async (req) => {
     if (!token) {
       return new Response(JSON.stringify({ error: 'Missing Bearer token' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -49,7 +49,7 @@ serve(withCsrf(async (req) => {
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -62,7 +62,7 @@ serve(withCsrf(async (req) => {
     if (!me) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
@@ -76,19 +76,19 @@ serve(withCsrf(async (req) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(invoiceid)) {
       return new Response(JSON.stringify({ error: 'Invalid invoiceid format' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
         status: 400,
       });
     }
     if (deviceid && !uuidRegex.test(deviceid)) {
       return new Response(JSON.stringify({ error: 'Invalid deviceid format' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
         status: 400,
       });
     }
     if (softwareid && !uuidRegex.test(softwareid)) {
       return new Response(JSON.stringify({ error: 'Invalid softwareid format' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
         status: 400,
       });
     }
@@ -109,7 +109,7 @@ serve(withCsrf(async (req) => {
           error: 'Acceso denegado o factura no encontrada',
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
           status: 403,
         },
       );
@@ -129,13 +129,13 @@ serve(withCsrf(async (req) => {
     if (error) throw error;
 
     return new Response(JSON.stringify({ ok: true, ...data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       status: 200,
     });
   } catch (error) {
     console.error('issue-invoice error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       status: 500,
     });
   }
