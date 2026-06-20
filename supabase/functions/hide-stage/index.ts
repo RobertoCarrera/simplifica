@@ -9,7 +9,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -50,11 +50,11 @@ serve(withCsrf(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: {
+      headers: withSecurityHeaders({
         ...getCorsHeaders(origin),
         'Content-Type': 'application/json',
         ...getRateLimitHeaders(rl),
-      },
+      }),
     });
   }
 
@@ -63,7 +63,7 @@ serve(withCsrf(async (req) => {
     console.log('✅ CORS preflight request');
     return new Response(null, {
       status: 200,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -77,7 +77,7 @@ serve(withCsrf(async (req) => {
       }),
       {
         status: 405,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       },
     );
   }
@@ -87,7 +87,7 @@ serve(withCsrf(async (req) => {
     console.error(`❌ Origin not allowed: ${origin}`);
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
       status: 403,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -98,7 +98,7 @@ serve(withCsrf(async (req) => {
       console.error('❌ Missing or invalid Authorization header');
       return new Response(JSON.stringify({ error: 'Missing or invalid authorization' }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -112,7 +112,7 @@ serve(withCsrf(async (req) => {
       console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -132,7 +132,7 @@ serve(withCsrf(async (req) => {
       console.error('❌ Invalid token:', userError?.message);
       return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -172,7 +172,7 @@ serve(withCsrf(async (req) => {
         }),
         {
           status: 400,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         },
       );
     }
@@ -182,7 +182,7 @@ serve(withCsrf(async (req) => {
     if (!['admin', 'owner', 'super_admin'].includes(stageRoleName)) {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -208,7 +208,7 @@ serve(withCsrf(async (req) => {
         }),
         {
           status: 400,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         },
       );
     }
@@ -222,13 +222,13 @@ serve(withCsrf(async (req) => {
     if (!stageId || !UUID_RE.test(String(stageId))) {
       return new Response(JSON.stringify({ error: 'Invalid stage id format' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     if (reassignTo !== undefined && !UUID_RE.test(String(reassignTo))) {
       return new Response(JSON.stringify({ error: 'Invalid reassign_to id format' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -241,7 +241,7 @@ serve(withCsrf(async (req) => {
         }),
         {
           status: 400,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         },
       );
     }
@@ -264,7 +264,7 @@ serve(withCsrf(async (req) => {
         }),
         {
           status: 404,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         },
       );
     }
@@ -280,7 +280,7 @@ serve(withCsrf(async (req) => {
         }),
         {
           status: 400,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         },
       );
     }
@@ -302,7 +302,7 @@ serve(withCsrf(async (req) => {
         console.error('❌ Cannot fetch workflow_category for stage', catErr?.message);
         return new Response(JSON.stringify({ error: 'Stage not found for category check' }), {
           status: 404,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         });
       }
 
@@ -358,7 +358,7 @@ serve(withCsrf(async (req) => {
             category,
             stage_id: stageId,
           }),
-          { status: 409, headers: corsHeaders },
+          { status: 409, headers: withSecurityHeaders(corsHeaders) },
         );
       }
 
@@ -379,7 +379,7 @@ serve(withCsrf(async (req) => {
               tickets_count: countTickets,
               category,
             }),
-            { status: 409, headers: corsHeaders },
+            { status: 409, headers: withSecurityHeaders(corsHeaders) },
           );
         }
         // Validate reassign target: must exist, same category, and be visible for company after reassignment
@@ -391,7 +391,7 @@ serve(withCsrf(async (req) => {
         if (targetErr || !targetRow) {
           return new Response(
             JSON.stringify({ error: 'Reassignment target not found', code: 'INVALID_TARGET' }),
-            { status: 400, headers: corsHeaders },
+            { status: 400, headers: withSecurityHeaders(corsHeaders) },
           );
         }
         if (targetRow.workflow_category !== category) {
@@ -400,7 +400,7 @@ serve(withCsrf(async (req) => {
               error: 'Target stage must be in the same workflow category',
               code: 'CATEGORY_MISMATCH',
             }),
-            { status: 400, headers: corsHeaders },
+            { status: 400, headers: withSecurityHeaders(corsHeaders) },
           );
         }
         // Check visibility of target for this company: either company-owned or generic not hidden
@@ -420,7 +420,7 @@ serve(withCsrf(async (req) => {
               error: 'Target stage is not visible for this company',
               code: 'TARGET_NOT_VISIBLE',
             }),
-            { status: 400, headers: corsHeaders },
+            { status: 400, headers: withSecurityHeaders(corsHeaders) },
           );
         }
         // Perform reassignment
@@ -433,7 +433,7 @@ serve(withCsrf(async (req) => {
           console.error('❌ Failed to reassign tickets:', updErr);
           return new Response(JSON.stringify({ error: 'Failed to reassign tickets' }), {
             status: 500,
-            headers: corsHeaders,
+            headers: withSecurityHeaders(corsHeaders),
           });
         }
         console.log(`✅ Reassigned ${countTickets} tickets from ${stageId} to ${reassignTo}`);
@@ -461,13 +461,13 @@ serve(withCsrf(async (req) => {
                 company_id: companyId,
               },
             }),
-            { status: 200, headers: corsHeaders },
+            { status: 200, headers: withSecurityHeaders(corsHeaders) },
           );
         }
         console.error('❌ Error hiding stage:', error);
         return new Response(JSON.stringify({ error: 'Failed to hide stage' }), {
           status: 500,
-          headers: corsHeaders,
+          headers: withSecurityHeaders(corsHeaders),
         });
       }
 
@@ -497,7 +497,7 @@ serve(withCsrf(async (req) => {
             }),
             {
               status: 200,
-              headers: corsHeaders,
+              headers: withSecurityHeaders(corsHeaders),
             },
           );
         }
@@ -509,7 +509,7 @@ serve(withCsrf(async (req) => {
           }),
           {
             status: 500,
-            headers: corsHeaders,
+            headers: withSecurityHeaders(corsHeaders),
           },
         );
       }
@@ -531,7 +531,7 @@ serve(withCsrf(async (req) => {
       }),
       {
         status: 200,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       },
     );
   } catch (error) {
@@ -542,7 +542,7 @@ serve(withCsrf(async (req) => {
       }),
       {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       },
     );
   }

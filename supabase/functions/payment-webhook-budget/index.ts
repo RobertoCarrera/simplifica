@@ -24,7 +24,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -152,12 +152,12 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders();
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -167,7 +167,7 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -185,13 +185,13 @@ serve(async (req) => {
     }
     return new Response(JSON.stringify({ error: 'Unknown provider (use ?provider=stripe|paypal)' }), {
       status: 400,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   } catch (e: any) {
     console.error('[payment-webhook-budget] Unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 });
@@ -201,7 +201,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (!sigHeader) {
     return new Response(JSON.stringify({ error: 'Missing Stripe-Signature' }), {
       status: 400,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -211,7 +211,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -222,7 +222,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (!budgetId) {
     console.warn('[payment-webhook-budget] stripe event missing budget_id metadata, ignoring');
     return new Response(JSON.stringify({ received: true, ignored: 'no budget_id' }), {
-      status: 200, headers: corsHeaders,
+      status: 200, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -235,7 +235,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (bErr || !budget) {
     console.error('[payment-webhook-budget] budget not found:', budgetId);
     return new Response(JSON.stringify({ error: 'Budget not found' }), {
-      status: 404, headers: corsHeaders,
+      status: 404, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -250,7 +250,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (iErr || !integration) {
     console.error('[payment-webhook-budget] no stripe integration for company:', budget.company_id);
     return new Response(JSON.stringify({ error: 'No stripe integration' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -259,7 +259,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (!webhookSecret) {
     console.error('[payment-webhook-budget] stripe webhook secret missing in integration');
     return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
-      status: 500, headers: corsHeaders,
+      status: 500, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -268,7 +268,7 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (!valid) {
     console.warn('[payment-webhook-budget] bad stripe signature for event', event.id);
     return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -277,14 +277,14 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
       && event.type !== 'payment_intent.succeeded') {
     // Other events (charge.refunded, charge.failed, etc.) — acknowledge but ignore for now
     return new Response(JSON.stringify({ received: true, ignored: event.type }), {
-      status: 200, headers: corsHeaders,
+      status: 200, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   const { amount, currency } = eventAmount(event);
   if (amount <= 0) {
     return new Response(JSON.stringify({ error: 'Zero or missing amount' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -305,13 +305,13 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
   if (rpcErr) {
     console.error('[payment-webhook-budget] mark_budget_paid_atomic error:', rpcErr);
     return new Response(JSON.stringify({ error: 'RPC failed' }), {
-      status: 500, headers: corsHeaders,
+      status: 500, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   return new Response(
     JSON.stringify({ received: true, payment_id: (payment as any)?.id }),
-    { status: 200, headers: corsHeaders },
+    { status: 200, headers: withSecurityHeaders(corsHeaders) },
   );
 }
 
@@ -321,7 +321,7 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
     event = JSON.parse(rawBody);
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -334,7 +334,7 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
   if (!m) {
     console.warn('[payment-webhook-budget] paypal event missing/invalid custom_id:', customId);
     return new Response(JSON.stringify({ received: true, ignored: 'no custom_id' }), {
-      status: 200, headers: corsHeaders,
+      status: 200, headers: withSecurityHeaders(corsHeaders),
     });
   }
   const token = m[1];
@@ -348,7 +348,7 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
   if (bErr || !budget) {
     console.error('[payment-webhook-budget] paypal: budget not found for token');
     return new Response(JSON.stringify({ error: 'Budget not found' }), {
-      status: 404, headers: corsHeaders,
+      status: 404, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -361,14 +361,14 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
   const eventType = event.event_type || '';
   if (!['CHECKOUT.ORDER.COMPLETED', 'PAYMENT.CAPTURE.COMPLETED'].includes(eventType)) {
     return new Response(JSON.stringify({ received: true, ignored: eventType }), {
-      status: 200, headers: corsHeaders,
+      status: 200, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   const { amount, currency } = paypalAmount(event.resource || {});
   if (amount <= 0) {
     return new Response(JSON.stringify({ error: 'Zero or missing amount' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -381,7 +381,7 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
       amount, expected, budget.id,
     );
     return new Response(JSON.stringify({ error: 'Amount mismatch' }), {
-      status: 400, headers: corsHeaders,
+      status: 400, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -401,12 +401,12 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
   if (rpcErr) {
     console.error('[payment-webhook-budget] mark_budget_paid_atomic error:', rpcErr);
     return new Response(JSON.stringify({ error: 'RPC failed' }), {
-      status: 500, headers: corsHeaders,
+      status: 500, headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   return new Response(
     JSON.stringify({ received: true, payment_id: (payment as any)?.id }),
-    { status: 200, headers: corsHeaders },
+    { status: 200, headers: withSecurityHeaders(corsHeaders) },
   );
 }

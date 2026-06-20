@@ -32,6 +32,8 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // ====================================================================
 // CORS (mirrors other edge functions in the project)
@@ -138,12 +140,12 @@ serve(async (req: Request) => {
 
   // Preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+    return new Response('ok', { headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'text/plain' }) });
   }
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -159,14 +161,14 @@ serve(async (req: Request) => {
   if (!jwt) {
     return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
   const { data: callerAuth, error: callerErr } = await supabaseAdmin.auth.getUser(jwt);
   if (callerErr || !callerAuth?.user) {
     return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -177,19 +179,19 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
   if (!body?.companyId || !body?.userId || !Array.isArray(body.rows)) {
     return new Response(JSON.stringify({ error: 'Missing companyId, userId, or rows[]' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
   if (body.rows.length > 500) {
     return new Response(JSON.stringify({ error: 'Batch too large (max 500 rows)' }), {
       status: 413,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -202,7 +204,7 @@ serve(async (req: Request) => {
   if (!callerUser?.id) {
     return new Response(JSON.stringify({ error: 'No user profile linked to this session' }), {
       status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
   const { data: member } = await supabaseAdmin
@@ -215,7 +217,7 @@ serve(async (req: Request) => {
   if (!member) {
     return new Response(JSON.stringify({ error: 'Not an active member of the target company' }), {
       status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -365,6 +367,6 @@ serve(async (req: Request) => {
 
   return new Response(JSON.stringify(response), {
     status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
   });
 });

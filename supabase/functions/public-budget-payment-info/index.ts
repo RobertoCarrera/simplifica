@@ -14,7 +14,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 const PUBLIC_SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || 'https://app.simplificacrm.es';
@@ -48,7 +48,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   // Rate limit by IP: 60/min is plenty for a public page that may reload
@@ -57,14 +57,14 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -81,14 +81,14 @@ serve(async (req) => {
     if (!token || typeof token !== 'string' || token.length < 16 || token.length > 128) {
       return new Response(JSON.stringify({ error: 'Token inválido' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     // Reject anything that isn't URL-safe base64
     if (!/^[A-Za-z0-9_-]+$/.test(token)) {
       return new Response(JSON.stringify({ error: 'Token con formato inválido' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -113,7 +113,7 @@ serve(async (req) => {
     if (error || !budget) {
       return new Response(JSON.stringify({ error: 'Link de pago no encontrado' }), {
         status: 404,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -218,13 +218,13 @@ serve(async (req) => {
           : null,
         expires_at: budget.payment_link_expires_at,
       }),
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: withSecurityHeaders(corsHeaders) },
     );
   } catch (e: any) {
     console.error('[public-budget-payment-info] Unexpected error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 });

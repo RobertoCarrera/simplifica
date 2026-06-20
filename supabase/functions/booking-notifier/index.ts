@@ -3,6 +3,8 @@
 // Purpose: Listen to Database Webhooks on 'bookings' table and send email notifications via AWS SES.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 // --- AWS SES Signing Logic (Reused) ---
 const te = new TextEncoder();
 function toHex(buf) {
@@ -190,9 +192,9 @@ serve(async (req)=>{
         type: 'cancellation_handled'
       }), {
         status: 200,
-        headers: {
+        headers: withSecurityHeaders({
           'Content-Type': 'application/json'
-        }
+        })
       });
     }
     // From here on we need the legacy AWS SES path (used by INSERT
@@ -316,9 +318,9 @@ serve(async (req)=>{
     return new Response(JSON.stringify({
       success: true
     }), {
-      headers: {
+      headers: withSecurityHeaders({
         'Content-Type': 'application/json'
-      }
+      })
     });
   } catch (err) {
     console.error(err);
@@ -326,9 +328,9 @@ serve(async (req)=>{
       error: err.message
     }), {
       status: 500,
-      headers: {
+      headers: withSecurityHeaders({
         'Content-Type': 'application/json'
-      }
+      })
     });
   }
 });
