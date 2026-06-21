@@ -289,10 +289,9 @@ async function sendInvoiceEmail(admin: any, invoiceId: string): Promise<boolean>
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
-  const optionsResponse = handleCorsOptions(req);
-  if (optionsResponse) return optionsResponse;
 
-  // Rate limiting: 5 req/min per IP (heavy batch operation — creates invoices for all due recurring quotes)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 5 req/min per IP (heavy batch operation — creates invoices for all due recurring quotes)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`quotes-recurring-dispatcher:${ip}`, 5, 60000);
   if (!rl.allowed) {
@@ -301,6 +300,9 @@ serve(async (req) => {
       status: 429,
     });
   }
+
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';

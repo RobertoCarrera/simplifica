@@ -3955,21 +3955,7 @@ serve(async (req) => {
 
   _corsHeaders = corsHeaders;
 
-  const optionsResponse = handleCorsOptions(req);
-
-  if (optionsResponse) return optionsResponse;
-
-
-
-  if (req.method !== 'POST') {
-
-    return jsonResponse(405, { error: 'Method not allowed' });
-
-  }
-
-
-
-  // Rate limit
+  // Rate limit FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
 
   const ip = getClientIP(req);
 
@@ -3984,6 +3970,18 @@ serve(async (req) => {
       headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl), 'Content-Type': 'application/json' }),
 
     });
+
+  }
+
+  const optionsResponse = handleCorsOptions(req);
+
+  if (optionsResponse) return optionsResponse;
+
+
+
+  if (req.method !== 'POST') {
+
+    return jsonResponse(405, { error: 'Method not allowed' });
 
   }
 

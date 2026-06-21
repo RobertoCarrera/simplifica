@@ -56,15 +56,8 @@ serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   const corsHeaders = getCorsHeaders(origin);
 
-  // OPTIONS preflight
-  if (req.method === 'OPTIONS') {
-    try {
-      console.log('import-customers OPTIONS preflight', { origin });
-    } catch {}
-    return new Response('ok', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
-  }
-
-  // Rate limiting: 5 req/min per IP (bulk import — expensive operation)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 5 req/min per IP (bulk import — expensive operation)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`import-customers:${ip}`, 5, 60000);
   if (!rl.allowed) {
@@ -72,6 +65,14 @@ serve(withCsrf(async (req: Request) => {
       status: 429,
       headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
     });
+  }
+
+  // OPTIONS preflight
+  if (req.method === 'OPTIONS') {
+    try {
+      console.log('import-customers OPTIONS preflight', { origin });
+    } catch {}
+    return new Response('ok', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
   }
 
   // Simple GET health check

@@ -115,17 +115,9 @@ async function verifyTurnstile(token: string, ip: string) {
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: withSecurityHeaders(corsHeaders) });
-  }
 
-  // AWS env vars live at function scope so both the create-booking and
-  // create-lead email blocks can use them without redeclaring.
-  const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
-  const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
-  const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
-
-  // Rate limiting: 30 req/min per IP (public booking endpoint)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 30 req/min per IP (public booking endpoint)
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||
@@ -137,6 +129,16 @@ serve(async (req) => {
       headers: { ...corsHeaders, ...getRateLimitHeaders(rateLimit) },
     });
   }
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: withSecurityHeaders(corsHeaders) });
+  }
+
+  // AWS env vars live at function scope so both the create-booking and
+  // create-lead email blocks can use them without redeclaring.
+  const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
+  const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+  const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
 
   try {
     // 1. BFF Security Checks

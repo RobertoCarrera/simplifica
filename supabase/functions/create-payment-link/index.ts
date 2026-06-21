@@ -186,11 +186,8 @@ serve(withCsrf(async (req) => {
   const origin = req.headers.get('Origin') || null;
   const corsHeaders = getCorsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
-
-  // Rate limiting: 10 req/min per IP (creates payment sessions at PayPal/Stripe)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 10 req/min per IP (creates payment sessions at PayPal/Stripe)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`create-payment-link:${ip}`, 10, 60000);
   if (!rl.allowed) {
@@ -198,6 +195,10 @@ serve(withCsrf(async (req) => {
       status: 429,
       headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
     });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {

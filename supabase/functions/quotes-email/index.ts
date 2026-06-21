@@ -102,15 +102,9 @@ async function sendViaSES(params: {
 serve(withCsrf(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
-  // Preflight
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
-  if (req.method !== 'POST')
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-    });
 
-  // Rate limiting: 10 req/min per IP (sends outbound SES emails)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 10 req/min per IP (sends outbound SES emails)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`quotes-email:${ip}`, 10, 60000);
   if (!rl.allowed) {
@@ -119,6 +113,14 @@ serve(withCsrf(async (req) => {
       headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
     });
   }
+
+  // Preflight
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (req.method !== 'POST')
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
 
   try {
     const authHeader = req.headers.get('authorization') || '';
