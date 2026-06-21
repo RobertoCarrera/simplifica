@@ -49,6 +49,18 @@ export const BookingSchema = z
       .string()
       .uuid('professional_id must be a valid UUID')
       .optional(),
+    variant_id: z
+      .string()
+      .uuid('variant_id must be a valid UUID')
+      .optional(),
+    variant_pricing_snapshot: z
+      .object({
+        base_price: z.number().nonnegative(),
+        billing_period: z.enum(['monthly', 'annual', 'one_time', 'session', 'custom']),
+        estimated_hours: z.number().nonnegative().optional(),
+        discount_percentage: z.number().min(0).max(100).optional(),
+      })
+      .optional(),
   })
   .strict();
 

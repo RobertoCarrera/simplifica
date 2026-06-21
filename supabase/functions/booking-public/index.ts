@@ -193,7 +193,11 @@ serve(async (req) => {
         });
       }
 
-      // 2. Fetch bookable services with their professionals
+      // 2. Fetch bookable services with their professionals AND ALL their variants.
+      //    We do NOT filter variants at the query level because Supabase JS would
+      //    turn the filter into an INNER JOIN, dropping every service without
+      //    variants. We filter (is_active, is_hidden) in the sanitization step
+      //    below so services with no variants still come through.
       const { data: services, error: servicesError } = await privateSupabase
         .from('services')
         .select(
@@ -205,13 +209,23 @@ serve(async (req) => {
                     booking_color,
                     professional_services (
                         professionals ( id, display_name, slug )
+                    ),
+                    service_variants (
+                        id,
+                        variant_name,
+                        pricing,
+                        display_config,
+                        sort_order,
+                        is_active,
+                        is_hidden
                     )
                 `,
         )
         .eq('company_id', company.id)
         .eq('is_public', true)
         .eq('is_bookable', true)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('sort_order', { foreignTable: 'service_variants', ascending: true });
 
       if (servicesError) throw servicesError;
 
@@ -225,9 +239,11 @@ serve(async (req) => {
       if (profError) throw profError;
 
       // 4. Sanitize response — expose only what the public frontend needs
-      //    Filter out inactive professionals (is_active=false) from the nested
-      //    join — they would otherwise leak into the Agenda because the Supabase
-      //    nested-select syntax can't filter joined rows by is_active directly.
+      //    Filter out inactive professionals (is_active=false) and hidden/inactive
+      //    variants from the nested joins — they would otherwise leak into the
+      //    Agenda because the Supabase nested-select syntax can't filter joined
+      //    rows by is_active/is_hidden without turning it into an INNER JOIN that
+      //    drops the whole service when it has zero matching variants.
       const sanitized = (services || []).map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -238,6 +254,14 @@ serve(async (req) => {
           .map((ps: any) => ps.professionals)
           .filter((p: any) => p && p.is_active !== false)
           .map((p: any) => ({ id: p.id, display_name: p.display_name, slug: p.slug || null })),
+        variants: (s.service_variants || [])
+          .filter((v: any) => v.is_active !== false && v.is_hidden !== true)
+          .map((v: any) => ({
+            id: v.id,
+            name: v.variant_name,
+            pricing: v.pricing || [],
+            display_config: v.display_config || null,
+          })),
       }));
 
       // 5. Extract branding from settings JSONB
@@ -545,12 +569,16 @@ serve(async (req) => {
       requested_time,
       professional_id,
       client_phone,
+      variant_id,
+      variant_pricing_snapshot,
     } = parseResult.data;
 
     // Data is already validated by Zod — extract remaining fields for pipeline
     const data: Record<string, unknown> = {
       professional_id: professional_id ?? null,
       client_phone: client_phone ?? null,
+      variant_id: variant_id ?? null,
+      variant_pricing_snapshot: variant_pricing_snapshot ?? null,
     };
 
     // 3. Bot/Spam Check (Turnstile)
@@ -594,6 +622,8 @@ serve(async (req) => {
           client_phone: safeClientPhone || null,
           requested_date,
           requested_time,
+          variant_id: data.variant_id ?? null,
+          variant_pricing_snapshot: data.variant_pricing_snapshot ?? null,
           turnstile_verified: true,
           ip_address: ip,
         })
@@ -705,6 +735,8 @@ serve(async (req) => {
             p_end_time: endTime.toISOString(),
             p_booking_data: bookingPayload,
             p_source: 'public_portal',
+            p_variant_id: data.variant_id,
+            p_variant_pricing_snapshot: data.variant_pricing_snapshot,
           },
         );
 
@@ -726,6 +758,9 @@ serve(async (req) => {
             case 'service_blocked':
               errorMsg = 'Este servicio no está disponible en esta fecha. Por favor, selecciona otra fecha.';
               break;
+            case 'invalid_variant':
+              errorMsg = 'La variante seleccionada no está disponible para este servicio. Por favor, elige otra opción.';
+              break;
             default:
               errorMsg = rpcResult?.error || 'Error al crear la reserva';
           }
@@ -739,7 +774,7 @@ serve(async (req) => {
         // Fetch the created booking to get full data for the pipeline
         const { data: newBooking, error: bookingError } = await privateSupabase
           .from('bookings')
-          .select('id, company_id, service_id, customer_name, customer_email, client_id, start_time, end_time, status, source, resource_id, professional_id')
+          .select('id, company_id, service_id, customer_name, customer_email, client_id, start_time, end_time, status, source, resource_id, professional_id, variant_id, variant_pricing_snapshot')
           .eq('id', rpcResult.booking_id)
           .single();
 
@@ -908,9 +943,24 @@ serve(async (req) => {
 
                 // Create calendar event on owner's primary calendar
                 const serviceName = service?.name || 'Reserva';
+                // If a variant was chosen, append a short plan tag to the event so
+                // the staff sees at a glance which tier was booked. We do NOT
+                // re-query the variant name here because the snapshot is enough
+                // (and saves a round-trip).
+                const vSnap = (newBooking as any)?.variant_pricing_snapshot;
+                const billingLabel: Record<string, string> = {
+                  monthly: 'Mensual',
+                  annual: 'Anual',
+                  one_time: 'Pago único',
+                  session: 'Por sesión',
+                  custom: '',
+                };
+                const variantSuffix = vSnap
+                  ? ` (${vSnap.base_price}€${vSnap.billing_period ? ' / ' + (billingLabel[vSnap.billing_period] || vSnap.billing_period) : ''})`
+                  : '';
                 const calendarEvent = {
-                  summary: `${serviceName} — ${client_name}`,
-                  description: `Reserva desde el portal público.\nCliente: ${client_name}\nEmail: ${client_email}${data.client_phone ? '\nTeléfono: ' + data.client_phone : ''}`,
+                  summary: `${serviceName}${variantSuffix} — ${client_name}`,
+                  description: `Reserva desde el portal público.\nCliente: ${client_name}\nEmail: ${client_email}${data.client_phone ? '\nTeléfono: ' + data.client_phone : ''}${vSnap ? '\nPlan: ' + (vSnap.base_price + '€' + (vSnap.billing_period ? ' / ' + vSnap.billing_period : '')) : ''}`,
                   start: {
                     dateTime: `${requested_date}T${requested_time}:00`,
                     timeZone: 'Europe/Madrid',
@@ -986,6 +1036,20 @@ serve(async (req) => {
               const dateFormatted = requested_date;
               const timeFormatted = requested_time.substring(0, 5);
 
+              // If a variant pricing snapshot exists, surface it in the
+              // confirmation email so the customer sees the tier they paid for.
+              const emailVSnap: any = (newBooking as any)?.variant_pricing_snapshot;
+              const emailBilling: Record<string, string> = {
+                monthly: 'mes',
+                annual: 'año',
+                one_time: 'pago único',
+                session: 'sesión',
+                custom: '',
+              };
+              const priceCell = emailVSnap
+                ? `${emailVSnap.base_price}€${emailVSnap.billing_period ? ' / ' + (emailBilling[emailVSnap.billing_period] || emailVSnap.billing_period) : ''}`
+                : ((service as any)?.base_price ? `${(service as any).base_price}€` : '');
+
               const fromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || `reservas@simplificacrm.es`;
 
               // Sanitize client_name before using in HTML to prevent XSS in email clients
@@ -1001,6 +1065,7 @@ serve(async (req) => {
                                         <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Servicio</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${serviceName}</td></tr>
                                         <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Fecha</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${dateFormatted}</td></tr>
                                         <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Hora</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${timeFormatted}</td></tr>
+                                        ${priceCell ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Plan</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${priceCell}</td></tr>` : ''}
                                         <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Empresa</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${company.name}</td></tr>
                                     </table>
                                     <p style="color: #6b7280; font-size: 14px;">Si necesitas cancelar o modificar tu reserva, contacta directamente con ${company.name}.</p>
@@ -1030,6 +1095,7 @@ serve(async (req) => {
                         dateFormatted,
                         timeFormatted,
                         company: { name: company.name },
+                        ...(priceCell ? { planLabel: priceCell } : {}),
                       },
                     }),
                   });
