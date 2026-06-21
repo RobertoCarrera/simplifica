@@ -47,11 +47,8 @@ serve(async (req) => {
   const origin = req.headers.get('Origin') || null;
   const corsHeaders = getCorsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
-  }
-
-  // Rate limit by IP: 60/min is plenty for a public page that may reload
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 60/min is plenty for a public page that may reload
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`public-budget-payment-info:${ip}`, 60, 60000);
   if (!rl.allowed) {
@@ -59,6 +56,10 @@ serve(async (req) => {
       status: 429,
       headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== 'GET' && req.method !== 'POST') {

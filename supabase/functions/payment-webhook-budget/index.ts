@@ -151,16 +151,7 @@ function paypalAmount(resource: any): { amount: number; currency: string } {
 serve(async (req) => {
   const corsHeaders = getCorsHeaders();
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
-  }
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: withSecurityHeaders(corsHeaders),
-    });
-  }
-
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   // Looser rate limit (provider webhooks fire from a few IPs only)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`payment-webhook-budget:${ip}`, 120, 60000);
@@ -168,6 +159,16 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
       headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
+    });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
+  }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 

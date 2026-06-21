@@ -170,16 +170,17 @@ serve(async (req) => {
   const origin = req.headers.get('Origin') || null;
   const corsHeaders = getCorsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
-  }
-
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`public-budget-payment-redirect:${ip}`, 30, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429, headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   // GET → 302 redirect (Stripe/PayPal return URLs)

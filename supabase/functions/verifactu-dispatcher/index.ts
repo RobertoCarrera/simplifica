@@ -515,6 +515,18 @@ async function processEvent(admin, ev) {
 serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 10 req/min per IP (processes AEAT fiscal submissions — expensive)
+  const clientIP = getClientIP(req);
+  const rl = await checkRateLimit(`verifactu-dispatcher:${clientIP}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
   if (req.method === 'OPTIONS')
     return new Response('ok', {
       headers: withSecurityHeaders(headers),
@@ -532,16 +544,6 @@ serve(async (req) => {
         }),
       },
     );
-
-  // Rate limiting: 10 req/min per IP (processes AEAT fiscal submissions — expensive)
-  const clientIP = getClientIP(req);
-  const rl = await checkRateLimit(`verifactu-dispatcher:${clientIP}`, 10, 60000);
-  if (!rl.allowed) {
-    return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429,
-      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
-    });
-  }
 
   try {
     const url = Deno.env.get('SUPABASE_URL') || '';

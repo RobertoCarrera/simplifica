@@ -13,10 +13,9 @@ import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
-  const optionsResponse = handleCorsOptions(req);
-  if (optionsResponse) return optionsResponse;
 
-  // Rate limiting: 10 req/min per IP (creates user accounts — very sensitive)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 10 req/min per IP (creates user accounts — very sensitive)
   const ip = getClientIP(req);
   const rateLimit = await checkRateLimit(`create-invited:${ip}`, 10, 60000);
   if (!rateLimit.allowed) {
@@ -30,6 +29,9 @@ serve(async (req: Request) => {
       },
     });
   }
+
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   // Only allow POST
   if (req.method !== 'POST') {

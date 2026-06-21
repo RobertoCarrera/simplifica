@@ -172,16 +172,10 @@ async function sendFallbackBrandedEmail(params: {
 serve(async (req) => {
   console.log('[send-company-invite] START', req.method, req.url);
   const origin = req.headers.get('Origin') || undefined;
-  // Handle CORS preflight request
-  if (req.method === 'OPTIONS') {
-    const optionsResponse = handleCorsOptions(req);
-    if (optionsResponse) return optionsResponse;
-    return new Response('ok', {
-      headers: getCorsHeaders(req)
-    });
-  }
   const corsHeaders = getCorsHeaders(req);
-  // Rate limiting: 5 req/min per IP (sends Supabase Auth invite emails — sensitive)
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 5 req/min per IP (sends Supabase Auth invite emails — sensitive)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`send-company-invite:${ip}`, 5, 60000);
   if (!rl.allowed) {
@@ -198,6 +192,16 @@ serve(async (req) => {
       }
     });
   }
+
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
+    return new Response('ok', {
+      headers: getCorsHeaders(req)
+    });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({
       error: 'Method not allowed',

@@ -38,6 +38,17 @@ serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   const corsHeaders = getCorsHeaders(origin);
 
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 5 req/min per IP (bulk import of up to 2000 services)
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`import-services:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
   // OPTIONS preflight
   if (req.method === 'OPTIONS') {
     try {
@@ -72,16 +83,6 @@ serve(withCsrf(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
       status: 403,
       headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
-    });
-  }
-
-  // Rate limiting: 5 req/min per IP (bulk import of up to 2000 services)
-  const ip = getClientIP(req);
-  const rl = await checkRateLimit(`import-services:${ip}`, 5, 60000);
-  if (!rl.allowed) {
-    return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429,
-      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 

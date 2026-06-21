@@ -48,6 +48,14 @@ function isOriginAllowed(origin: string | null) {
 serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('origin');
 
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 20 req/min per IP (creates tickets with services/products — DB-intensive)
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`create-ticket:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return jsonResponse(429, { error: 'Too many requests' }, origin || '*');
+  }
+
   // CORS preflight
   if (req.method === 'OPTIONS') {
     const allow = isOriginAllowed(origin) ? origin : '';
@@ -63,13 +71,6 @@ serve(withCsrf(async (req: Request) => {
 
   if (req.method !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed', allowed: ['POST', 'OPTIONS'] }, '*');
-  }
-
-  // Rate limiting: 20 req/min per IP (creates tickets with services/products — DB-intensive)
-  const ip = getClientIP(req);
-  const rl = await checkRateLimit(`create-ticket:${ip}`, 20, 60000);
-  if (!rl.allowed) {
-    return jsonResponse(429, { error: 'Too many requests' }, origin || '*');
   }
 
   // CORS check

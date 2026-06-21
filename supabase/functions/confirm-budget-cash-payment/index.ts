@@ -38,10 +38,7 @@ serve(withCsrf(async (req) => {
   const origin = req.headers.get('Origin') || null;
   const corsHeaders = getCorsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
-  }
-
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`confirm-budget-cash-payment:${ip}`, 20, 60000);
   if (!rl.allowed) {
@@ -49,6 +46,10 @@ serve(withCsrf(async (req) => {
       status: 429,
       headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(rl) }),
     });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== 'POST') {

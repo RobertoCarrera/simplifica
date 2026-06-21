@@ -182,20 +182,21 @@ async function createStripeCheckout(
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  // CORS preflight
-  const corsResult = handleCorsOptions(req);
-  if (corsResult) return corsResult;
-  const corsHeaders = getCorsHeaders(req);
-
-  // Rate limit: 10 req/min per IP
+  // Rate limit FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`create-booking-payment-link:${ip}`, 10, 60000);
   if (!rl.allowed) {
+    const corsHeaders = getCorsHeaders(req);
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
       headers: { ...corsHeaders, ...withSecurityHeaders(), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
     });
   }
+
+  // CORS preflight
+  const corsResult = handleCorsOptions(req);
+  if (corsResult) return corsResult;
+  const corsHeaders = getCorsHeaders(req);
 
   if (req.method !== 'POST') {
     return errorResponse(405, 'Method not allowed', corsHeaders);

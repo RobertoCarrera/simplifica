@@ -351,20 +351,22 @@ function generateReceiptPdf(ctx: {
 serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers });
-  if (origin && !originAllowed(origin)) {
-    return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), {
-      status: 403,
-      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
-    });
-  }
 
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`budget-receipt-pdf:${ip}`, 20, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
       headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
+  if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  if (origin && !originAllowed(origin)) {
+    return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), {
+      status: 403,
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json' }),
     });
   }
 

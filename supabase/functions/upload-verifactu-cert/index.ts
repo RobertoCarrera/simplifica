@@ -43,11 +43,8 @@ Deno.serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: cors });
-  }
-
-  // Rate limiting: 10 req/min per IP (certificate upload — sensitive operation)
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
+  // 10 req/min per IP (certificate upload — sensitive operation)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`upload-verifactu-cert:${ip}`, 10, 60000);
   if (!rl.allowed) {
@@ -55,6 +52,10 @@ Deno.serve(withCsrf(async (req: Request) => {
       status: 429,
       headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...cors, ...getRateLimitHeaders(rl) }),
     });
+  }
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors });
   }
 
   // Only allow POST after CORS preflight

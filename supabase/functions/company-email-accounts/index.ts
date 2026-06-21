@@ -190,10 +190,7 @@ function sanitizeString(value: unknown, maxLength = 255): string {
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
-  const corsRes = handleCorsOptions(req);
-  if (corsRes) return corsRes;
-
-  // Rate limiting: 30 req/min per IP
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-01 fix
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`company-email-accounts:${ip}`, 30, 60000);
   if (!rl.allowed) {
@@ -206,6 +203,9 @@ serve(async (req: Request) => {
       },
     });
   }
+
+  const corsRes = handleCorsOptions(req);
+  if (corsRes) return corsRes;
 
   // Service role client for token verification and admin operations
   const supabaseAdmin = createClient(
