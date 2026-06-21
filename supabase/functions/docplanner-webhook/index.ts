@@ -537,8 +537,16 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
     }
   } else if (!integration.webhook_secret) {
-    // No webhook secret configured — accept without authentication
-    console.warn('[docplanner-webhook] ⚠️ No webhook_secret configured — accepting unauthenticated requests. Set webhook_secret in Integrations.');
+    // Rafter v0.21 LOW-2 fix: fail-closed when webhook_secret is unconfigured.
+    // Previously the function accepted ANY POST with a known company_id,
+    // enabling unauthenticated booking injection + service auto-creation.
+    // Now: reject with 503 so operators MUST configure the secret before
+    // the webhook becomes reachable.
+    console.error('[docplanner-webhook] webhook_secret not configured — all webhooks rejected. Configure docplanner_integrations.webhook_secret.');
+    return new Response(
+      JSON.stringify({ error: 'webhook_secret not configured' }),
+      { status: 503, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) }
+    );
   } else {
     return new Response(JSON.stringify({ error: 'Missing authentication' }), { status: 401, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
