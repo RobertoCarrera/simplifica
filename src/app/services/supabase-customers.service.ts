@@ -1654,12 +1654,19 @@ export class SupabaseCustomersService {
       switchMap(({ error }) => {
         if (error) throw error;
 
-        // Obtener URL pública
-        const { data } = this.supabase.storage
-          .from('customer-avatars')
-          .getPublicUrl(filePath);
-
-        return from(Promise.resolve(data.publicUrl));
+        // customer-avatars is PRIVATE — getPublicUrl() returns a broken URL.
+        // Use createSignedUrl with 1h expiry so the stored avatar_url actually works.
+        // Rafter v0.14.1
+        return from(
+          this.supabase.storage
+            .from('customer-avatars')
+            .createSignedUrl(filePath, 3600)
+        ).pipe(
+          map(({ data: signed, error: signedError }) => {
+            if (signedError) throw signedError;
+            return signed.signedUrl;
+          })
+        );
       }),
       switchMap(avatarUrl => {
         // Actualizar cliente con nueva URL

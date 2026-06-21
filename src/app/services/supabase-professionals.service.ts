@@ -589,16 +589,20 @@ export class SupabaseProfessionalsService {
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = this.supabase.storage
+        // professional-documents is PRIVATE — getPublicUrl() returns a broken URL.
+        // Use createSignedUrl with 1h expiry. Rafter v0.14.1
+        const { data: signedData, error: signedError } = await this.supabase.storage
             .from('professional-documents')
-            .getPublicUrl(fileName);
+            .createSignedUrl(fileName, 3600);
+
+        if (signedError) throw signedError;
 
         const { data, error } = await this.supabase
             .from('professional_documents')
             .insert({
                 professional_id: professionalId,
                 name: file.name,
-                file_url: urlData.publicUrl,
+                file_url: signedData.signedUrl,
                 type: type
             })
             .select()
@@ -627,16 +631,21 @@ export class SupabaseProfessionalsService {
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = this.supabase.storage
+        // professional-signatures is PRIVATE (PII: handwritten signatures) —
+        // getPublicUrl() returns a broken URL. Use createSignedUrl with 1h expiry.
+        // Rafter v0.14.1
+        const { data: signedData, error: signedError } = await this.supabase.storage
             .from('professional-signatures')
-            .getPublicUrl(fileName);
+            .createSignedUrl(fileName, 3600);
+
+        if (signedError) throw signedError;
 
         const { data, error } = await this.supabase
             .from('professional_documents')
             .update({
                 is_signed: true,
                 signed_at: new Date().toISOString(),
-                signature_url: urlData.publicUrl
+                signature_url: signedData.signedUrl
             })
             .eq('id', documentId)
             .select()
