@@ -235,6 +235,39 @@ serve(async (req) => {
 
       if (servicesError) throw servicesError;
 
+      // 2b. Fetch products when show_shop is enabled. Empty array otherwise.
+      //    Products are independent of services — a company can have both
+      //    bookable services and a shop, or just one of the two.
+      let products: any[] = [];
+      const wantsShop = (company.portal_features as any)?.show_shop === true;
+      if (wantsShop) {
+        try {
+          const { data: productsData, error: productsError } = await privateSupabase
+            .from('products')
+            .select('id, name, description, price, stock_quantity, brand, model, barcode, location')
+            .eq('company_id', company.id)
+            .is('deleted_at', null)
+            .order('name', { ascending: true });
+          if (productsError) {
+            console.warn('[booking-public] products query failed, returning empty:', productsError);
+          } else {
+            products = (productsData || []).map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description ?? null,
+              price: p.price == null ? null : Number(p.price),
+              stock_quantity: p.stock_quantity ?? null,
+              brand: p.brand ?? null,
+              model: p.model ?? null,
+              barcode: p.barcode ?? null,
+              location: p.location ?? null,
+            }));
+          }
+        } catch (shopErr) {
+          console.warn('[booking-public] products query threw, returning empty:', shopErr);
+        }
+      }
+
       // 3. Fetch professionals for this company (with slug for deep-link support)
       const { data: professionals, error: profError } = await privateSupabase
         .from('professionals')
@@ -318,6 +351,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         company: companyData,
         services: sanitized,
+        products,
         professionals: (professionals || []).map((p: any) => ({
           id: p.id,
           display_name: p.display_name,
