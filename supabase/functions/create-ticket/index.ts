@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -27,13 +27,15 @@ const supabaseAdmin = createClient(SUPABASE_URL || '', SUPABASE_SERVICE_ROLE_KEY
 });
 
 function jsonResponse(status: number, body: any, originAllowedHeader = '*') {
-  const headers = new Headers({ 'Content-Type': 'application/json' });
-  headers.set('Vary', 'Origin');
-  headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
-  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  headers.set('Access-Control-Allow-Origin', originAllowedHeader);
-  headers.set('X-Function-Name', FUNCTION_NAME);
-  headers.set('X-Function-Version', FUNCTION_VERSION);
+  const headers = withSecurityHeaders({
+    'Content-Type': 'application/json',
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Origin': originAllowedHeader,
+    'X-Function-Name': FUNCTION_NAME,
+    'X-Function-Version': FUNCTION_VERSION,
+  });
   return new Response(JSON.stringify(body), { status, headers });
 }
 
@@ -50,14 +52,12 @@ serve(withCsrf(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     const allow = isOriginAllowed(origin) ? origin : '';
     if (!allow) return jsonResponse(403, { error: 'Origin not allowed' }, '');
-    const headers = new Headers();
-    headers.set('Vary', 'Origin');
-    headers.set(
-      'Access-Control-Allow-Headers',
-      'authorization, x-client-info, apikey, content-type',
-    );
-    headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    headers.set('Access-Control-Allow-Origin', allow);
+    const headers = withSecurityHeaders({
+      'Vary': 'Origin',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Origin': allow,
+    });
     return new Response(null, { status: 200, headers });
   }
 

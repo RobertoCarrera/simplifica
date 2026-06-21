@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 
@@ -12,13 +12,13 @@ function cors(origin?: string) {
     .map((s) => s.trim())
     .filter(Boolean);
   const isAllowed = origin && allowed.includes(origin);
-  return {
+  return withSecurityHeaders({
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
-  } as Record<string, string>;
+  });
 }
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
@@ -327,4 +327,4 @@ serve(withCsrf(async (req) => {
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

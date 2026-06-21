@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withSecurityHeaders } from '../_shared/security.ts';
 
 // Config
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -21,17 +22,18 @@ const supabaseAdmin = createClient(SUPABASE_URL || '', SUPABASE_SERVICE_ROLE_KEY
 });
 
 function corsHeaders(origin: string | null) {
-  const headers = new Headers();
-  headers.set('Vary', 'Origin');
-  headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
-  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  const base: Record<string, string> = {
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
   if (ALLOW_ALL_ORIGINS) {
-    headers.set('Access-Control-Allow-Origin', origin || '');
+    base['Access-Control-Allow-Origin'] = origin || '';
   } else {
     const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
-    if (allowed) headers.set('Access-Control-Allow-Origin', allowed);
+    if (allowed) base['Access-Control-Allow-Origin'] = allowed;
   }
-  return headers;
+  return withSecurityHeaders(base);
 }
 
 function isOriginAllowed(origin: string | null) {
