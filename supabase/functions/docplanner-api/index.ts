@@ -60,7 +60,7 @@ import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
-import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders, escapeLike } from '../_shared/security.ts';
 
 import { decrypt as oauthDecrypt, isEncrypted as isOAuthEncrypted, encrypt as oauthEncrypt } from '../_shared/crypto-utils.ts';
 
@@ -2067,7 +2067,7 @@ async function upsertBookingFromDP(
 
         .eq('company_id', companyId)
 
-        .ilike('email', normalizedEmail)
+        .ilike('email', escapeLike(normalizedEmail))
 
         .maybeSingle();
 
@@ -2217,7 +2217,7 @@ async function upsertBookingFromDP(
 
       .eq('company_id', companyId)
 
-      .ilike('name', svcName)
+      .ilike('name', escapeLike(svcName))
 
       .maybeSingle();
 
@@ -2229,7 +2229,7 @@ async function upsertBookingFromDP(
 
     } else {
 
-      // Step 2: Fuzzy â€” DP name contained in CRM name or vice versa
+      // Step 2: Fuzzy — DP name contained in CRM name or vice versa
 
       const { data: fuzzyMatches } = await serviceClient
 
@@ -2241,7 +2241,7 @@ async function upsertBookingFromDP(
 
         .eq('is_active', true)
 
-        .ilike('name', `%${svcName}%`)
+        .ilike('name', `%${escapeLike(svcName)}%`)
 
         .limit(1);
 
@@ -2889,7 +2889,7 @@ async function handleImportPatients(
 
         .eq('company_id', companyId)
 
-        .ilike('email', normalizedEmail)
+        .ilike('email', escapeLike(normalizedEmail))
 
         .maybeSingle();
 
@@ -3347,7 +3347,7 @@ async function handleImportDoctors(
 
         .eq('company_id', companyId)
 
-        .ilike('display_name', displayName)
+        .ilike('display_name', escapeLike(displayName))
 
         .maybeSingle();
 

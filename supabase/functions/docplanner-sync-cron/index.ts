@@ -16,7 +16,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { decrypt as decryptGoogleToken, encrypt as encryptGoogleToken, isEncrypted as isGoogleTokenEncrypted } from '../_shared/crypto-utils.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { withSecurityHeaders, escapeLike } from '../_shared/security.ts';
 
 /* ── Phone normalization ─────────────────────────── */
 function normalizePhone(phone: string | null | undefined): string | null {
@@ -467,7 +467,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
     }
     // Step 2: Find by email (case-insensitive)
     if (!clientId && normalizedEmail) {
-      const { data: existingByEmail } = await serviceClient.from('clients').select('id').eq('company_id', companyId).ilike('email', normalizedEmail).maybeSingle();
+      const { data: existingByEmail } = await serviceClient.from('clients').select('id').eq('company_id', companyId).ilike('email', escapeLike(normalizedEmail)).maybeSingle();
       if (existingByEmail) {
         clientId = existingByEmail.id;
         await serviceClient.from('clients').update({
@@ -506,7 +506,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
         // with the same name+surname (synthetic ID deduplication).
         // This prevents creating multiple pending records for the same patient
         // when DocPlanner sends bookings with different "name|surname" synthetic IDs.
-        const { data: existingPending } = await serviceClient.from('clients').select('id').eq('company_id', companyId).eq('is_active', false).ilike('name', normalizeName(patient.name) || patient.name || '').ilike('surname', normalizeName(patient.surname) || patient.surname || '').limit(1);
+        const { data: existingPending } = await serviceClient.from('clients').select('id').eq('company_id', companyId).eq('is_active', false).ilike('name', escapeLike(normalizeName(patient.name) || patient.name || '')).ilike('surname', escapeLike(normalizeName(patient.surname) || patient.surname || '')).limit(1);
         if (existingPending) {
           // Reuse the existing pending client — just update its docplanner_patient_id
           await serviceClient.from('clients').update({
@@ -527,7 +527,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
             .select('id, name, surname, email, phone, is_active')
             .eq('company_id', companyId)
             .is('deleted_at', null)
-            .ilike('name', normalizeName(patient.name) || patient.name || '')
+            .ilike('name', escapeLike(normalizeName(patient.name) || patient.name || ''))
             .limit(10);
 
           const exactMatch = nameMatches?.find((c: any) =>
@@ -616,11 +616,11 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   let serviceId = null;
   if (service.name) {
     const svcName = service.name.trim();
-    const { data: exactMatch } = await serviceClient.from('services').select('id').eq('company_id', companyId).ilike('name', svcName).maybeSingle();
+    const { data: exactMatch } = await serviceClient.from('services').select('id').eq('company_id', companyId).ilike('name', escapeLike(svcName)).maybeSingle();
     if (exactMatch) {
       serviceId = exactMatch.id;
     } else {
-      const { data: fuzzyMatches } = await serviceClient.from('services').select('id').eq('company_id', companyId).eq('is_active', true).ilike('name', `%${svcName}%`).limit(1);
+      const { data: fuzzyMatches } = await serviceClient.from('services').select('id').eq('company_id', companyId).eq('is_active', true).ilike('name', `%${escapeLike(svcName)}%`).limit(1);
       if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
     }
   }
