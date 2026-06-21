@@ -13,46 +13,38 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 // Schemas
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Schema for POST body of booking-public (action === 'create-booking') */
+/** Schema for POST body of booking-public. Accepts multiple actions
+ * (create-booking, create-lead) so the BFF can dispatch on `action`
+ * after the shared validation passes. The action-specific branches
+ * inside the EF re-validate their own required fields, so most of
+ * the per-action fields are optional at the schema level. */
 export const BookingSchema = z
   .object({
-    action: z.literal('create-booking'),
+    action: z.enum(['create-booking', 'create-lead']),
     turnstile_token: z.string().min(1, 'turnstile_token is required').max(2000),
     company_slug: z
       .string()
       .regex(/^[a-z0-9-]+$/, 'company_slug must be lowercase alphanumeric with hyphens')
       .min(1)
       .max(100),
-    booking_type_id: z.string().uuid('booking_type_id must be a valid UUID'),
-    client_name: z
-      .string()
-      .min(1, 'client_name is required')
-      .max(200)
-      .transform((v) => v.trim())
-      .refine((v) => v.length > 0, 'client_name cannot be only whitespace'),
-    client_email: z
-      .string()
-      .email('client_email must be a valid email address')
-      .max(320)
-      .transform((v) => v.toLowerCase().trim()),
-    client_phone: z
-      .string()
-      .regex(/^[+]?[0-9\s\-\(\)]{1,50}$/, 'client_phone must be a valid phone number')
-      .optional(),
-    requested_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'requested_date must be in YYYY-MM-DD format'),
-    requested_time: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, 'requested_time must be in HH:MM format'),
-    professional_id: z
-      .string()
-      .uuid('professional_id must be a valid UUID')
-      .optional(),
-    variant_id: z
-      .string()
-      .uuid('variant_id must be a valid UUID')
-      .optional(),
+    // ── create-booking specific (also reused by create-lead for `service_id`) ──
+    booking_type_id: z.string().uuid('booking_type_id must be a valid UUID').optional(),
+    service_id: z.string().uuid('service_id must be a valid UUID').optional(),
+    client_name: z.string().min(1).max(200).optional(),
+    client_email: z.string().email().max(320).optional(),
+    client_phone: z.string().regex(/^[+]?[0-9\s\-\(\)]{1,50}$/).optional(),
+    requested_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    requested_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    professional_id: z.string().uuid().optional(),
+    // ── create-lead specific ──
+    first_name: z.string().min(1).max(100).optional(),
+    last_name: z.string().min(1).max(100).optional(),
+    email: z.string().email().max(320).optional(),
+    phone: z.string().regex(/^[+]?[0-9\s\-\(\)]{1,50}$/).optional(),
+    message: z.string().max(2000).optional(),
+    notes: z.string().max(2000).optional(),
+    // ── shared optional fields ──
+    variant_id: z.string().uuid().optional(),
     variant_pricing_snapshot: z
       .object({
         base_price: z.number().nonnegative(),
