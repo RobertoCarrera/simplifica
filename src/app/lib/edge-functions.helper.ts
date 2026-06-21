@@ -6,6 +6,39 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { environment } from "../../environments/environment";
+
+/**
+ * Redact sensitive fields (PEM cert/key + passphrases) from an Edge Function
+ * request body before logging. The audit log must NEVER include the raw
+ * certificate, private key, or its password.
+ */
+function redactEdgeFunctionBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const SENSITIVE_KEYS = new Set([
+    "cert_pem",
+    "key_pem",
+    "key_pass",
+    "certificate",
+    "privateKey",
+    "private_key",
+    "password",
+    "passphrase",
+  ]);
+  const redact = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length <= 30) return "[redacted]";
+      return `${trimmed.substring(0, 30)}…[redacted, len=${trimmed.length}]`;
+    }
+    return "[redacted]";
+  };
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
+    out[k] = SENSITIVE_KEYS.has(k) ? redact(v) : v;
+  }
+  return out;
+}
 
 export interface EdgeFunctionResponse<T = any> {
   ok: boolean;
@@ -91,7 +124,15 @@ export async function callEdgeFunction<TRequest = any, TResponse = any>(
     const url = `${supabaseUrl}/functions/v1/${functionName}`;
 
     console.log(`🚀 Calling Edge Function: ${functionName}`);
-    console.log("📤 Edge Function request:", url, body);
+    // Request bodies can contain PEM certs/keys/passwords (Verifactu uploads).
+    // Log only in non-production and redact known sensitive fields.
+    if (!environment.production) {
+      console.debug(
+        "📤 Edge Function request:",
+        url,
+        redactEdgeFunctionBody(body),
+      );
+    }
 
     // Hacer petición HTTP con Bearer token
     const response = await fetch(url, {

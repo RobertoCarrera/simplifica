@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -44,9 +45,14 @@ export class EmailBrandingComponent implements OnInit {
   logoPreview = signal<string | null>(null);
 
   // Live preview
-  previewHtml = computed<SafeHtml>(() =>
-    this.sanitizer.bypassSecurityTrustHtml(this.buildPreviewHtml()),
-  );
+  previewHtml = computed<SafeHtml>(() => {
+    // Defense-in-depth: footer_text/fontFamily/logoPreview are interpolated raw into a
+    // HTML template. A malicious admin setting footer_text to "</span><img src=x onerror=..."
+    // would otherwise trigger stored XSS whenever another admin opens the preview.
+    const raw = this.buildPreviewHtml();
+    const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+    return this.sanitizer.bypassSecurityTrustHtml(clean);
+  });
 
   async ngOnInit() {
     await this.loadBranding();
