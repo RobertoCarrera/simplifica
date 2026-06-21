@@ -159,7 +159,10 @@ url = ""
 verify_jwt = false
 
 [functions.company-email-accounts]
-verify_jwt = false
+verify_jwt = true
+# CRITICAL-1 fix (rafter sqli-audit 2026-06-21): JWT signature must be
+# verified at the gateway. The function ALSO calls supabaseAdmin.auth.getUser
+# inside the handler as defense in depth.
 
 [functions.get-company-filter-visibility]
 verify_jwt = false
