@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 
 @Component({
@@ -53,7 +54,10 @@ export class PublicPrivacyPolicyComponent implements OnInit {
       });
 
       if (data) {
-        this.policyHtml.set(this.sanitizer.bypassSecurityTrustHtml(data as string));
+        // Defense-in-depth: sanitize before bypassing Angular's HTML trust.
+        // RPC not yet implemented but the component is reachable on /privacy/:companyId.
+        const clean = DOMPurify.sanitize(data as string, { USE_PROFILES: { html: true } });
+        this.policyHtml.set(this.sanitizer.bypassSecurityTrustHtml(clean));
       }
     } catch {
       // content stays null — fallback UI renders
