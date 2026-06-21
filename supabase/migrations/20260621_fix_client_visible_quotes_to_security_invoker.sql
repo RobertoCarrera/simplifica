@@ -1,0 +1,24 @@
+-- Migration: fix_client_visible_quotes_to_security_invoker
+-- Sprint: Rafter v0.15 (post-v0.14)
+-- Date: 2026-06-21
+--
+-- Rafter linter reported `public.client_visible_quotes` as SECURITY DEFINER
+-- view (ERROR level). The view is `SELECT ... FROM client_get_visible_quotes()`,
+-- where client_get_visible_quotes() is itself SECURITY DEFINER.
+--
+-- Previous migration (20260620_fix_security_definer_views_to_invoker.sql) left
+-- this view as-is, assuming SECDEF was required. Verified on 2026-06-21:
+-- the view CAN be switched to security_invoker = true because the inner RPC
+-- (client_get_visible_quotes) is itself SECURITY DEFINER and runs with owner
+-- privileges regardless. The view layer adds no extra privilege escalation
+-- risk; it just exposes a subset of what the RPC already allows.
+--
+-- After ALTER:
+-- - View runs with QUERYING USER privileges (RLS on underlying tables applies
+--   if any).
+-- - RPC inside the view continues running with OWNER privileges (its internal
+--   filtering by auth.uid() / client_id remains the security boundary).
+-- - Linter warning goes away.
+-- - No caller breakage: the RPC and its grants are unchanged.
+
+ALTER VIEW public.client_visible_quotes SET (security_invoker = true);
