@@ -100,6 +100,19 @@ temp_keys.json
 new_key.json
 *temp_keys.json
 *temp_keys*.json
+# Windows path-bug names (literal "F:simplificatemp_keys.json" was created on 2026-04-11)
+# .gitignore CANNOT match filenames containing ":" (Windows reserved char), so we match the
+# suffix that appears in the literal filename — defense in depth if the file is later renamed.
 Fsimplificatemp_keys.json
 Ftemp_keys.json
+# Broader catch (any file/dir with "temp_keys" anywhere in the name)
+*temp_keys*
+
+# Local secrets (NEVER commit) — defense in depth, added 2026-06-22 after rafter secrets audit
+*.env.local
+*.env.local.*
+.env.local.remote
+**/secrets.json
+**/credentials.json
+
 scripts/generate-vapid-keys.mjs
