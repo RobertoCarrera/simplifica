@@ -14,6 +14,7 @@
  */
 
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
 
 const RATE_LIMIT = 5;       // max attempts per window
 const WINDOW_MS = 60_000;   // 1 minute window
@@ -50,7 +51,7 @@ Deno.serve(async (req: Request) => {
         error: 'Too many requests. Please try again later.',
         message: 'Rate limit exceeded for login attempts.',
       }),
-      { status: 429, headers },
+      { status: 429, headers: withSecurityHeaders(headers) },
     );
   }
 
@@ -81,6 +82,6 @@ Deno.serve(async (req: Request) => {
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
-    headers: responseHeaders,
+    headers: withSecurityHeaders(responseHeaders as unknown as Record<string, string>),
   });
 });

@@ -8,7 +8,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
@@ -35,12 +35,12 @@ function getCorsHeaders(origin?: string) {
     .map((s) => s.trim())
     .filter(Boolean);
   const isAllowed = origin && allowedOrigins.includes(origin);
-  return {
+  return withSecurityHeaders({
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     Vary: 'Origin',
-  } as Record<string, string>;
+  });
 }
 
 function isAllowedOrigin(origin?: string) {

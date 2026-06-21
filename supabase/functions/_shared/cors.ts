@@ -45,13 +45,28 @@ function isLocalhostOrigin(origin: string | null | undefined): boolean {
   }
 }
 
-export function getCorsHeaders(req: Request): HeadersInit {
+/** Standard security headers baked into every CORS response. Centralized so
+ *  every Edge Function automatically ships the hardening headers regardless
+ *  of whether the function explicitly calls withSecurityHeaders. */
+const SECURITY_HEADERS_BASE: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+  'Cache-Control': 'no-store',
+  'Content-Security-Policy': "default-src 'none'",
+};
+
+export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = (typeof req?.headers?.get === 'function') ? req.headers.get('origin') : null;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-csrf-token, x-internal-call, x-supabase-api-version',
     'Access-Control-Max-Age': '86400', // cache preflight 24h to avoid extra round-trips
     Vary: 'Origin',
+    ...SECURITY_HEADERS_BASE,
   };
 
   if (origin && (ALLOW_ALL_ORIGINS || ALLOWED_ORIGINS.includes(origin) || LOCALHOST_ORIGINS.includes(origin) || isLocalhostOrigin(origin))) {
