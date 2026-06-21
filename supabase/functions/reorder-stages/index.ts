@@ -4,12 +4,13 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
 
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 
-function cors(origin: string | null): HeadersInit {
-  const h: HeadersInit = {
+function cors(origin: string | null): Record<string, string> {
+  const h: Record<string, string> = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -21,7 +22,7 @@ function cors(origin: string | null): HeadersInit {
       h["Access-Control-Allow-Credentials"] = "true";
     }
   }
-  return h;
+  return withSecurityHeaders(h);
 }
 
 function originOk(origin: string | null) {
