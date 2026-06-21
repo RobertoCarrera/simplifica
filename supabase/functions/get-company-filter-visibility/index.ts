@@ -5,9 +5,9 @@
 // GET endpoint that returns all available booking portal filters
 // annotated with their per-company visibility status.
 //
-// Two modes:
-//   Authenticated (admin panel): Bearer token → derives company_id from user
-//   Unauthenticated (public portal): ?company_id=<uuid> query param
+// Mode: Authenticated only (Rafter LOW-1 fix v0.21).
+//   Bearer token → derives company_id from user; optional ?company_id=<uuid>
+//   must match the caller's tenant.
 //
 // Response: { filters: [{ id, label, icon, sort_order, visible }] }
 // Default: visible = true when no company_filter_visibility row exists.
@@ -130,35 +130,15 @@ serve(async (req) => {
         companyId = userRow.company_id;
       }
     }
-    // Mode 2: Unauthenticated (public portal) — use query param
-    else if (qCompany) {
-      // Validate the company exists (basic check, no auth needed for public access)
-      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!UUID_RE.test(qCompany)) {
-        return new Response(JSON.stringify({ error: "Invalid company_id format" }), {
-          status: 400,
-          headers: withSecurityHeaders(corsHeaders),
-        });
-      }
-
-      const { data: company, error: companyErr } = await supabaseAdmin
-        .from("companies")
-        .select("id")
-        .eq("id", qCompany)
-        .maybeSingle();
-
-      if (companyErr || !company) {
-        return new Response(JSON.stringify({ error: "Company not found" }), {
-          status: 404,
-          headers: withSecurityHeaders(corsHeaders),
-        });
-      }
-      companyId = qCompany;
-    } else {
+    // Mode 2 (unauthenticated) removed: Rafter v0.21 LOW-1 fix.
+    // Previously the endpoint accepted ?company_id=<uuid> with no Bearer
+    // token, which let anonymous callers enumerate tenant UUIDs (200 vs 404
+    // oracle). Now: Bearer auth is mandatory for every request.
+    else {
       return new Response(JSON.stringify({
-        error: "Missing company_id. Provide a Bearer token or ?company_id=<uuid> query parameter.",
+        error: "Authentication required. Provide a Bearer token (Authorization: Bearer <jwt>).",
       }), {
-        status: 400,
+        status: 401,
         headers: withSecurityHeaders(corsHeaders),
       });
     }
