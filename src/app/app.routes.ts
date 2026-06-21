@@ -8,6 +8,7 @@ import {
   GuestGuard,
   OwnerAdminGuard,
   StrictAdminGuard,
+  SuperAdminGuard,
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
 import { MfaStepUpGuard } from "./core/guards/mfa-stepup.guard";
@@ -391,6 +392,17 @@ export const routes: Routes = [
         (m) => m.InboundMailAdminComponent,
       ),
     canActivate: [AuthGuard, AdminGuard],
+  },
+
+  // System Health (superadmin only) — visibility on backend uptime
+  {
+    path: "admin/system-health",
+    loadComponent: () =>
+      import("./features/admin/system-health/system-health.component").then(
+        (m) => m.SystemHealthComponent,
+      ),
+    canActivate: [AuthGuard, SuperAdminGuard],
+    data: { title: "Estado del sistema" },
   },
   {
     path: "admin/email-accounts/oauth-callback",
