@@ -10,8 +10,11 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'X-XSS-Protection': '1; mode=block',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
   'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+  'Permissions-Policy': 'geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), ambient-light-sensor=(), display-capture=(), screen-wake-lock=(), web-share=(), xr-spatial-tracking=()',
   'Cache-Control': 'no-store',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'X-Permitted-Cross-Domain-Policies': 'none',
+  'X-DNS-Prefetch-Control': 'off',
   'Content-Security-Policy': "default-src 'none'",
 };
 
