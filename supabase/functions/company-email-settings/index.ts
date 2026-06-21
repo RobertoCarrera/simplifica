@@ -10,7 +10,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
-import { getClientIP, isValidUUID } from '../_shared/security.ts';
+import { getClientIP, isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,14 +68,14 @@ async function getUserCompanyRole(
 function jsonSuccess(status: number, data: unknown, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders({ headers: withSecurityHeaders(corsHeaders) } as Request), 'Content-Type': 'application/json' },
   });
 }
 
 function jsonError(status: number, error: string, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders({ headers: withSecurityHeaders(corsHeaders) } as Request), 'Content-Type': 'application/json' },
   });
 }
 
@@ -96,11 +96,11 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: {
+      headers: withSecurityHeaders({
         ...getCorsHeaders(req),
         'Content-Type': 'application/json',
         ...getRateLimitHeaders(rl),
-      },
+      }),
     });
   }
 

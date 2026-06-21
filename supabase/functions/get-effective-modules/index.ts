@@ -13,6 +13,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
@@ -46,18 +48,18 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
   if (req.method !== "GET") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
   if (!isOriginAllowed(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), {
       status: 403,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -66,7 +68,7 @@ serve(async (req) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     const token = authHeader.replace("Bearer ", "");
@@ -83,7 +85,7 @@ serve(async (req) => {
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -95,7 +97,7 @@ serve(async (req) => {
       .single();
 
     if (meErr || !me?.company_id || me.active === false) {
-      return new Response(JSON.stringify({ error: "User not associated/active" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "User not associated/active" }), { status: 400, headers: withSecurityHeaders(corsHeaders) });
     }
 
     const myRole = me.app_role?.name;
@@ -126,7 +128,7 @@ serve(async (req) => {
       .limit(500);
     if (modErr) {
       console.error('[get-effective-modules] Modules catalog error:', modErr.message);
-      return new Response(JSON.stringify({ error: 'Failed to load modules' }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: 'Failed to load modules' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Fetch assignments for effective user
@@ -136,7 +138,7 @@ serve(async (req) => {
       .eq("user_id", effectiveUserId);
     if (umErr) {
       console.error('[get-effective-modules] User modules error:', umErr.message);
-      return new Response(JSON.stringify({ error: 'Failed to load user modules' }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: 'Failed to load user modules' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
 
     // Fetch company modules for fallback
@@ -146,7 +148,7 @@ serve(async (req) => {
       .eq("company_id", me.company_id);
     if (cmErr) {
       console.error('[get-effective-modules] Company modules error:', cmErr.message);
-      return new Response(JSON.stringify({ error: 'Failed to load company modules' }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: 'Failed to load company modules' }), { status: 500, headers: withSecurityHeaders(corsHeaders) });
     }
 
     const userStatusMap = new Map<string, string>((userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]));
@@ -166,12 +168,12 @@ serve(async (req) => {
       };
     });
 
-    return new Response(JSON.stringify({ modules: result }), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify({ modules: result }), { status: 200, headers: withSecurityHeaders(corsHeaders) });
   } catch (e: any) {
     console.error('[get-effective-modules] Unhandled error:', e);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...getCorsHeaders(req.headers.get("origin")) },
+      headers: withSecurityHeaders({ "Content-Type": "application/json", ...getCorsHeaders(req.headers.get("origin")) }),
     });
   }
 });

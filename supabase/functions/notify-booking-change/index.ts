@@ -27,6 +27,8 @@
 //     uses the service-role key). See supabase/config.toml.
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -188,7 +190,7 @@ Deno.serve(async (req: Request) => {
   if (recipients.length === 0 && adminRecipients.length === 0) {
     console.log("[notify-booking-change] no recipients; exiting");
     return new Response(JSON.stringify({ sent: 0 }), {
-      headers: { "Content-Type": "application/json" },
+      headers: withSecurityHeaders({ "Content-Type": "application/json" }),
     });
   }
 
@@ -281,7 +283,7 @@ Deno.serve(async (req: Request) => {
 
   console.log("[notify-booking-change] done", { sent, total: allRecipients.length });
   return new Response(JSON.stringify({ sent, total: allRecipients.length }), {
-    headers: { "Content-Type": "application/json" },
+    headers: withSecurityHeaders({ "Content-Type": "application/json" }),
   });
 });
 

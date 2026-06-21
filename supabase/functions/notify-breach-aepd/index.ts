@@ -15,6 +15,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 interface BreachNotificationPayload {
   incidentId: string;
@@ -29,7 +31,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -40,7 +42,7 @@ serve(async (req: Request) => {
   if (!token || token !== serviceRoleKey) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -48,7 +50,7 @@ serve(async (req: Request) => {
   if (!SUPABASE_URL) {
     return new Response(JSON.stringify({ error: 'Missing SUPABASE_URL' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -58,7 +60,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -66,7 +68,7 @@ serve(async (req: Request) => {
   if (!incidentId) {
     return new Response(JSON.stringify({ error: 'incidentId is required' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -87,7 +89,7 @@ serve(async (req: Request) => {
     if (!incident) {
       return new Response(JSON.stringify({ error: 'Breach incident not found' }), {
         status: 404,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -97,7 +99,7 @@ serve(async (req: Request) => {
     if (incident.severity_level !== 'high' && incident.severity_level !== 'critical') {
       return new Response(JSON.stringify({ ok: true, message: 'Severity not high/critical — no notification created' }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -105,7 +107,7 @@ serve(async (req: Request) => {
     if (incident.aepd_notified_at) {
       return new Response(JSON.stringify({ ok: true, message: 'Already notified — skipping' }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -155,7 +157,7 @@ serve(async (req: Request) => {
       console.warn(`[notify-breach-aepd] No owners/admins found for company ${companyId}`);
       return new Response(JSON.stringify({ error: 'No owners/admins found for company' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -237,7 +239,7 @@ serve(async (req: Request) => {
       message: `Notification created for ${ownerUserIds.length} owner(s). AEPD notification deadline: ${deadlineDate}`,
     }), {
       status: 200,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
 
   } catch (error: any) {
@@ -247,7 +249,7 @@ serve(async (req: Request) => {
       detail: error?.message,
     }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 });

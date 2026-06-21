@@ -10,6 +10,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
 async function sendBrandedEmail(params: {
@@ -275,14 +277,14 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true, message: 'Invitation sent' }), {
-            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
         });
 
     } catch (error: any) {
         console.error(error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
-            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+            headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
         });
     }
 });

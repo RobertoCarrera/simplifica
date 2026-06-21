@@ -7,6 +7,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 interface RequestEmailAccountPayload {
   companyId: string;
@@ -24,7 +26,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -34,7 +36,7 @@ serve(async (req: Request) => {
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -50,7 +52,7 @@ serve(async (req: Request) => {
     if (!payload.companyId || !payload.userId || !payload.userName) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -67,7 +69,7 @@ serve(async (req: Request) => {
     if (!ownerMember?.user_id) {
       return new Response(JSON.stringify({ error: 'No owner found for company' }), {
         status: 404,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -87,19 +89,19 @@ serve(async (req: Request) => {
       console.error('[request-email-account] Error inserting notification:', notifyError);
       return new Response(JSON.stringify({ error: 'Failed to send notification' }), {
         status: 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   } catch (error) {
     console.error('[request-email-account] Unexpected error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 });
