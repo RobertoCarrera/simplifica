@@ -119,6 +119,12 @@ serve(async (req) => {
     return new Response('ok', { headers: withSecurityHeaders(corsHeaders) });
   }
 
+  // AWS env vars live at function scope so both the create-booking and
+  // create-lead email blocks can use them without redeclaring.
+  const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
+  const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+  const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
+
   // Rate limiting: 30 req/min per IP (public booking endpoint)
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -1049,10 +1055,6 @@ serve(async (req) => {
               console.log('ℹ Client confirmation email disabled in preferences — skipping');
               // skip the whole block
             } else {
-            const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
-            const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
-            const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
-
             if (AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
               const serviceName = service?.name || 'Servicio';
               const dateFormatted = requested_date;
@@ -1309,6 +1311,127 @@ serve(async (req) => {
       }
 
       console.log(`✅ Lead created: ${insertedLead?.id} for company ${leadCompany.id}, service ${leadService.name}`);
+
+      // ── Best-effort: in-app notification + email to the company owner ──
+      // These never block the response: the lead is already created in
+      // the DB, and the customer-facing success message is what matters.
+      try {
+        const { data: ownerForLead } = await privateSupabase
+          .from('company_members')
+          .select('user_id, app_roles!inner(name)')
+          .eq('company_id', leadCompany.id)
+          .eq('app_roles.name', 'owner')
+          .limit(1)
+          .maybeSingle();
+
+        if (ownerForLead?.user_id) {
+          const tierLabel = leadVariantId
+            ? (leadVariantPricingSnapshot as any)
+              ? ` (${(leadVariantPricingSnapshot as any).base_price}€ / ${(leadVariantPricingSnapshot as any).billing_period})`
+              : ''
+            : '';
+          await privateSupabase.from('notifications').insert({
+            company_id: leadCompany.id,
+            recipient_id: ownerForLead.user_id,
+            profile_type: 'owner',
+            type: 'new_lead',
+            reference_id: insertedLead?.id,
+            title: '📩 Nueva solicitud de contratar',
+            content: `${leadFirstName} ${leadLastName} quiere contratar "${leadService.name}"${tierLabel}.`,
+            is_read: false,
+            metadata: {
+              lead_id: insertedLead?.id,
+              service_id: leadServiceId,
+              service_name: leadService.name,
+              variant_id: leadVariantId,
+              variant_pricing_snapshot: leadVariantPricingSnapshot,
+              client_name: `${leadFirstName} ${leadLastName}`,
+              client_email: leadEmail,
+              client_phone: leadPhone,
+              message: leadMessage,
+              source: 'portal_catalog',
+            },
+          });
+          console.log(`✅ In-app notification created for owner: ${ownerForLead.user_id}`);
+        }
+      } catch (notifyErr: any) {
+        console.warn('⚠️ Lead notification failed (non-blocking):', notifyErr.message);
+      }
+
+      try {
+        const { data: leadOwnerSettings } = await privateSupabase
+          .from('company_settings')
+          .select('email_preferences')
+          .eq('company_id', leadCompany.id)
+          .maybeSingle();
+        const leadEmailPrefs: Record<string, boolean> = {
+          new_lead_owner: true,
+          ...((leadOwnerSettings?.email_preferences || {}) as Record<string, boolean>),
+        };
+        if (leadEmailPrefs.new_lead_owner && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
+          const fromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || 'reservas@simplificacrm.es';
+          const safeFirstName = sanitizeText(leadFirstName, 100);
+          const safeLastName = sanitizeText(leadLastName, 100);
+          const safeEmail = sanitizeText(leadEmail, 320);
+          const safeService = sanitizeText(leadService.name, 200);
+          const safeMessage = leadMessage ? sanitizeText(leadMessage, 2000) : '';
+          const tierEmailLine = leadVariantPricingSnapshot
+            ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Plan</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${(leadVariantPricingSnapshot as any).base_price}€ / ${(leadVariantPricingSnapshot as any).billing_period}</td></tr>`
+            : '';
+          const messageBlock = safeMessage
+            ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Mensaje</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeMessage}</td></tr>`
+            : '';
+          const ownerHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #10B981;">📩 Nueva solicitud de contratar</h2>
+              <p>Has recibido una nueva solicitud desde el portal de catálogo:</p>
+              <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+                <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Cliente</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeFirstName} ${safeLastName}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Email</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeEmail}</td></tr>
+                ${leadPhone ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Teléfono</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${sanitizeText(leadPhone, 50)}</td></tr>` : ''}
+                <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Servicio</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeService}</td></tr>
+                ${tierEmailLine}
+                ${messageBlock}
+              </table>
+              <p>Accede al CRM para ver el lead completo y hacer seguimiento.</p>
+            </div>`;
+          const subjectLine = `Nueva solicitud: ${safeService} — ${safeFirstName} ${safeLastName}`;
+          // Try to look up the owner's email via the auth user — but the
+          // simplest path is to send to the company-level booking email
+          // (configured per company) or fall back to BOOKING_FROM_EMAIL.
+          const ownerEmail = (leadOwnerSettings as any)?.booking_notification_email
+            || Deno.env.get('COMPANY_NOTIFICATION_EMAIL')
+            || fromEmail;
+          const sesParams = new URLSearchParams();
+          sesParams.append('Action', 'SendEmail');
+          sesParams.append('Source', `"${leadCompany.name}" <${fromEmail}>`);
+          sesParams.append('Destination.ToAddresses.member.1', ownerEmail);
+          sesParams.append('Message.Subject.Data', subjectLine);
+          sesParams.append('Message.Body.Html.Data', ownerHtml);
+          sesParams.append(
+            'Message.Body.Text.Data',
+            `Nueva solicitud: ${safeFirstName} ${safeLastName} quiere contratar ${safeService}. Email: ${safeEmail}`,
+          );
+          const aws = new AwsClient({
+            accessKeyId: AWS_ACCESS_KEY_ID,
+            secretAccessKey: AWS_SECRET_ACCESS_KEY,
+            region: AWS_REGION,
+            service: 'email',
+          });
+          const sesResp = await aws.fetch(`https://email.${AWS_REGION}.amazonaws.com`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: sesParams.toString(),
+          });
+          if (sesResp.ok) {
+            console.log(`✅ Lead notification email sent to ${ownerEmail}`);
+          } else {
+            console.warn(`⚠ Lead email failed: ${sesResp.status}`);
+          }
+        }
+      } catch (emailErr: any) {
+        console.warn('⚠️ Lead email failed (non-blocking):', emailErr.message);
+      }
 
       return new Response(JSON.stringify({
         success: true,
