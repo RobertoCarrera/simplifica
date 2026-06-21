@@ -1,0 +1,137 @@
+-- Migration: revoke_safe_secdef_authenticated_r1
+-- Sprint: Rafter v0.14.2 (REVOKE_SAFE batch)
+-- Author: AI sub-agent (sdd-apply)
+-- Date: 2026-06-21
+--
+-- Revokes EXECUTE on SECURITY DEFINER functions in public schema
+-- from the `authenticated` role. Each function was verified to have
+-- zero callers via:
+--   1. DB catalog query (pg_proc, pg_policies, pg_views, pg_trigger)
+--   2. Source code grep across src/ and supabase/functions/
+--   3. Paranoid re-grep of supabase/migrations/ for ANY reference
+--
+-- Original inventory claimed 82 REVOKE_SAFE functions. After three
+-- layers of verification, only 2 survive (see REJECTED list below).
+--
+-- Methodology: docs/rafter-v12-secdef-frontend-migration-needed.md
+
+BEGIN;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_user_id() FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.mail_account_company_admin(p_account_id uuid) FROM authenticated;
+
+COMMIT;
+
+-- ── REJECTED FROM THIS BATCH ──────────────────────────────────────────────
+--
+-- A) Already revoked in prior Rafter campaigns (auth_can_execute = false at
+--    query time). Re-revoking is a no-op and was excluded to keep the
+--    migration idempotent and auditable. (66 functions):
+--
+--    _test_gotrue_flow, admin_assign_company_plan, admin_cancel_booking_force,
+--    admin_create_booking_for_user, admin_create_program, auth_user_id_from_token,
+--    backfill_clients_dni_encryption, cancel_booking_with_refund, cancel_marketing_send,
+--    change_company_plan, classify_incoming_email_rpc, client_dedup_rollback,
+--    count_marketing_audience, count_unassigned_clients, create_booking_with_validations,
+--    cron_scan_incomplete_bookings, decrypt_booking_form_response, decrypt_client_pii,
+--    decrypt_company_email_credential, detect_overdue_arco_requests,
+--    docplanner_reconciliation_trigger, encrypt_booking_form_response,
+--    encrypt_company_email_credential, ensure_mail_system_folders,
+--    finalize_marketing_campaign, find_client_by_phone_last9,
+--    fn_auto_assign_client_on_booking_insert, gdpr_detect_anomalies,
+--    gdpr_enforce_retention, gdpr_export_processing_registry,
+--    gdpr_verify_backup_status, get_clients_to_inactivate, get_company_address,
+--    get_company_contact_email, get_company_display_name, get_company_dpo_info,
+--    get_current_company_plan, get_marketing_audience, get_my_client_ids,
+--    get_pending_breach_notifications, get_pending_invitation_by_email,
+--    get_user_jwt_claims, get_vault_secret, has_valid_dpa, invoke_docplanner_sync,
+--    invoke_security_anomaly_alerts, is_company_admin_or_supervisor,
+--    join_waiting_list_v2 (both overloads), log_marketing_send, log_security_event,
+--    notify_owner_email_request, portal_export_my_data, portal_get_my_arco_requests,
+--    portal_get_my_consents, portal_submit_arco_request (both overloads),
+--    portal_withdraw_my_consent, process_inactive_clients,
+--    refresh_analytics_materialized_views, refresh_quotes_materialized_views,
+--    rls_auto_enable, rotate_clinical_notes_key, seed_booking_source_icons_for_company,
+--    storage_get_company_id, sync_client_consent_status, sync_client_privacy_consent,
+--    trigger_update_last_accessed
+--
+-- B) Internal callers found via paranoid grep across supabase/migrations/.
+--    Despite CSV classification as REVOKE_SAFE (db_caller_count=0), the
+--    functions are referenced from trigger bodies or other SECDEF functions
+--    in migrations. Conservative rule: ANY grep match = EXCLUDE. (14 functions):
+--
+--    _build_duplicate_clusters
+--      Reason: Called from `bulk_merge_safe_duplicates()` body (SECDEF wrapper).
+--      File: 20260615000001_bulk_merge_safe_duplicates.sql:311
+--
+--    _detect_duplicate_clients_inner
+--      Reason: Called from `detect_duplicate_clients_fuzzy_v4()` wrapper body.
+--      File: 20260616000006_detect_duplicate_clients_fuzzy_v4.sql:297
+--
+--    accept_quote_for_booking
+--      Reason: PERFORM call from trigger `quote_lifecycle_tenant_toggle`.
+--      File: 20260617000000_quote_lifecycle_tenant_toggle.sql:139
+--
+--    check_professional_blocked
+--      Reason: Called from trigger `booking_blocked_dates_trigger` body.
+--      File: 20260604000000_add_booking_blocked_dates_trigger.sql:73
+--
+--    create_invoice_for_booking
+--      Reason: PERFORM call from trigger `quote_lifecycle_tenant_toggle`
+--      and from `fix_invoice_function_use_quote_items` body.
+--      Files: 20260617000000_quote_lifecycle_tenant_toggle.sql:140
+--             20260617000009_fix_invoice_function_use_quote_items.sql
+--             20260618000002_fix_create_invoice_use_quote_client_fallback.sql
+--
+--    create_mail_system_folders
+--      Reason: PERFORM call from trigger `mail_account_create_folders`
+--      and from `cleanup_duplicate_system_folders` / ensure functions.
+--      File: 20260602000002_mail_system_folders_and_rls.sql:111,133,152
+--
+--    ensure_default_invoice_series
+--      Reason: Called from `fix_invoice_function_use_quote_items` and
+--      `fix_create_invoice_use_quote_client_fallback` bodies.
+--      Files: 20260617000009_fix_invoice_function_use_quote_items.sql:113
+--             20260618000002_fix_create_invoice_use_quote_client_fallback.sql:127
+--
+--    find_similar_emails_rpc
+--      Reason: Match in `_archive_dupes/20260603000001_mail_classification_rpc.sql`
+--      (archived duplicate migration). Conservative: exclude.
+--
+--    get_auth_user_professional_id
+--      Reason: Extensively referenced in RLS policies (pg_policies qual
+--      expressions) across many migrations. CSV `db_caller_count=0` appears
+--      to be a false negative in the ILIKE scan; the function is called from
+--      authenticated via RLS policy evaluation.
+--      Files: 20260430150000, 20260528000000, 20260604000001, 20260604000003,
+--             20260605000001, 20260605000003, 20260607000001, 20260610000004,
+--             20260619094656, BACKUP_20260603_original_rls.sql
+--
+--    is_client_assigned_to_user
+--      Reason: Referenced in RLS policies on clients table.
+--      Files: 20260605000001_add_supervisor_to_rls.sql:79
+--             20260605000002_fix_clients_select_for_supervisor.sql:32
+--             20260619094656_fix_rls_search_path_and_qualify_clients_policies.sql:117
+--
+--    is_super_admin_by_id
+--      Reason: Already addressed by prior migration
+--      `20260619_revoke_gdpr_payment_admin_anon.sql` (REVOKE FROM anon+authenticated,
+--      GRANT TO service_role). Re-listing here for audit trail.
+--
+--    is_super_admin_by_internal_id
+--      Reason: Already revoked in prior campaigns. Still referenced in
+--      `20260610110000_company_plan_subscriptions.sql` (SECDEF wrapper call).
+--      Conservative: exclude.
+--
+--    is_super_admin_real
+--      Reason: Extensively referenced in RLS policies across many migrations
+--      (`audit_rls_fixes`, `invoices_rls_exclude_super_admin`,
+--      `fix_rafter_v04_is_super_admin_policy_references`, etc.). The function
+--      is the canonical replacement for revoked is_super_admin() callers and
+--      must remain authenticated-executable.
+--
+--    my_company_id
+--      Reason: Referenced in RLS policies (audit_rls_fixes.sql:37,43).
+--      File: 20260413120000_audit_rls_fixes.sql
+--
+-- ──────────────────────────────────────────────────────────────────────────
