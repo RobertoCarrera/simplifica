@@ -332,6 +332,174 @@
             }
           </div>
 
+          <!-- Portal público — modos disponibles (show_booking / show_catalog / show_shop) -->
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-5"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0"
+              >
+                <i class="fas fa-globe"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Portal público — modos disponibles</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Decide qué puede ver y hacer un cliente sin iniciar sesión.
+                  Los cambios se aplican en la agenda al recargar (caché de ~5s).
+                </p>
+              </div>
+            </div>
+
+            @if (loadingPortalFeatures()) {
+              <div class="flex items-center gap-2 text-xs text-gray-400">
+                <i class="fas fa-spinner fa-spin"></i> Cargando configuración del portal...
+              </div>
+            }
+
+            @if (portalFeaturesError() && !loadingPortalFeatures()) {
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-xs text-red-700 dark:text-red-400">
+                <i class="fas fa-exclamation-circle mr-1"></i> {{ portalFeaturesError() }}
+              </div>
+            }
+
+            <div class="space-y-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <!-- show_booking -->
+              <div class="flex items-center justify-between gap-3 py-2">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                  <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-calendar-check text-sm"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Reservas con horario</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                      El cliente elige un profesional, ve huecos libres en el calendario y reserva una cita.
+                      Necesario para clínicas, consultas y servicios con duración.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    [checked]="portalFeatures().show_booking"
+                    (change)="togglePortalFeature('show_booking')"
+                  />
+                  <div
+                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                  ></div>
+                </label>
+              </div>
+
+              <!-- show_catalog -->
+              <div class="flex items-center justify-between gap-3 py-2">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                  <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-list-ul text-sm"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Catálogo de servicios y planes</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                      El cliente ve un catálogo de servicios con precios y variantes (mensual/anual),
+                      sin elegir horario. Ideal para agencias, consultorías y suscripciones.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    [checked]="portalFeatures().show_catalog"
+                    (change)="togglePortalFeature('show_catalog')"
+                  />
+                  <div
+                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"
+                  ></div>
+                </label>
+              </div>
+
+              <!-- show_shop -->
+              <div class="flex items-center justify-between gap-3 py-2">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                  <div class="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-shopping-bag text-sm"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Tienda de productos</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                      El cliente ve un grid de productos con precios (y stock) y puede añadirlos
+                      al carrito. Necesario si vendes productos además de servicios.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    [checked]="portalFeatures().show_shop"
+                    (change)="togglePortalFeature('show_shop')"
+                  />
+                  <div
+                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600"
+                  ></div>
+                </label>
+              </div>
+
+              <!-- Nested flags (only meaningful when show_booking is on) -->
+              <div class="ml-12 pl-3 border-l-2 border-gray-100 dark:border-gray-700 space-y-2">
+                <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider pt-1">Solo aplica con Reservas</p>
+                <div class="flex items-center justify-between gap-3 py-1.5">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Mostrar pestaña "Por Profesional"</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      class="sr-only peer"
+                      [checked]="portalFeatures().show_professionals"
+                      (change)="togglePortalFeature('show_professionals')"
+                    />
+                    <div
+                      class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                    ></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between gap-3 py-1.5">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Mostrar pestaña "Por Duración"</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      class="sr-only peer"
+                      [checked]="portalFeatures().show_availability"
+                      (change)="togglePortalFeature('show_availability')"
+                    />
+                    <div
+                      class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                    ></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+              <button
+                (click)="savePortalFeatures()"
+                [disabled]="savingPortalFeatures() || loadingPortalFeatures()"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+              >
+                @if (savingPortalFeatures()) {
+                  <i class="fas fa-spinner fa-spin"></i>
+                  Guardando...
+                } @else {
+                  <i class="fas fa-save"></i>
+                }
+                Guardar configuración del portal
+              </button>
+            </div>
+          </div>
+
           <!-- Quote Lifecycle Mode (booking-driven vs manual) -->
           <div
             class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4"

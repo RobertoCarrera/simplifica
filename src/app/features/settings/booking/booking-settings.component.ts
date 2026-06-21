@@ -222,6 +222,83 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     await this.savePortalFilters(newFilters);
   }
 
+  // ── Portal modes (show_booking, show_catalog, show_shop) ──────
+  // Owner-controlled capability flags stored in companies.portal_features
+  // (jsonb). The public agenda BFF reads this column on every /services
+  // request, so changes here are visible to the public portal within
+  // a few seconds (just the time the BFF's PostgREST cache takes to
+  // expire, ~5s by default).
+  portalFeatures = signal<{
+    show_booking: boolean;
+    show_catalog: boolean;
+    show_shop: boolean;
+    show_professionals: boolean;
+    show_availability: boolean;
+  }>({
+    show_booking: true,
+    show_catalog: false,
+    show_shop: false,
+    show_professionals: true,
+    show_availability: true,
+  });
+  loadingPortalFeatures = signal(false);
+  savingPortalFeatures = signal(false);
+  portalFeaturesError = signal<string | null>(null);
+
+  async loadPortalFeatures() {
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+    this.loadingPortalFeatures.set(true);
+    this.portalFeaturesError.set(null);
+    try {
+      const { data, error } = await this.supabase
+        .getClient()
+        .from('companies')
+        .select('portal_features')
+        .eq('id', companyId)
+        .maybeSingle();
+      if (error) throw error;
+      const pf = (data as any)?.portal_features;
+      // The DB has defaults but be defensive: any field missing → default.
+      this.portalFeatures.set({
+        show_booking: pf?.show_booking ?? true,
+        show_catalog: pf?.show_catalog ?? false,
+        show_shop: pf?.show_shop ?? false,
+        show_professionals: pf?.show_professionals ?? true,
+        show_availability: pf?.show_availability ?? true,
+      });
+    } catch (err: any) {
+      console.error('[PortalFeatures] load error:', err);
+      this.portalFeaturesError.set(err?.message || 'Error al cargar la configuración del portal');
+    } finally {
+      this.loadingPortalFeatures.set(false);
+    }
+  }
+
+  async savePortalFeatures() {
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+    this.savingPortalFeatures.set(true);
+    try {
+      const { error } = await this.supabase
+        .getClient()
+        .from('companies')
+        .update({ portal_features: this.portalFeatures() })
+        .eq('id', companyId);
+      if (error) throw error;
+      this.toastService.success('Portal público', 'Configuración guardada. Los cambios se ven en la agenda al recargar.');
+    } catch (err: any) {
+      console.error('[PortalFeatures] save error:', err);
+      this.toastService.error('Portal público', err?.message || 'No se pudo guardar la configuración');
+    } finally {
+      this.savingPortalFeatures.set(false);
+    }
+  }
+
+  togglePortalFeature(flag: 'show_booking' | 'show_catalog' | 'show_shop' | 'show_professionals' | 'show_availability') {
+    this.portalFeatures.update((current) => ({ ...current, [flag]: !current[flag] }));
+  }
+
   async loadPortalFilters() {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
@@ -756,6 +833,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       // Load portal filters for the general settings sub-tab
       if (tab === 'general') {
         this.loadPortalFilters();
+        this.loadPortalFeatures();
       }
     }
   }
