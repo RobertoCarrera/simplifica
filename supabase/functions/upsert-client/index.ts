@@ -610,7 +610,7 @@ serve(withCsrf(async (req) => {
         .from('clients')
         .select('id')
         .eq('company_id', company_id)
-        .ilike('email', row.email)
+        .eq('email', row.email.toLowerCase())
         .is('deleted_at', null)
         .limit(1)
         .maybeSingle();

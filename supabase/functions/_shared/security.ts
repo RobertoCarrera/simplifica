@@ -61,6 +61,19 @@ export function isValidUUID(value: unknown): value is string {
 }
 
 /**
+ * Escape special LIKE wildcards in user-supplied strings.
+ * Use BEFORE interpolating into a `.ilike()` filter or template-literal pattern.
+ * Escapes: % (any chars), _ (single char), \ (escape char itself)
+ *
+ * Example:
+ *   .ilike('name', `%${escapeLike(svcName)}%`)
+ *   .ilike('email', escapeLike(normalizedEmail))
+ */
+export function escapeLike(input: string): string {
+  return input.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
  * Sanitize a plain-text string for safe use in email bodies.
  * Strips HTML tags and limits length.
  */

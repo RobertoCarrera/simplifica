@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decrypt as oauthDecrypt, isEncrypted as isOAuthEncrypted, encrypt as oauthEncrypt } from '../_shared/crypto-utils.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { withSecurityHeaders, escapeLike } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -254,7 +254,7 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
     if (existingByDp) clientId = existingByDp.id;
     if (!clientId && normalizedEmail) {
       const { data: existingByEmail } = await serviceClient.from('clients').select('id')
-        .eq('company_id', companyId).ilike('email', normalizedEmail).maybeSingle();
+        .eq('company_id', companyId).ilike('email', escapeLike(normalizedEmail)).maybeSingle();
       if (existingByEmail) {
         clientId = existingByEmail.id;
         await serviceClient.from('clients').update({ docplanner_patient_id: String(patient.id) }).eq('id', clientId);
@@ -284,7 +284,7 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
       const hasContactInfo = !!(normalizedEmail || patient.phone);
       if (!hasContactInfo) {
         const { data: existingPending } = await serviceClient.from('clients').select('id')
-          .eq('company_id', companyId).eq('is_active', false).ilike('name', patient.name || '').ilike('surname', patient.surname || '').limit(1);
+          .eq('company_id', companyId).eq('is_active', false).ilike('name', escapeLike(patient.name || '')).ilike('surname', escapeLike(patient.surname || '')).limit(1);
         if (existingPending) {
           await serviceClient.from('clients').update({ docplanner_patient_id: String(patient.id) }).eq('id', existingPending[0].id);
           clientId = existingPending[0].id;
@@ -334,13 +334,13 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
     // 3. Fall back to name-only matching (search CRM services)
     if (!serviceId && svcName) {
       const { data: exactMatch } = await serviceClient.from('services').select('id')
-        .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
+        .eq('company_id', companyId).ilike('name', escapeLike(svcName)).maybeSingle();
       if (exactMatch) {
         serviceId = exactMatch.id;
         console.log('[webhook][service-lookup] name fallback match: service id=' + exactMatch.id);
       } else {
         const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
-          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
+          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + escapeLike(svcName) + '%').limit(1);
         if (fuzzyMatches?.length) {
           serviceId = fuzzyMatches[0].id;
           console.log('[webhook][service-lookup] fuzzy match: service id=' + fuzzyMatches[0].id);
@@ -452,11 +452,11 @@ async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBo
     // 3. Fall back to name matching
     if (!serviceId) {
       const { data: exactMatch } = await serviceClient.from('services').select('id')
-        .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
+        .eq('company_id', companyId).ilike('name', escapeLike(svcName)).maybeSingle();
       if (exactMatch) serviceId = exactMatch.id;
       else {
         const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
-          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
+          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + escapeLike(svcName) + '%').limit(1);
         if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
       }
       if (!serviceId) dpServiceUnmapped = true;
