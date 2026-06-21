@@ -177,10 +177,10 @@ serve(async (req) => {
       // Connect to the PRIVATE Supabase project (secured backend)
       const privateSupabase = createClient(PRIVATE_SUPABASE_URL, PRIVATE_SUPABASE_KEY);
 
-      // 1. Resolve company by slug (include branding fields)
+      // 1. Resolve company by slug (include branding + portal_features fields)
       const { data: company, error: companyError } = await privateSupabase
         .from('companies')
-        .select('id, name, logo_url, settings')
+        .select('id, name, logo_url, settings, portal_features')
         .eq('slug', slug)
         .eq('is_active', true)
         .maybeSingle();
@@ -296,6 +296,17 @@ serve(async (req) => {
         primary_color: branding.primary_color || '#10B981',
         secondary_color: branding.secondary_color || '#3B82F6',
         enabled_filters: enabledFilters,
+        // Per-company portal capability flags. Falls back to the booking-only
+        // defaults if the column is NULL (legacy rows or future rows that
+        // haven't been backfilled yet). Multiple flags can be true at once:
+        // e.g. show_booking + show_catalog for a clinic that sells bonos.
+        portal_features: {
+          show_booking: (company.portal_features as any)?.show_booking ?? true,
+          show_catalog: (company.portal_features as any)?.show_catalog ?? false,
+          show_shop: (company.portal_features as any)?.show_shop ?? false,
+          show_professionals: (company.portal_features as any)?.show_professionals ?? true,
+          show_availability: (company.portal_features as any)?.show_availability ?? true,
+        },
       };
 
       return new Response(JSON.stringify({
