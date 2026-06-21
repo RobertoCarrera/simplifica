@@ -1433,6 +1433,76 @@ serve(async (req) => {
         console.warn('⚠️ Lead email failed (non-blocking):', emailErr.message);
       }
 
+      // ── Customer confirmation email (best-effort) ─────────────────
+      // Send a "we have received your request" email to the customer
+      // who filled the form. Gated by the same `lead_confirmation_customer`
+      // preference, defaulting to true. Never block the response.
+      try {
+        const { data: custPrefs } = await privateSupabase
+          .from('company_settings')
+          .select('email_preferences')
+          .eq('company_id', leadCompany.id)
+          .maybeSingle();
+        const leadConfirmationOn =
+          (custPrefs?.email_preferences as any)?.lead_confirmation_customer ?? true;
+        if (leadConfirmationOn && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
+          const fromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || `reservas@simplificacrm.es`;
+          const safeFirstName = sanitizeText(leadFirstName, 100);
+          const safeService = sanitizeText(leadService.name, 200);
+          const custEmailBilling: Record<string, string> = {
+            monthly: 'mes',
+            annual: 'año',
+            one_time: 'pago único',
+            session: 'sesión',
+            custom: '',
+          };
+          const tierLine = leadVariantPricingSnapshot
+            ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Plan</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${(leadVariantPricingSnapshot as any).base_price}€ / ${custEmailBilling[(leadVariantPricingSnapshot as any).billing_period] || (leadVariantPricingSnapshot as any).billing_period}</td></tr>`
+            : '';
+          const customerHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #10B981;">✅ Hemos recibido tu solicitud</h2>
+              <p>Hola <strong>${safeFirstName}</strong>,</p>
+              <p>Hemos registrado tu interés en contratar <strong>${safeService}</strong>${leadVariantPricingSnapshot ? ' con el plan seleccionado' : ''}.</p>
+              <p>El equipo de <strong>${sanitizeText(leadCompany.name, 200)}</strong> te contactará en menos de 24 horas para confirmar los detalles y enviarte el contrato.</p>
+              <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+                <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Servicio</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeService}</td></tr>
+                ${tierLine}
+              </table>
+              <p style="color: #6b7280; font-size: 14px;">Si necesitas modificar o cancelar tu solicitud, responde a este email.</p>
+            </div>`;
+          const custSubject = `Hemos recibido tu solicitud: ${safeService}`;
+          const sesParams = new URLSearchParams();
+          sesParams.append('Action', 'SendEmail');
+          sesParams.append('Source', `"${leadCompany.name}" <${fromEmail}>`);
+          sesParams.append('Destination.ToAddresses.member.1', leadEmail);
+          sesParams.append('Message.Subject.Data', custSubject);
+          sesParams.append('Message.Body.Html.Data', customerHtml);
+          sesParams.append(
+            'Message.Body.Text.Data',
+            `Hola ${safeFirstName}, hemos recibido tu solicitud para ${safeService}. Te contactaremos en menos de 24 horas.`,
+          );
+          const aws = new AwsClient({
+            accessKeyId: AWS_ACCESS_KEY_ID,
+            secretAccessKey: AWS_SECRET_ACCESS_KEY,
+            region: AWS_REGION,
+            service: 'email',
+          });
+          const sesResp = await aws.fetch(`https://email.${AWS_REGION}.amazonaws.com`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: sesParams.toString(),
+          });
+          if (sesResp.ok) {
+            console.log(`✅ Lead confirmation email sent to customer: ${leadEmail}`);
+          } else {
+            console.warn(`⚠ Customer confirmation email failed: ${sesResp.status}`);
+          }
+        }
+      } catch (custEmailErr: any) {
+        console.warn('⚠️ Customer confirmation email failed (non-blocking):', custEmailErr.message);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         lead_id: insertedLead?.id,
