@@ -247,6 +247,7 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          apikey: environment.supabase.anonKey,
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({}),

@@ -596,6 +596,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       roleOnly: 'adminOnly',
       sidebarKey: 'core_/admin/modulos',
     },
+    {
+      id: 98,
+      label: 'nav.systemHealth',
+      icon: 'activity',
+      route: '/admin/system-health',
+      module: 'core',
+      roleOnly: 'adminOnly',
+      sidebarKey: 'core_/admin/system-health',
+    },
   ];
 
   // Notification badge kept in a separate computed so that unreadCount changes
