@@ -603,6 +603,17 @@ serve(async (req) => {
     }
 
     if (action === 'create-booking') {
+      // 0. REQUIRED-FIELDS CHECK: the schema accepts both create-booking
+      //    and create-lead shapes, so the per-booking fields are now
+      //    optional. Validate them explicitly here before we touch the
+      //    downstream code that assumes they're strings.
+      if (!booking_type_id || !client_name || !client_email || !requested_date || !requested_time) {
+        return new Response(
+          JSON.stringify({ error: 'Faltan campos obligatorios para crear la reserva' }),
+          { status: 400, headers: corsHeaders },
+        );
+      }
+
       // Field lengths are already capped by Zod (max(200), max(50))
       const safeClientName = client_name;
       const safeClientPhone = String(data.client_phone ?? '').substring(0, 50);
@@ -1180,6 +1191,130 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify(result), {
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
+      });
+    }
+
+    // ── create-lead (catalog mode) ──────────────────────────────────
+    // The customer has clicked a service tier in the catalog and wants
+    // to "Contratar". We don't create a booking — we create a Lead in the
+    // CRM's leads table so the company owner can follow up. This is the
+    // "Quiero este plan" flow.
+    if (action === 'create-lead') {
+      // Re-parse minimal fields from the raw body. We could extend the
+      // BookingSchema but leads are a different shape, so a dedicated
+      // inline validation here is clearer.
+      const leadBody = payload as Record<string, unknown>;
+      const leadCompanySlug = String(leadBody.company_slug ?? '').toLowerCase().trim();
+      const leadServiceId = String(leadBody.service_id ?? '');
+      const leadVariantId = leadBody.variant_id ? String(leadBody.variant_id) : null;
+      const leadFirstName = String(leadBody.first_name ?? '').trim();
+      const leadLastName = String(leadBody.last_name ?? '').trim();
+      const leadEmail = String(leadBody.email ?? '').trim().toLowerCase();
+      const leadPhone = leadBody.phone ? String(leadBody.phone).trim() : null;
+      const leadMessage = leadBody.message ? String(leadBody.message).trim() : null;
+      const leadNotes = leadBody.notes ? String(leadBody.notes).trim() : null;
+      const leadTurnstileToken = String(leadBody.turnstile_token ?? '');
+
+      if (!/^[a-z0-9-]+$/.test(leadCompanySlug)) {
+        return new Response(JSON.stringify({ error: 'Invalid company_slug' }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+      if (!leadServiceId || !leadFirstName || !leadLastName || !leadEmail || !leadTurnstileToken) {
+        return new Response(JSON.stringify({ error: 'Faltan campos obligatorios' }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail)) {
+        return new Response(JSON.stringify({ error: 'Email no válido' }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+
+      // Bot protection (re-use the same helper as create-booking)
+      const leadIp = req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || '';
+      const leadTurnstile = await verifyTurnstile(leadTurnstileToken, leadIp);
+      if (!leadTurnstile.success) {
+        return new Response(
+          JSON.stringify({ error: 'Bot protection failed', details: leadTurnstile['error-codes'] }),
+          { status: 400, headers: corsHeaders },
+        );
+      }
+
+      const privateSupabase = createClient(PRIVATE_SUPABASE_URL, PRIVATE_SUPABASE_KEY);
+
+      // Resolve company
+      const { data: leadCompany } = await privateSupabase
+        .from('companies')
+        .select('id, name')
+        .eq('slug', leadCompanySlug)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!leadCompany) {
+        return new Response(JSON.stringify({ error: 'Empresa no encontrada' }), {
+          status: 404, headers: corsHeaders,
+        });
+      }
+
+      // Resolve service for the interest field (just the name, not the price)
+      const { data: leadService } = await privateSupabase
+        .from('services')
+        .select('id, name')
+        .eq('id', leadServiceId)
+        .eq('company_id', leadCompany.id)
+        .maybeSingle();
+      if (!leadService) {
+        return new Response(JSON.stringify({ error: 'Servicio no encontrado' }), {
+          status: 404, headers: corsHeaders,
+        });
+      }
+
+      // Build the metadata payload with the variant info so the CRM can
+      // see what tier the customer wanted.
+      const leadVariantPricingSnapshot = leadBody.variant_pricing_snapshot ?? null;
+      const leadMetadata = {
+        source: 'portal_catalog',
+        service_id: leadServiceId,
+        variant_id: leadVariantId,
+        variant_pricing_snapshot: leadVariantPricingSnapshot,
+      };
+
+      // Insert the lead. RLS allows service_role to INSERT, which is
+      // what the BFF uses.
+      const { data: insertedLead, error: leadInsertError } = await privateSupabase
+        .from('leads')
+        .insert({
+          company_id: leadCompany.id,
+          source: 'web_form',
+          status: 'new',
+          first_name: leadFirstName,
+          last_name: leadLastName,
+          email: leadEmail,
+          phone: leadPhone,
+          interest: leadService.name,
+          notes: leadMessage,
+          metadata: leadMetadata,
+          gdpr_accepted: true,
+          gdpr_consent_sent_at: new Date().toISOString(),
+        })
+        .select('id, created_at')
+        .single();
+
+      if (leadInsertError) {
+        console.error('❌ Lead insert failed:', leadInsertError);
+        return new Response(JSON.stringify({ error: 'No se pudo registrar la solicitud' }), {
+          status: 500, headers: corsHeaders,
+        });
+      }
+
+      console.log(`✅ Lead created: ${insertedLead?.id} for company ${leadCompany.id}, service ${leadService.name}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        lead_id: insertedLead?.id,
+        message: 'Solicitud registrada. Te contactaremos en menos de 24h.',
+      }), {
         headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
