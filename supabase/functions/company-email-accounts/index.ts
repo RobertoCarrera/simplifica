@@ -72,27 +72,53 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
+//
+// SECURITY: JWT signature MUST be cryptographically verified. Earlier this
+// helper base64-decoded the JWT payload and trusted `payload.sub` directly,
+// which allowed an attacker to forge a {alg:"none"} token and impersonate any
+// user (CRITICAL-1, rafter sqli-audit 2026-06-21). With `verify_jwt = true` in
+// config.toml the gateway validates the signature before the function runs;
+// we additionally call `supabaseAdmin.auth.getUser(token)` inside the
+// handler as defense in depth — this re-verifies the JWT against the
+// project's signing key and rejects forged / expired / revoked tokens.
 
-async function getAuthUser(req: Request, _supabaseAdmin: ReturnType<typeof createClient>) {
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Missing Authorization header');
-
-  // Decode JWT payload directly — the Supabase gateway validates the signature
-  // when verify_jwt=true. With verify_jwt=false (config.toml), we trust the
-  // gateway and just extract the user_id from the payload.
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Malformed JWT');
-  const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1])));
-  const userId = payload?.sub;
-  if (!userId) throw new Error('JWT missing sub claim');
-  return { id: userId, email: payload?.email, aud: payload?.aud, role: payload?.role, app_metadata: payload?.app_metadata, user_metadata: payload?.user_metadata };
+interface AuthenticatedUser {
+  id: string;
+  email?: string;
+  aud?: string;
+  role?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
 }
 
-function base64UrlDecode(str: string): Uint8Array {
-  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = base64.length % 4;
-  const padded = pad ? base64 + '='.repeat(4 - pad) : base64;
-  return new Uint8Array([...atob(padded)].map(c => c.charCodeAt(0)));
+async function getAuthUser(
+  req: Request,
+  supabaseAdmin: ReturnType<typeof createClient>,
+): Promise<AuthenticatedUser> {
+  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    const err = new Error('Missing Authorization header') as Error & { status?: number };
+    err.status = 401;
+    throw err;
+  }
+
+  // Cryptographically verify the JWT signature against Supabase Auth's
+  // signing key. Rejects {alg:"none"} and any forged signature.
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !user) {
+    const err = new Error('Invalid or expired token') as Error & { status?: number };
+    err.status = 401;
+    throw err;
+  }
+
+  return {
+    id: user.id,
+    email: user.email ?? undefined,
+    aud: user.aud ?? undefined,
+    role: user.role ?? undefined,
+    app_metadata: user.app_metadata,
+    user_metadata: user.user_metadata,
+  };
 }
 
 /** Check if user is owner/admin of the company */
