@@ -29,6 +29,8 @@ import {
   PutUserPolicyCommand,
 } from 'npm:@aws-sdk/client-iam';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -125,7 +127,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ success: false, error: 'method_not_allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 405, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
@@ -137,7 +139,7 @@ serve(async (req: Request) => {
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -148,7 +150,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'invalid_json' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -157,14 +159,14 @@ serve(async (req: Request) => {
   if (!companyId || !emailAccountId || !domain) {
     return new Response(
       JSON.stringify({ success: false, error: 'missing_params' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   }
 
   if (companyId !== jwtCompanyId) {
     return new Response(JSON.stringify({ success: false, error: 'forbidden' }), {
       status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -172,7 +174,7 @@ serve(async (req: Request) => {
   if (!domainRx.test(domain)) {
     return new Response(JSON.stringify({ success: false, error: 'invalid_domain' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -183,7 +185,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'AWS not configured' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -228,7 +230,7 @@ serve(async (req: Request) => {
     console.error('[aws-iam-provision] IAM error:', err.message);
     return new Response(JSON.stringify({ success: false, error: `IAM error: ${err.message}` }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -246,7 +248,7 @@ serve(async (req: Request) => {
     console.error('[aws-iam-provision] Encryption failed:', encryptErr.message);
     return new Response(JSON.stringify({ success: false, error: `Encryption failed: ${encryptErr.message}` }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -267,7 +269,7 @@ serve(async (req: Request) => {
     console.error('[aws-iam-provision] DB update error:', updateErr.message);
     return new Response(JSON.stringify({ success: false, error: `DB update failed: ${updateErr.message}` }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -280,6 +282,6 @@ serve(async (req: Request) => {
       accessKeyId,
       message: 'IAM user created and credentials stored securely.',
     }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status: 200, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
   );
 });

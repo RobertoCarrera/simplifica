@@ -16,6 +16,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { decrypt as decryptGoogleToken, encrypt as encryptGoogleToken, isEncrypted as isGoogleTokenEncrypted } from '../_shared/crypto-utils.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 /* ── Phone normalization ─────────────────────────── */
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -941,10 +943,10 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
       error: 'Method not allowed'
     }), {
       status: 405,
-      headers: {
+      headers: withSecurityHeaders({
         ...corsHeaders,
         'Content-Type': 'application/json'
-      }
+      })
     });
   }
   // Auth: accept service_role key (cron) or JWT (manual trigger)
@@ -966,10 +968,10 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
         error: 'Unauthorized'
       }), {
         status: 401,
-        headers: {
+        headers: withSecurityHeaders({
           ...corsHeaders,
           'Content-Type': 'application/json'
-        }
+        })
       });
     }
   }
@@ -981,10 +983,10 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
       error: 'DB error'
     }), {
       status: 500,
-      headers: {
+      headers: withSecurityHeaders({
         ...corsHeaders,
         'Content-Type': 'application/json'
-      }
+      })
     });
   }
   if (!integrations || integrations.length === 0) {
@@ -993,10 +995,10 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
       processed: 0
     }), {
       status: 200,
-      headers: {
+      headers: withSecurityHeaders({
         ...corsHeaders,
         'Content-Type': 'application/json'
-      }
+      })
     });
   }
   const results = [];
@@ -1088,9 +1090,9 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
     results
   }), {
     status: 200,
-    headers: {
+    headers: withSecurityHeaders({
       ...corsHeaders,
       'Content-Type': 'application/json'
-    }
+    })
   });
 });

@@ -12,6 +12,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { validateJWTHook } from '../_shared/jwt-hook-validator.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -27,7 +29,7 @@ serve(async (req) => {
   if (!valid) {
     console.error('[custom-access-token] JWT hook validation failed:', reason);
     return new Response(JSON.stringify({ claims: {} }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
       status: 200,
     });
   }
@@ -53,7 +55,7 @@ serve(async (req) => {
         body?.substring(0, 200),
       );
       return new Response(JSON.stringify({ claims: {} }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
         status: 200,
       });
     }
@@ -75,7 +77,7 @@ serve(async (req) => {
     if (!userId || !incomingClaims) {
       console.error('[custom-access-token] Missing user_id/claims in hook payload');
       return new Response(JSON.stringify({ claims: incomingClaims ?? {} }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
         status: 200,
       });
     }
@@ -85,7 +87,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('[custom-access-token] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
       return new Response(JSON.stringify({ claims: incomingClaims }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
         status: 200,
       });
     }
@@ -139,7 +141,7 @@ serve(async (req) => {
         },
       }),
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
         status: 200,
       },
     );
@@ -151,7 +153,7 @@ serve(async (req) => {
         claims: incomingClaims ?? {},
       }),
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
         status: 200,
       },
     );

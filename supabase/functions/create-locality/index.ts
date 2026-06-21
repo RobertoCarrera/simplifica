@@ -6,6 +6,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 function getCorsHeaders(origin?: string) {
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -32,23 +34,23 @@ serve(async (req: Request) => {
   // OPTIONS preflight
   if (req.method === "OPTIONS") {
     try { console.log("Create-locality OPTIONS preflight received", { origin }); } catch {}
-    return new Response("ok", { headers: { ...corsHeaders, "Content-Type": "text/plain" } });
+    return new Response("ok", { headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "text/plain" }) });
   }
 
   // Enforce allowed origins
   if (!isAllowedOrigin(origin)) {
-    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
   }
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("URL_SUPABASE") || "";
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: "Missing Supabase env configuration" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Missing Supabase env configuration" }), { status: 500, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
     }
 
     // Admin client (Service Role)
@@ -57,12 +59,12 @@ serve(async (req: Request) => {
     // Require Authorization: Bearer <jwt>
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
     }
     const token = authHeader.split(" ")[1];
     const { data: { user: authedUser }, error: authedUserErr } = await supabaseAdmin.auth.getUser(token);
     if (authedUserErr || !authedUser) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
     }
 
     const body = await req.json().catch(() => ({} as any));
@@ -85,7 +87,7 @@ serve(async (req: Request) => {
             received_keys: receivedKeys,
           },
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) }
       );
     }
 
@@ -120,14 +122,14 @@ serve(async (req: Request) => {
 
       if (upsertError) {
         console.error("Upsert localities failed:", upsertError);
-        return new Response(JSON.stringify({ error: 'Failed to create locality' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: 'Failed to create locality' }), { status: 500, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
       }
       row = upsertData;
     }
 
-    return new Response(JSON.stringify({ result: row }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ result: row }), { status: 200, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
   } catch (e: any) {
     console.error("Create-locality exception", e);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: withSecurityHeaders({ ...corsHeaders, "Content-Type": "application/json" }) });
   }
 });

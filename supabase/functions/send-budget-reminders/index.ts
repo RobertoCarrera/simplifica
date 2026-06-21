@@ -18,6 +18,8 @@
 // ================================================================
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -33,7 +35,7 @@ function getCorsHeaders(_req: Request): Record<string, string> {
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...getCorsHeaders(new Request('http://x/')), 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...getCorsHeaders(new Request('http://x/')), 'Content-Type': 'application/json' }),
   });
 }
 

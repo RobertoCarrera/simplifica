@@ -17,6 +17,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
@@ -28,7 +30,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ success: false, error: 'method_not_allowed' }), {
       status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -37,7 +39,7 @@ serve(async (req: Request) => {
   if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ success: false, error: 'missing_auth' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -52,7 +54,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'malformed_token' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -61,7 +63,7 @@ serve(async (req: Request) => {
   if (!userId || !companyId) {
     return new Response(JSON.stringify({ success: false, error: 'invalid_token' }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -72,7 +74,7 @@ serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'invalid_json' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -80,7 +82,7 @@ serve(async (req: Request) => {
   if (!emailAccountId || !smtpPassword) {
     return new Response(JSON.stringify({ success: false, error: 'missing_params' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -100,7 +102,7 @@ serve(async (req: Request) => {
   if (encryptErr) {
     return new Response(JSON.stringify({ success: false, error: `Encryption failed: ${encryptErr.message}` }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
@@ -117,12 +119,12 @@ serve(async (req: Request) => {
   if (updateErr) {
     return new Response(JSON.stringify({ success: false, error: `DB update failed: ${updateErr.message}` }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 
   return new Response(
     JSON.stringify({ success: true, message: 'SMTP password encrypted and stored' }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    { status: 200, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
   );
 });

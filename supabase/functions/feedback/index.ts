@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 interface FeedbackPayload {
   type: 'bug' | 'improvement';
@@ -129,7 +131,7 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
     });
   }
 
@@ -137,7 +139,7 @@ serve(async (req) => {
   if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Authorization required' }), {
       status: 401,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -148,7 +150,7 @@ serve(async (req) => {
   if (!supabaseUrl || !supabaseKey) {
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -163,7 +165,7 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
     userId = user.id;
@@ -177,7 +179,7 @@ serve(async (req) => {
     if (userDataError || !userData) {
       return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
       });
     }
 
@@ -186,7 +188,7 @@ serve(async (req) => {
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message || 'Auth error' }), {
       status: 401,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -196,7 +198,7 @@ serve(async (req) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid payload' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -205,25 +207,25 @@ serve(async (req) => {
   if (!type || !['bug', 'improvement'].includes(type)) {
     return new Response(JSON.stringify({ error: 'Invalid type' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
   if (!description?.trim()) {
     return new Response(JSON.stringify({ error: 'Description required' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
   if (description.trim().length > 2000) {
     return new Response(JSON.stringify({ error: 'Description too long (max 2000)' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
   if (screenshot && screenshot.length > 1400000) {
     return new Response(JSON.stringify({ error: 'Screenshot too large' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -246,7 +248,7 @@ serve(async (req) => {
     console.error('[feedback] Insert error:', feedbackError);
     return new Response(JSON.stringify({ error: 'Failed to save feedback' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -285,7 +287,7 @@ serve(async (req) => {
     await supabaseAdmin.from('company_feedback').update({ status: 'failed' }).eq('id', feedbackData.id);
     return new Response(JSON.stringify({ error: 'Superadmin account not found' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -302,7 +304,7 @@ serve(async (req) => {
     await supabaseAdmin.from('company_feedback').update({ status: 'failed' }).eq('id', feedbackData.id);
     return new Response(JSON.stringify({ error: 'Inbox not found' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -325,7 +327,7 @@ serve(async (req) => {
     await supabaseAdmin.from('company_feedback').update({ status: 'failed' }).eq('id', feedbackData.id);
     return new Response(JSON.stringify({ error: 'Failed to create thread' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -372,7 +374,7 @@ serve(async (req) => {
     await supabaseAdmin.from('company_feedback').update({ status: 'failed' }).eq('id', feedbackData.id);
     return new Response(JSON.stringify({ error: 'Failed to deliver feedback' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
 
@@ -383,6 +385,6 @@ serve(async (req) => {
     .eq('id', feedbackData.id);
 
   return new Response(JSON.stringify({ success: true }), {
-    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
   });
 });

@@ -14,7 +14,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
-import { getClientIP } from "../_shared/security.ts";
+import { getClientIP, withSecurityHeaders } from "../_shared/security.ts";
 
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
@@ -55,25 +55,25 @@ serve(async (req) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: "Too many requests" }), {
       status: 429,
-      headers: { ...getCorsHeaders(origin), "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+      headers: withSecurityHeaders({ ...getCorsHeaders(origin), "Content-Type": "application/json", ...getRateLimitHeaders(rl) }),
     });
   }
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, { status: 200, headers: withSecurityHeaders(corsHeaders) });
   }
 
   if (req.method !== "PUT") {
     return new Response(JSON.stringify({ error: "Method not allowed. Use PUT." }), {
       status: 405,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
   if (!isOriginAllowed(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), {
       status: 403,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 
@@ -83,7 +83,7 @@ serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing or invalid authorization" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
     const token = authHeader.replace("Bearer ", "");
@@ -93,7 +93,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(JSON.stringify({ error: "Server configuration error" }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -106,7 +106,7 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -117,7 +117,7 @@ serve(async (req) => {
         error: "filters (array) is required. Example: { filters: [{ filter_id: 'services', visible: true }] }",
       }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -125,7 +125,7 @@ serve(async (req) => {
     if (inputFilters.length === 0) {
       return new Response(JSON.stringify({ error: "filters array cannot be empty" }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -139,7 +139,7 @@ serve(async (req) => {
     if (uErr || !userRow?.company_id) {
       return new Response(JSON.stringify({ error: "User not associated with a company" }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -151,7 +151,7 @@ serve(async (req) => {
     if (!["owner", "super_admin", "admin"].includes(roleName)) {
       return new Response(JSON.stringify({ error: "Insufficient permissions. Requires admin, owner, or super_admin." }), {
         status: 403,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -163,7 +163,7 @@ serve(async (req) => {
         code: "MINIMUM_ONE_VISIBLE",
       }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -177,7 +177,7 @@ serve(async (req) => {
     if (defsErr) {
       return new Response(JSON.stringify({ error: "Failed to validate filter IDs" }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -189,7 +189,7 @@ serve(async (req) => {
         code: "UNKNOWN_FILTER",
       }), {
         status: 400,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -210,7 +210,7 @@ serve(async (req) => {
       console.error("[update-company-filter-visibility] Upsert error:", upsertErr);
       return new Response(JSON.stringify({ error: "Failed to update filter visibility" }), {
         status: 500,
-        headers: corsHeaders,
+        headers: withSecurityHeaders(corsHeaders),
       });
     }
 
@@ -238,13 +238,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ filters }), {
       status: 200,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   } catch (e: any) {
     console.error("[update-company-filter-visibility] Unhandled error:", e);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: corsHeaders,
+      headers: withSecurityHeaders(corsHeaders),
     });
   }
 });

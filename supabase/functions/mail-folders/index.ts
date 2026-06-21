@@ -21,6 +21,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import {
+import { withSecurityHeaders } from '../_shared/security.ts';
+
   createDefaultEngine,
   buildEmailFeatures,
   sanitizeFolderName,
@@ -37,7 +39,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...extraHeaders },
+    headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...extraHeaders }),
   });
 }
 

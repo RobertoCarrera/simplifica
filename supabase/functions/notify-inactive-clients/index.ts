@@ -7,6 +7,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
+import { withSecurityHeaders } from '../_shared/security.ts';
+
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
 async function sendBrandedEmail(params: {
@@ -90,7 +92,7 @@ serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 
@@ -101,7 +103,7 @@ serve(async (req) => {
   if (!token || token !== serviceRoleKey) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 
@@ -120,7 +122,7 @@ serve(async (req) => {
   if (missingEnvs.length > 0) {
     return new Response(JSON.stringify({ error: 'Missing env vars', missing: missingEnvs }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 
@@ -142,7 +144,7 @@ serve(async (req) => {
     if (!logEntries || logEntries.length === 0) {
       return new Response(
         JSON.stringify({ ok: true, notified: 0, message: 'No pending entries' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
+        { status: 200, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) },
       );
     }
 
@@ -169,7 +171,7 @@ serve(async (req) => {
       console.error('[notify-inactive] Could not find owner role:', roleErr?.message);
       return new Response(JSON.stringify({ error: 'Owner role not found' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
       });
     }
     const ownerRoleId = roleRow.id as string;
@@ -320,13 +322,13 @@ serve(async (req) => {
         notified_companies: notifiedCompanies,
         notified_clients:   notifiedLogIds.length,
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
+      { status: 200, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) },
     );
   } catch (e) {
     console.error('[notify-inactive] Unhandled error:', e);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 });
