@@ -279,6 +279,38 @@ export class SupabaseCustomersService {
   }
 
   /**
+   * Rafter v0.36 — perf: dedicated full-table fetch for export/CSV use cases.
+   * Use this instead of `getCustomers({ limit: 10000 })` so we can:
+   *   1. Keep the default `getCustomers()` limit small (50) for list pages.
+   *   2. Page through large exports with explicit offsets (PostgREST caps
+   *      single responses at 1000 rows by default — we fetch 1000 at a time).
+   *   3. Skip the in-memory `customersSubject` write — exports shouldn't
+   *      overwrite the user's current list view.
+   *
+   * Returns the full active-customer set for the current company. Does NOT
+   * respect `deleted_at IS NULL` by default — pass `showDeleted: true` to
+   * include soft-deleted records if needed for compliance exports.
+   */
+  getAllCustomersForExport(
+    filters: Omit<CustomerFilters, 'limit' | 'offset'> = {},
+  ): Observable<Customer[]> {
+    const EXPORT_PAGE_SIZE = 1000;
+    const collect = (offset: number, acc: Customer[]): Observable<Customer[]> => {
+      const pageFilters: CustomerFilters = { ...filters, limit: EXPORT_PAGE_SIZE, offset };
+      return this.getCustomers(pageFilters, false).pipe(
+        switchMap((page) => {
+          const next = acc.concat(page);
+          if (page.length < EXPORT_PAGE_SIZE) {
+            return of(next);
+          }
+          return collect(offset + EXPORT_PAGE_SIZE, next);
+        }),
+      );
+    };
+    return collect(0, []);
+  }
+
+  /**
    * Método RPC para desarrollo - bypasea RLS
    */
   private getCustomersRpc(filters: CustomerFilters = {}): Observable<Customer[]> {
@@ -705,7 +737,12 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(2000);
+      // Rafter v0.36 — perf: default list-page size 50 (was 2000). Returns up
+      // to 40× less payload per call; the customers list is paginated in the
+      // UI so callers rarely need the full company-wide set. Callers that
+      // genuinely need the full table (e.g. CSV export) should use
+      // `getAllCustomersForExport()` below or pass an explicit `limit`.
+      query = query.limit(50);
     }
 
     return from(query).pipe(
