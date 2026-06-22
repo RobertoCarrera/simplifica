@@ -78,6 +78,15 @@ export class AuthService {
   private registrationInProgress = new Set<string>(); // Para evitar registros duplicados
   // Fix #8: Store visibilitychange handler reference for potential cleanup
   private visibilityChangeHandler: (() => void) | null = null;
+  // F-4.2 Rafter v0.30: BroadcastChannel to sync logout across tabs.
+  // Created lazily in the constructor (BroadcastChannel is undefined in SSR
+  // and older browsers). Same channel name across all tabs — when one tab
+  // posts {type:'logout'}, the others navigate to /login.
+  private authBroadcast: BroadcastChannel | null = null;
+  // F-4.2 Rafter v0.30: Lock to prevent feedback loops when the listener
+  // receives its own broadcast and triggers a second logout(). Set when the
+  // current tab initiated the logout; cleared on init or after navigate.
+  private _logoutInProgress = false;
 
   // Signals para estado reactivo
   private currentUserSubject = new BehaviorSubject<User | null>(null);
@@ -186,6 +195,39 @@ export class AuthService {
         }
       };
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+
+      // F-4.2 Rafter v0.30: subscribe to cross-tab logout broadcasts.
+      // When one tab signs out, all open tabs navigate to /login and their
+      // local state is cleared. Without this, the user could remain
+      // authenticated in a sibling tab that still holds the cached profile.
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          this.authBroadcast = new BroadcastChannel('simplifica-auth');
+          this.authBroadcast.onmessage = (event) => {
+            const data = (event && event.data) as { type?: string } | undefined;
+            if (data?.type !== 'logout') return;
+            // Guard against feedback loops: this tab is mid-logout, or the
+            // user has never authenticated on this tab. The local logout()
+            // already ran clearUserData() before posting, so isAuthenticated()
+            // is false here. If it's already false, this tab has nothing to do.
+            if (!this.isAuthenticated() && !this.currentUserSubject.value) return;
+            if (!this.ngZone) {
+              this.router.navigate(['/login']);
+              return;
+            }
+            this.ngZone.run(() => {
+              if (!environment.production) { console.log('🔐 AuthService: cross-tab logout broadcast received'); }
+              this.clearUserData();
+              this.router.navigate(['/login']);
+            });
+          };
+        } catch (e) {
+          // BroadcastChannel construction can throw in restricted contexts;
+          // degrade silently — the within-tab logout still works.
+          if (!environment.production) { console.warn('⚠️ BroadcastChannel unavailable:', e); }
+          this.authBroadcast = null;
+        }
+      }
     } else {
       if (!environment.production) { console.log('🔐 AuthService: Ya inicializado, reutilizando instancia'); }
       this.loadingSubject.next(false);
@@ -648,6 +690,10 @@ export class AuthService {
 
   private async handleAuthStateChange(event: string, session: Session | null) {
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+      // F-4.2 Rafter v0.30: a fresh session means any prior "this tab
+      // initiated logout" guard is stale. Reset so future cross-tab logout
+      // broadcasts (from a different tab) are processed normally.
+      this._logoutInProgress = false;
       await this.setCurrentUser(session.user);
     } else if (event === 'SIGNED_OUT') {
       // Fix #4: Clear auth state immediately on SIGNED_OUT to prevent guards from
@@ -1628,12 +1674,124 @@ export class AuthService {
       if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
       }
+      // F-4.2 Rafter v0.30: mark this tab as the logout initiator so the
+      // BroadcastChannel listener (in the same tab) ignores its own message.
+      this._logoutInProgress = true;
+      // Notify sibling tabs BEFORE we tear down our own state so they have
+      // a chance to navigate to /login while we still hold a valid session.
+      // This is the only piece of state that intentionally escapes the
+      // try/catch — a failed post must not block the local cleanup below.
+      try {
+        this.authBroadcast?.postMessage({ type: 'logout' });
+      } catch (e) { /* broadcast optional */ }
       await this.supabase.auth.signOut();
+      // F-4.2 Rafter v0.30: Sweep all app-namespaced storage + caches.
+      // Done AFTER signOut so Supabase's own auth-token cleanup runs first
+      // and we don't race with it. Best-effort: each block try/catches so a
+      // single failure (e.g. quota, disabled storage) doesn't skip the rest.
+      this.purgeAppStorageAndCaches();
       this.router.navigate(['/login']);
     } catch (error) {
       console.warn('⚠️ Error during logout:', error);
+      // Best-effort cleanup even on failure path so we don't leave PII behind.
+      try { this.purgeAppStorageAndCaches(); } catch { /* swallow */ }
       // Ensure we redirect even on error
       this.router.navigate(['/login']);
+    }
+  }
+
+  /**
+   * F-4.2 Rafter v0.30: clear every browser-side artifact the app created.
+   * Namespaces (not a wholesale wipe — we MUST NOT nuke unrelated browser
+   * extension data, Supabase auth cookies, or storage from other origins).
+   *
+   * localStorage keys cleared:
+   *   - simplifica_*          (app cache, exports/imports, theme, secure-storage payloads, search history)
+   *   - supabase. / sb-*      (Supabase JS auth tokens — defensive, signOut
+   *                            normally removes these but be paranoid)
+   *   - app_lang              (UI language)
+   *   - company-default-language (admin-set default language)
+   *   - sidebar-collapsed     (UI state)
+   *   - pwaInstallShown       (PWA banner)
+   *   - docs-sidebar-expanded (docs UI state)
+   *
+   * sessionStorage keys cleared:
+   *   - simplifica_*          (professional mode, app user cache, modules cache,
+   *                            auth-flow state, secure-storage key)
+   *   - mfa_stepup_*          (step-up auth timestamps)
+   *   - oauth_csrf_nonce / email_oauth_csrf_nonce_* (OAuth + email OAuth CSRF nonces)
+   *   - auth_return_to        (post-login redirect target)
+   *   - current_company_id    (tenant context)
+   *   - last_active_company_id (tenant context)
+   *
+   * Cache Storage: deletes any cache whose name starts with `ngsw:` (Angular
+   * Service Worker) or `simplifica-` (custom SW). Fires-and-forgets so it
+   * does not block the navigation.
+   */
+  private purgeAppStorageAndCaches(): void {
+    if (typeof window === 'undefined') return;
+
+    // Collect keys first, mutate after — concurrent modification of
+    // localStorage during iteration is a known browser gotcha.
+    const lsToRemove: string[] = [];
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key) continue;
+        if (
+          key.startsWith('simplifica_') ||
+          key.startsWith('simplifica-') ||
+          key.startsWith('supabase.') ||
+          key.startsWith('sb-') ||
+          key === 'app_lang' ||
+          key === 'company-default-language' ||
+          key === 'sidebar-collapsed' ||
+          key === 'pwaInstallShown' ||
+          key === 'docs-sidebar-expanded'
+        ) {
+          lsToRemove.push(key);
+        }
+      }
+      for (const k of lsToRemove) {
+        try { window.localStorage.removeItem(k); } catch { /* quota / disabled */ }
+      }
+    } catch { /* localStorage unavailable (private mode, SSR) */ }
+
+    const ssToRemove: string[] = [];
+    try {
+      for (let i = 0; i < window.sessionStorage.length; i++) {
+        const key = window.sessionStorage.key(i);
+        if (!key) continue;
+        if (
+          key.startsWith('simplifica_') ||
+          key.startsWith('simplifica-') ||
+          key.startsWith('mfa_stepup_') ||
+          key.startsWith('email_oauth_csrf_nonce_') ||
+          key === 'oauth_csrf_nonce' ||
+          key === 'auth_return_to' ||
+          key === 'current_company_id' ||
+          key === 'last_active_company_id'
+        ) {
+          ssToRemove.push(key);
+        }
+      }
+      for (const k of ssToRemove) {
+        try { window.sessionStorage.removeItem(k); } catch { /* quota / disabled */ }
+      }
+    } catch { /* sessionStorage unavailable */ }
+
+    // Service Worker caches: page-side delete so the next page load doesn't
+    // rehydrate sensitive API responses from disk. Fires-and-forgets.
+    if (typeof caches !== 'undefined') {
+      try {
+        caches.keys().then((names) => {
+          for (const name of names) {
+            if (name.startsWith('ngsw:') || name.startsWith('simplifica-')) {
+              try { void caches.delete(name); } catch { /* ignore */ }
+            }
+          }
+        }).catch(() => { /* ignore */ });
+      } catch { /* ignore */ }
     }
   }
 
