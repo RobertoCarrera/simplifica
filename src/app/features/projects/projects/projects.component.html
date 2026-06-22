@@ -259,6 +259,7 @@
       <app-kanban-board
         [projects]="filteredProjects"
         [stages]="stages"
+        [unreadCounts]="unreadCounts"
         (editProject)="openEditProject($event)"
         (editStage)="openStageDialog()"
         (refresh)="loadData()"

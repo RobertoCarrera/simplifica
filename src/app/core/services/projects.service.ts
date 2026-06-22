@@ -244,16 +244,18 @@ export class ProjectsService {
                 this.supabase
                     .from('projects')
                     .select(`
-          *,
-          permissions:project_permissions(*),
+          id, name, description, status, priority, position,
+          company_id, client_id, stage_id, assigned_to,
+          start_date, end_date, is_archived, is_internal_archived,
+          created_at, updated_at, created_by,
           client:client_id (id, name, surname, business_name, auth_user_id),
-          tasks:project_tasks (id, is_completed, title, position)
+          tasks:project_tasks (id, is_completed, position)
         `)
                     .eq('is_archived', archived)
                     .eq('company_id', companyId)
                     .eq('client_id', clientId)
                     .order('position', { ascending: true })
-                    .limit(500)
+                    .limit(200)
             ).pipe(map(({ data, error }) => {
                 if (error) throw error;
                 return this.mapProjects(data || []);
@@ -264,15 +266,17 @@ export class ProjectsService {
             this.supabase
                 .from('projects')
                 .select(`
-          *,
-          permissions:project_permissions(*),
+          id, name, description, status, priority, position,
+          company_id, client_id, stage_id, assigned_to,
+          start_date, end_date, is_archived, is_internal_archived,
+          created_at, updated_at, created_by,
           client:client_id (id, name, surname, business_name, auth_user_id),
-          tasks:project_tasks (id, is_completed, title, position)
+          tasks:project_tasks (id, is_completed, position)
         `)
                 .eq('is_archived', archived)
                 .eq('company_id', companyId)
                 .order('position', { ascending: true })
-                .limit(500)
+                .limit(200)
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
             return this.mapProjects((data || []) as any[], archived, includeHidden);
@@ -313,10 +317,12 @@ export class ProjectsService {
         const { data, error } = await this.supabase
             .from('projects')
             .select(`
-                *,
-                permissions:project_permissions(*),
+                id, name, description, status, priority, position,
+                company_id, client_id, stage_id, assigned_to,
+                start_date, end_date, is_archived, is_internal_archived,
+                created_at, updated_at, created_by,
                 client:client_id (id, name, surname, business_name, auth_user_id),
-                tasks:project_tasks (id, is_completed, title, position)
+                tasks:project_tasks (id, is_completed, position)
             `)
             .eq('id', id)
             .maybeSingle();
@@ -898,58 +904,32 @@ export class ProjectsService {
     }
 
     async getUnreadCount(projectId: string): Promise<number> {
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) return 0;
+        const counts = await this.getUnreadCountsBatch([projectId]);
+        return counts[projectId] ?? 0;
+    }
 
-        // Determine identity
-        const { data: internalUser } = await this.supabase
-            .from('users')
-            .select('id')
-            .eq('auth_user_id', user.id)
-            .maybeSingle();
-
-        let lastReadAt = new Date(0).toISOString();
-        let query = this.supabase.from('project_reads').select('last_read_at').eq('project_id', projectId);
-
-        if (internalUser) {
-            query = query.eq('user_id', internalUser.id);
-        } else {
-            const { data: clientUser } = await this.supabase
-                .from('clients')
-                .select('id')
-                .eq('auth_user_id', user.id)
-                .maybeSingle();
-            if (clientUser) {
-                query = query.eq('client_id', clientUser.id);
-            } else {
-                return 0;
-            }
-        }
-
-        const { data: readData } = await query.maybeSingle();
-        if (readData) {
-            lastReadAt = readData.last_read_at;
-        }
-
-        const { count, error } = await this.supabase
-            .from('project_comments')
-            .select('id', { count: 'exact', head: true })
-            .eq('project_id', projectId)
-            .gt('created_at', lastReadAt);
-
+    /**
+     * Batched unread-comments count. Replaces the previous per-card
+     * getUnreadCount which fired 4 round-trips per project (auth,
+     * identity lookup, last_read, count). For 80 cards that's 320
+     * requests on first paint; this version is 1.
+     *
+     * Backed by migration 20260622130004_unread_counts_batch_rpc.sql.
+     */
+    async getUnreadCountsBatch(projectIds: string[]): Promise<Record<string, number>> {
+        if (!projectIds.length) return {};
+        const { data, error } = await this.supabase.rpc('get_unread_counts_batch', {
+            p_project_ids: projectIds,
+        });
         if (error) {
-            // count=exact can fail under RLS for HEAD requests; fall back to
-            // a non-counting select and count in JS. This path is rare
-            // (now backed by idx_project_comments_project_created).
-            const { data } = await this.supabase
-                .from('project_comments')
-                .select('id')
-                .eq('project_id', projectId)
-                .gt('created_at', lastReadAt)
-                .limit(1000);
-            return data?.length || 0;
+            console.error('Error fetching unread counts batch:', error);
+            return {};
         }
-        return count || 0;
+        const out: Record<string, number> = {};
+        for (const row of (data ?? []) as { project_id: string; unread_count: number }[]) {
+            out[row.project_id] = row.unread_count;
+        }
+        return out;
     }
 
     async updateProjectPermissions(projectId: string, permissions: any): Promise<void> {

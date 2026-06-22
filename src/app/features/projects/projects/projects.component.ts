@@ -55,6 +55,7 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   selectedDeadline: string | null = null; // 'overdue', 'today', 'week', 'month'
 
   filteredProjects: Project[] = []; // Changed to property
+  unreadCounts: Record<string, number> = {}; // Batched from getUnreadCountsBatch
 
   // Realtime subscriptions
   private sbService = inject(SupabaseClientService);
@@ -126,17 +127,19 @@ export class ProjectsComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
-    // Subscribe to project_tasks changes. project_tasks has no
-    // company_id column (only project_id), so we can't filter at the
-    // realtime level. The current handler just calls loadData() with a
-    // 500ms debounce, which is OK for cross-tenant noise. If realtime
-    // volume becomes a problem, denormalize company_id onto
-    // project_tasks and add a filter here.
+    // Subscribe to project_tasks changes. The denormalized company_id
+    // column (migration 20260622130005) lets us scope realtime to the
+    // current company — no more cross-tenant load spikes.
     this.tasksChannel = supabase
       .channel('tasks-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'project_tasks' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_tasks',
+          ...(filter ? { filter } : {}),
+        },
         (payload) => {
           // Wait a bit so database triggers have committed
           setTimeout(() => this.loadData(), 500);
@@ -194,6 +197,14 @@ export class ProjectsComponent implements OnInit, OnDestroy {
     this.projectsService.getProjects(this.showArchived, this.showHidden).subscribe((projects) => {
       this.projects = projects;
       this.applyFilters(); // Apply filters when data loads
+      // Batched unread-counts: 1 RPC for all visible projects instead
+      // of 4 queries per card. Was 320 requests for 80 cards; now 1.
+      const ids = this.filteredProjects.map((p) => p.id);
+      if (ids.length) {
+        this.projectsService.getUnreadCountsBatch(ids).then((counts) => {
+          this.unreadCounts = counts;
+        });
+      }
     });
 
     // Load stages for the dialog

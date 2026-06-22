@@ -29,6 +29,12 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 export class KanbanBoardComponent implements OnChanges, OnInit {
   @Input() projects: Project[] = [];
   @Input() stages: ProjectStage[] = [];
+  /**
+   * Map of project_id -> unread comments count. The parent (projects
+   * page) fetches this once in a batched RPC and passes it down so
+   * the cards don't each fire their own N+1 query.
+   */
+  @Input() unreadCounts: Record<string, number> = {};
   @Output() editProject = new EventEmitter<Project>();
   @Output() editStage = new EventEmitter<ProjectStage | null>();
   @Output() refresh = new EventEmitter<void>();
