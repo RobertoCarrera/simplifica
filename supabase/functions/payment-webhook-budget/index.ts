@@ -176,6 +176,12 @@ serve(async (req) => {
   const provider = url.searchParams.get('provider') || '';
 
   try {
+    // Rafter v0.22 F-04 fix: cap body size BEFORE buffering to prevent memory
+    // exhaustion + CPU-DoS on signature verification under slow-loris attacks.
+    const cl = req.headers.get('content-length');
+    if (cl && parseInt(cl, 10) > 1_000_000) {
+      return new Response('Too large', { status: 413, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'text/plain' }) });
+    }
     const rawBody = await req.text();
 
     if (provider === 'stripe') {

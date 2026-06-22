@@ -554,6 +554,12 @@ serve(async (req) => {
       },
     });
     // Optional manual actions via body
+    // Rafter v0.22 F-04 fix: cap body size BEFORE buffering to prevent memory
+    // exhaustion under slow-loris / oversized-payload DoS.
+    const cl = req.headers.get('content-length');
+    if (cl && parseInt(cl, 10) > 1_000_000) {
+      return new Response('Too large', { status: 413, headers: withSecurityHeaders({ 'Content-Type': 'text/plain' }) });
+    }
     let body = null;
     try {
       const txt = await req.text();
