@@ -167,12 +167,12 @@ Deno.serve(async (req: Request) => {
       const userIds = admins.map((a) => a.user_id).filter(Boolean) as string[];
       if (userIds.length) {
         const { data: profiles } = await sb
-          .from("profiles")
-          .select("id, email, full_name")
+          .from("users")
+          .select("id, auth_user_id, email, name, surname")
           .in("id", userIds);
         adminRecipients = (profiles ?? []).map((p) => ({
           email: p.email,
-          name: p.full_name || "admin",
+          name: (`${p.name ?? ""} ${p.surname ?? ""}`.trim()) || "admin",
           audience: "admin",
           user_id: p.id,
         }));
