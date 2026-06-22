@@ -1025,12 +1025,17 @@ serve(async (req) => {
 
   try {
     // ── Rate limiting: stricter for internal calls (X-Internal-Call) ─────
-    // Normal users: 20 req/min; internal service calls: 2 req/min
+    // Rafter v0.23 F-08 fix: separate Redis keys for user vs internal calls.
+    // Previously both branches shared the same `send-branded-email:${ip}` key,
+    // so an attacker with `X-Internal-Call: true` could drain the 2/min
+    // internal budget and then switch to the 20/min user budget on the same
+    // counter. Now user and internal calls track independent counters.
     const isInternalCall = req.headers.get('X-Internal-Call') === 'true';
     const rlLimit = isInternalCall ? 2 : 20;
     const rlWindow = 60000;
     const clientIP = getClientIP(req);
-    const rl = await checkRateLimit(`send-branded-email:${clientIP}`, rlLimit, rlWindow);
+    const rlKeyPrefix = isInternalCall ? 'send-branded-email-internal' : 'send-branded-email';
+    const rl = await checkRateLimit(`${rlKeyPrefix}:${clientIP}`, rlLimit, rlWindow);
     if (!rl.allowed) {
       const msg = isInternalCall
         ? 'Demasiadas solicitudes internas. Máximo 2 emails/minuto.'
@@ -1063,6 +1068,16 @@ serve(async (req) => {
       try {
         const user = await getAuthUser(req, supabaseAdmin);
         userId = user.id;
+
+        // Rafter v0.23 F-11 fix: per-user rate limit (5/hour) on top of the
+        // per-IP limit. A compromised JWT from one IP could otherwise drain
+        // SES quotas or spam branded emails. Tighter per-user cap protects
+        // the SES bill from authenticated abuse. Service-role/internal calls
+        // are exempt because they have no user concept.
+        const userRl = await checkRateLimit(`send-branded-email:user:${userId}`, 5, 3_600_000);
+        if (!userRl.allowed) {
+          return jsonError(429, 'Demasiadas solicitudes para este usuario. Máximo 5 emails/hora.', req);
+        }
       } catch (authErr: any) {
         console.warn('[send-branded-email] Auth failed:', authErr?.message);
         return jsonError(401, 'No autorizado: token inválido o expirado', req);

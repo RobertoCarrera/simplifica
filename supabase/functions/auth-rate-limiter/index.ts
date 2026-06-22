@@ -19,6 +19,19 @@ import { withSecurityHeaders } from '../_shared/security.ts';
 const RATE_LIMIT = 5;       // max attempts per window
 const WINDOW_MS = 60_000;   // 1 minute window
 
+/**
+ * Rafter v0.23 F-07 fix: hash User-Agent with full SHA-256 (256 bits of
+ * entropy) when no client IP is available. The previous DJB-style 32-bit
+ * polynomial had high collision rates at scale — an attacker with a fixed
+ * UA could lock out a real user sharing that UA from the same proxy.
+ */
+async function hashUserAgent(ua: string): Promise<string> {
+  const bytes = new TextEncoder().encode(ua);
+  const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+  // Base64-encode the raw hash bytes (no truncation — full 256 bits)
+  return btoa(String.fromCharCode(...new Uint8Array(hashBuf)));
+}
+
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const grantType = url.searchParams.get('grant_type');
@@ -35,10 +48,10 @@ Deno.serve(async (req: Request) => {
   const rawIp = cfIp || forwardedFor.split(',')[0].trim();
   const clientIp = rawIp || 'unknown';
 
-  // Fallback: hash User-Agent for stable key when IP unavailable
+  // Fallback: SHA-256 hash of User-Agent for stable key when IP unavailable
   const ipKey = clientIp !== 'unknown'
     ? clientIp
-    : `ua:${userAgent.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)}`;
+    : `ua:${await hashUserAgent(userAgent)}`;
 
   const rateLimitKey = `auth:login:${ipKey}`;
   const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMIT, WINDOW_MS);

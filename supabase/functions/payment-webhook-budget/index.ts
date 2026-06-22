@@ -212,6 +212,18 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
     });
   }
 
+  // Rafter v0.23 F-09 fix: per-IP rate limit on signature verification attempts
+  // so an attacker spamming forged webhooks cannot exhaust the global RL bucket
+  // or burn CPU on HMAC verification. Tight 5/min/IP cap on verification attempts.
+  const sigFailIp = getClientIP(req);
+  const sigFailRl = await checkRateLimit(`webhook:fail:${sigFailIp}`, 5, 60000);
+  if (!sigFailRl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many failed webhook attempts' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...corsHeaders, ...getRateLimitHeaders(sigFailRl) }),
+    });
+  }
+
   let event: StripeEvent;
   try {
     event = JSON.parse(rawBody);

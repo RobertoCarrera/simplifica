@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 
 interface FeedbackPayload {
@@ -134,10 +134,7 @@ serve(async (req) => {
     });
   }
 
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    Deno.env.get('DENO_DEPLOYMENT_ID') ||
-    'unknown';
+  const ip = getClientIP(req);
   const rl = await checkRateLimit(`feedback:${ip}`, 5, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
