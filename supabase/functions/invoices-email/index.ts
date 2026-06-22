@@ -9,6 +9,9 @@ import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts'
 import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
+// Rafter v0.27: replace the local escHtml (incomplete — missing ' escape)
+// with the shared safe-by-default escapeHtml from _shared/escape.ts.
+import { escapeHtml } from '../_shared/escape.ts';
 
 function cors(origin?: string) {
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '')
@@ -230,12 +233,13 @@ serve(withCsrf(async (req) => {
 
     const companyId = invoice.client?.company_id || '';
 
-    const escHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Rafter v0.27: escapeHtml is imported from _shared/escape.ts (was a
+    // local incomplete escHtml that did not escape single quotes — see
+    // v0.26 fix in send-branded-email for the security rationale).
 
     const series = invoice.invoice_series || 'SER';
     const number = invoice.invoice_number || '';
-    const invLabel = escHtml(
+    const invLabel = escapeHtml(
       invoice.full_invoice_number || (number ? `${series}-${number}` : series),
     );
 
@@ -269,13 +273,13 @@ serve(withCsrf(async (req) => {
 
     const html = `
       <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-        <p>Hola${invoice.client?.name ? ' ' + escHtml(invoice.client.name) : ''},</p>
-        <p>${message ? escHtml(message) : 'Te enviamos tu factura. Puedes descargar el PDF desde el siguiente enlace seguro:'}</p>
+        <p>Hola${invoice.client?.name ? ' ' + escapeHtml(invoice.client.name) : ''},</p>
+        <p>${message ? escapeHtml(message) : 'Te enviamos tu factura. Puedes descargar el PDF desde el siguiente enlace seguro:'}</p>
         <p><strong>Factura:</strong> ${invLabel}</p>
         <p style="margin:16px 0">
-          <a href="${signedUrl}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px">Ver factura PDF</a>
+          <a href="${escapeHtml(signedUrl)}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px">Ver factura PDF</a>
         </p>
-        ${loginLink ? `<p style="margin:16px 0"><a href="${loginLink}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px">Abrir en Simplifica</a></p>` : ''}
+        ${loginLink ? `<p style="margin:16px 0"><a href="${escapeHtml(loginLink)}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px">Abrir en Simplifica</a></p>` : ''}
         <p style="color:#666;font-size:12px">Si tienes cualquier consulta, responde a este email.</p>
       </div>
     `;

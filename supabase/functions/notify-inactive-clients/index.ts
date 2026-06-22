@@ -8,6 +8,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { withSecurityHeaders } from '../_shared/security.ts';
+// Rafter v0.27: replace the local escHtml (incomplete — missing ' and "
+// escape) with the shared safe-by-default escapeHtml from _shared/escape.ts.
+import { escapeHtml } from '../_shared/escape.ts';
 
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
@@ -202,8 +205,9 @@ serve(async (req) => {
     // 6. Send one email per company owner via send-branded-email (with SES fallback)
     const sesEndpoint = `https://email.${region}.amazonaws.com/v2/email/outbound-emails`;
 
-    const escHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Rafter v0.27: escapeHtml is imported from _shared/escape.ts (was a
+    // local incomplete escHtml that did not escape ' or " — see v0.26 fix
+    // in send-branded-email for the security rationale).
 
     let notifiedCompanies = 0;
     const notifiedLogIds: string[] = [];
@@ -219,7 +223,7 @@ serve(async (req) => {
       const ownerName  = String(owner.name || '').trim();
 
       const clientListHtml = clients
-        .map((n) => `<li style="padding:4px 0">${escHtml(n)}</li>`)
+        .map((n) => `<li style="padding:4px 0">${escapeHtml(n)}</li>`)
         .join('');
 
       const clientWord   = clients.length === 1 ? 'cliente' : 'clientes';
@@ -228,7 +232,7 @@ serve(async (req) => {
 
       const html = `
         <div style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:600px;margin:0 auto">
-          <p>Hola${ownerName ? ' ' + escHtml(ownerName) : ''},</p>
+          <p>Hola${ownerName ? ' ' + escapeHtml(ownerName) : ''},</p>
           <p>
             Te informamos que los siguientes <strong>${clients.length} ${clientWord}</strong>
             fueron <strong>marcados como ${inactivoWord} automáticamente</strong>

@@ -23,6 +23,10 @@ import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, isValidUUID } from '../_shared/security.ts';
+// Rafter v0.27: escapeHtml + interpolate moved to _shared/escape.ts so the
+// sibling Edge Functions (invoices-email, quotes-email, notify-inactive-clients,
+// send-waitlist-email) can reuse the same safe-by-default escaping.
+import { escapeHtml, interpolateSafe } from '../_shared/escape.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -228,37 +232,13 @@ function sanitizeText(value: unknown, maxLength = 10000): string {
 
 // ── Template rendering ────────────────────────────────────────────────────────
 
-/**
- * HTML-escape a string for safe interpolation into an HTML email body.
- * Escapes &, <, >, ", ' so a value like `<img src=x onerror=alert(1)>` or
- * `https://x?a=b" onclick="..."` cannot break out of either element
- * content or an attribute context.
- *
- * IMPORTANT: this is applied to EVERY interpolated variable. The
- * TemplateData shape intentionally does NOT include any pre-rendered
- * HTML fields (no `*_html` suffix). Admin-authored templates
- * (customBody / customHeader from company_email_settings) can include
- * raw HTML — that HTML is part of the template string itself, not a
- * variable value. If a future template ever needs a raw-HTML variable,
- * add a separate escape hatch (e.g. `{{{unescaped}}}`) on a new
- * function — do NOT weaken this default.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
-
-function interpolate(template: string, data: Record<string, unknown>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    const val = data[key];
-    if (val == null) return '';
-    return escapeHtml(String(val));
-  });
-}
+// escapeHtml + interpolate moved to _shared/escape.ts in Rafter v0.27 —
+// see that file for the security contract. The two functions used to be
+// defined here as module-private helpers; the v0.26 fix closed the
+// interpolate() XSS in this file, and v0.27 lifts the helpers so the
+// sibling Edge Functions (invoices-email, quotes-email,
+// notify-inactive-clients, send-waitlist-email) can reuse the same
+// safe-by-default escaping for their fallback HTML paths.
 
 function buildCompanyAddress(company: CompanyInfo): string {
   if (company.settings?.address) return company.settings.address;
@@ -331,9 +311,9 @@ function renderTemplate(
   switch (emailType) {
     case 'booking_confirmation': {
       subject = customSubject || `Reserva confirmada - ${companyName}`;
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         html = `<!DOCTYPE html>
 <html>
@@ -359,9 +339,9 @@ function renderTemplate(
       const invoiceNum = data.numero_factura || '';
       subject = customSubject || `Factura ${invoiceNum} - ${companyName}`;
       const btnText = customButtonText || 'Ver factura PDF';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.invoice_url
           ? `<a href="${data.invoice_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
@@ -386,9 +366,9 @@ function renderTemplate(
       const quoteNum = data.numero_presupuesto || '';
       subject = customSubject || `Presupuesto ${quoteNum} - ${companyName}`;
       const btnText = customButtonText || 'Ver presupuesto';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.quote_url
           ? `<a href="${data.quote_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
@@ -411,9 +391,9 @@ function renderTemplate(
     case 'consent': {
       subject = customSubject || `Solicitud de consentimiento RGPD - ${companyName}`;
       const btnText = customButtonText || 'Revisar y validar datos';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.consent_url
           ? `<a href="${data.consent_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
@@ -443,13 +423,13 @@ function renderTemplate(
         ? `Te han invitado a crear tu empresa en ${companyName}`
         : `Te han invitado a ${companyName}`);
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const btnText = customButtonText || (isOwner ? 'Aceptar e introducir datos de empresa' : 'Aceptar invitación');
         const buttonHtml = data.invite_url
           ? `<a href="${data.invite_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
           : '';
-        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
         const inviterLine = data.inviter_name
           ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${data.inviter_name}</strong></p>`
           : '';
@@ -501,7 +481,7 @@ function renderTemplate(
         ? `Te han invitado a unirte a ${companyName}`
         : `Te han invitado a ${companyName} como ${displayRoleLabel}`);
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const btnText = customButtonText || 'Aceptar invitación';
         const buttonHtml = data.invite_url
@@ -516,7 +496,7 @@ function renderTemplate(
         const clientNote = isClient
           ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${companyName} para gestionar tus reservas y documentos.</p>`
           : `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar la invitación, tendrás acceso al panel de ${companyName}.</p>`;
-        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -541,9 +521,9 @@ function renderTemplate(
       const bodyText = data.body_text || 'Te avisaremos cuando puedas reservar.';
       subject = customSubject || heading;
       const btnText = customButtonText || 'Reservar ahora';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.waitlist_url
           ? `<a href="${data.waitlist_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
@@ -568,10 +548,10 @@ function renderTemplate(
 
     case 'inactive_notice': {
       subject = customSubject || `Clientes inactivos - ${companyName}`;
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       const clientList = (data.client_names || []).map((name: string) => `<li style="padding:4px 0;">${sanitizeText(name, 200)}</li>`).join('');
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         html = `<!DOCTYPE html>
 <html>
@@ -593,9 +573,9 @@ function renderTemplate(
       const clientName = data.client_name || '';
       const reviewUrl = data.review_url || 'https://g.page/review';
       subject = customSubject || `¡Gracias por tu visita, ${clientName}! 🌟`;
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         html = `<!DOCTYPE html>
 <html>
@@ -636,9 +616,9 @@ function renderTemplate(
         :                              `Presupuesto vencido — ${data.total_formatted || ''}`.trim();
       subject = customSubject || dataSubject || `Presupuesto ${data.period_label || ''} - ${companyName}`.trim();
       const btnText = customButtonText || data.cta_text || 'Ver presupuesto';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         const intro = data.intro ||
           (kind === 'budget_created'
@@ -727,9 +707,9 @@ function renderTemplate(
     subject = customSubject || dataSubject || `${audiencePrefix}Actualización de reserva — ${companyName}`;
 
     const btnText = customButtonText || data.cta_text || (audience === 'client' ? 'Ver reserva' : 'Ver detalles');
-    const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+    const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
     if (customBody) {
-    html = interpolate(customBody, data as Record<string, unknown>);
+    html = interpolateSafe(customBody, data as Record<string, unknown>);
     } else {
     // Accent color depends on the change type
     const accentColor =
@@ -813,9 +793,9 @@ function renderTemplate(
     default: {
       subject = customSubject || `Mensaje de ${companyName}`;
       const message = data.message || '';
-      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolateSafe(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
-        html = interpolate(customBody, data as Record<string, unknown>);
+        html = interpolateSafe(customBody, data as Record<string, unknown>);
       } else {
         html = `<!DOCTYPE html>
 <html>
