@@ -228,10 +228,35 @@ function sanitizeText(value: unknown, maxLength = 10000): string {
 
 // ── Template rendering ────────────────────────────────────────────────────────
 
+/**
+ * HTML-escape a string for safe interpolation into an HTML email body.
+ * Escapes &, <, >, ", ' so a value like `<img src=x onerror=alert(1)>` or
+ * `https://x?a=b" onclick="..."` cannot break out of either element
+ * content or an attribute context.
+ *
+ * IMPORTANT: this is applied to EVERY interpolated variable. The
+ * TemplateData shape intentionally does NOT include any pre-rendered
+ * HTML fields (no `*_html` suffix). Admin-authored templates
+ * (customBody / customHeader from company_email_settings) can include
+ * raw HTML — that HTML is part of the template string itself, not a
+ * variable value. If a future template ever needs a raw-HTML variable,
+ * add a separate escape hatch (e.g. `{{{unescaped}}}`) on a new
+ * function — do NOT weaken this default.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function interpolate(template: string, data: Record<string, unknown>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     const val = data[key];
-    return val != null ? String(val) : '';
+    if (val == null) return '';
+    return escapeHtml(String(val));
   });
 }
 
