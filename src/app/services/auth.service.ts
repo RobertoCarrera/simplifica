@@ -180,17 +180,28 @@ export class AuthService {
       // Fix #8: Store handler reference to allow cleanup and prevent duplicate listeners.
       // Pause auto-refresh when tab is hidden to prevent multi-tab token race conditions
       // since we have locks disabled in SupabaseClientService.
+      //
+      // Rafter v0.36 — perf: on tab resume we ONLY verify the JWT is still valid
+      // (getSession is a local decode, no DB roundtrip). We do NOT re-run
+      // setCurrentUser on every focus — the cached profile tree (auth.userProfile$)
+      // is still valid and re-hydrating it would issue 2-3 nested-embed queries
+      // (users + clients w/ company_members/companies/app_roles) per tab return.
+      // The previous implementation also called getSession() twice for no reason.
       this.visibilityChangeHandler = async () => {
         if (document.hidden) {
           if (!environment.production) { console.log('⏸️ Pausing auth auto-refresh (tab hidden)'); }
           this.supabase.auth.stopAutoRefresh();
         } else {
           if (!environment.production) { console.log('▶️ Resuming auth auto-refresh (tab visible)'); }
-          await this.supabase.auth.getSession();
           this.supabase.auth.startAutoRefresh();
+          // Single lightweight session check — no profile re-fetch.
+          // getSession() is a local JWT decode (no DB roundtrip). Only act if
+          // the session is actually gone (e.g. cross-tab logout invalidated it
+          // or the token expired while paused).
           const { data } = await this.supabase.auth.getSession();
           if (!data.session) {
-            if (!environment.production) { console.log('⚠️ No session found on tab resume - potential logout in other tab.'); }
+            if (!environment.production) { console.log('⚠️ No session on tab resume — logging out'); }
+            await this.logout();
           }
         }
       };
