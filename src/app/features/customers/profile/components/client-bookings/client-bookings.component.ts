@@ -925,7 +925,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
 
   openPaymentUrl() {
     const url = this.generatedPaymentLink();
-    if (url) window.open(url, '_blank');
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   formatFileSize(bytes: number): string {

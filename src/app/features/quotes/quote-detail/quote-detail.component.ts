@@ -238,7 +238,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     const q = this.quote();
     if (q) {
       this.quotesService.getQuotePdfUrl(q.id).subscribe({
-        next: (signed) => window.open(signed, '_blank'),
+        next: (signed) => window.open(signed, '_blank', 'noopener,noreferrer'),
         error: (e) => {
           const msg = 'No se pudo generar el PDF: ' + (e?.message || e);
           this.error.set(msg);

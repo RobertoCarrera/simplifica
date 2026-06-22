@@ -1037,7 +1037,7 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
       this.privacyPolicyPreviewUrl.set(previewUrl);
 
       // Open in new tab
-      window.open(previewUrl, '_blank');
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
 
       this.toastService.success('Política de privacidad generada', 'Revisa la previsualización en la nueva pestaña');
     } catch (error) {

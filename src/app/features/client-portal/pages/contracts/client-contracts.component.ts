@@ -248,7 +248,7 @@ export class ClientContractsComponent {
     // Get signed URL
     const url = await this.contractsService.getContractPdfUrl(contract.signed_pdf_url);
     if (url) {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   }
 }

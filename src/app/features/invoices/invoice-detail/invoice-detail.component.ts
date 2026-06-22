@@ -694,7 +694,7 @@ export class InvoiceDetailComponent implements OnDestroy {
   async downloadPdf(invoiceId: string) {
     try {
       const signed = await firstValueFrom(this.invoicesService.getInvoicePdfUrl(invoiceId));
-      window.open(signed, '_blank');
+      window.open(signed, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       this.toast.error('No se pudo generar el PDF', e?.message || String(e));
     }
