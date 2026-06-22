@@ -48,7 +48,7 @@ interface NavItem {
         aria-label="Navegación principal móvil"
       >
         <ul class="flex justify-around items-center h-16 px-4 m-0 list-none" role="menubar">
-          @for (item of filteredNavItems(); track item; let i = $index) {
+          @for (item of filteredNavItems(); track item.id; let i = $index) {
             <li class="flex-1 flex justify-center" role="none">
               @if (item.action === 'more') {
                 <button
@@ -124,7 +124,7 @@ interface NavItem {
             </div>
             <div class="px-3 pb-6 overflow-y-auto flex-1">
               <div class="grid grid-cols-3 gap-2">
-                @for (it of moreMenuItems(); track it) {
+                @for (it of moreMenuItems(); track it.id) {
                   <button
                     (click)="it.route && navigateAndClose(it.route, ($any(it)).queryParams)"
                     class="menu-btn"
