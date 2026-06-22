@@ -39,12 +39,19 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
     }
     .task-row-wrapper {
       border-radius: 0.5rem;
+      transition: background-color 0.2s ease;
     }
     .task-row-wrapper.expanded-bg {
       background-color: rgb(249 250 251);
     }
     .dark .task-row-wrapper.expanded-bg {
       background-color: rgb(31 41 55);
+    }
+    /* When wrapper is expanded-bg, neutralize the bg-white on the inner row
+       so the wrapper's expanded background is visible. The inner row's
+       bg-white was visually overriding the wrapper's expanded background. */
+    .task-row-wrapper.expanded-bg > .task-row {
+      background-color: transparent !important;
     }
     .chevron-icon {
       transition: transform 0.25s ease;
@@ -76,12 +83,12 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
             cdkDrag
             [cdkDragData]="task"
             class="task-row-wrapper"
-            [class.expanded-bg]="expandedTaskId === task.id"
+            [class.expanded-bg]="expandedIndex === $index"
           >
             <!-- Task Row (clickable) -->
             <div
-              class="group flex items-center space-x-2 p-2 bg-white dark:bg-gray-800 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-sm rounded-lg transition-all cursor-pointer"
-              (click)="toggleTask(task)"
+              class="task-row group flex items-center space-x-2 p-2 bg-white dark:bg-gray-800 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-sm rounded-lg transition-all cursor-pointer"
+              (click)="toggleTask($index, task)"
             >
               <!-- Drag Handle -->
               <div
@@ -110,7 +117,7 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-4 w-4 chevron-icon text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300"
-                  [class.rotated]="expandedTaskId === task.id"
+                  [class.rotated]="expandedIndex === $index"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -222,7 +229,7 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
             <!-- Detail Panel (expandable) -->
             <div
               class="task-detail-panel px-10"
-              [class.expanded]="expandedTaskId === task.id"
+              [class.expanded]="expandedIndex === $index"
             >
               <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                 <!-- Description -->
@@ -430,18 +437,12 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
 
   @ViewChildren('taskInput') taskInputs!: QueryList<ElementRef>;
 
-  expandedTaskId: string | null = null;
+  expandedIndex: number | null = null;
 
   ngOnInit() {
-    // Restore expanded state from localStorage
-    try {
-      const saved = localStorage.getItem(LS_KEY_PREFIX + this.projectId);
-      if (saved) {
-        this.expandedTaskId = JSON.parse(saved);
-      }
-    } catch {
-      // localStorage not available, ignore
-    }
+    // No persisted expansion state — we use the live index in the pendingTasks
+    // array, which is unstable across reorders and resets across sessions.
+    // Tasks without an id (not yet persisted) can still be expanded by index.
   }
 
   ngAfterViewChecked() {
@@ -453,24 +454,14 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
     }
   }
 
-  toggleTask(task: Partial<ProjectTask>): void {
-    const newId = this.expandedTaskId === task.id ? null : task.id ?? null;
-    this.expandedTaskId = newId;
+  toggleTask(index: number, task: Partial<ProjectTask>): void {
+    const newIndex = this.expandedIndex === index ? null : index;
+    this.expandedIndex = newIndex;
 
     // Emit when expanding so parent can lazy-load subtasks
-    if (newId) {
+    if (newIndex !== null) {
       this.taskExpanded.emit(task);
       this.loadDocumentsForTask(task);
-    }
-
-    // Persist to localStorage
-    try {
-      localStorage.setItem(
-        LS_KEY_PREFIX + this.projectId,
-        JSON.stringify(newId)
-      );
-    } catch {
-      // localStorage not available, ignore
     }
   }
 
