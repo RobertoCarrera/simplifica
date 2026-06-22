@@ -564,7 +564,7 @@ export class ProjectsService {
         return from(
             this.supabase
                 .from('project_tasks')
-                .select('id, project_id, title, description, is_completed, due_date, assigned_to, position, created_at, updated_at')
+                .select('id, project_id, title, is_completed, due_date, assigned_to, position, created_at')
                 .eq('project_id', projectId)
                 .order('position', { ascending: true })
         ).pipe(map(({ data, error }) => {
@@ -1088,10 +1088,16 @@ export class ProjectsService {
     // ---- Project Activity / History ----
 
     async getProjectActivity(projectId: string): Promise<any[]> {
+        // Explicit column list (no `*`) so PostgREST can resolve the
+        // FK embeds without complaining about internal alias columns.
+        // The previous `select(*, user:..., client:...)` was returning
+        // 400 because `*` interacts badly with FK embeds in some
+        // PostgREST versions and was being rewritten with internal
+        // alias columns (clients_1.full_name) that don't exist.
         const { data, error } = await this.supabase
             .from('project_activity')
             .select(`
-                *,
+                id, project_id, company_id, user_id, client_id, activity_type, details, created_at,
                 user:users!project_activity_user_id_fkey(id, name, surname, email),
                 client:clients!project_activity_client_id_fkey(id, name, email, business_name)
             `)
