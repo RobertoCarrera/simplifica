@@ -279,12 +279,16 @@ export class AuthCallbackComponent implements OnInit {
         this.authService.userProfile$.subscribe(p => { profileFromSubject = p; console.log('[AUTH-CALLBACK] userProfile$ emitted:', p?.role, p?.email); }).unsubscribe();
         console.log('[AUTH-CALLBACK] userProfile$ current value:', profileFromSubject?.role);
 
-        // EMERGENCY BYPASS: if user is super_admin, allow through regardless of profile state
-        if (profileAfter?.is_super_admin || profileAfter?.role === 'super_admin') {
-          console.warn('[AUTH-CALLBACK] 🚨 SUPER ADMIN BYPASS: skipping redirect, going to /inicio');
-          this.router.navigate(['/inicio']);
-          return;
-        }
+        // Rafter v0.31: MFA enforced for super_admin at login.
+        // Previously super_admin had an EMERGENCY BYPASS here that sent them
+        // straight to /inicio before the AAL check ran. Removed to fix the
+        // privilege escalation window: a stolen session cookie would give full
+        // super_admin access without proving MFA. The AAL check at the bottom
+        // of ngOnInit (mfa.getAuthenticatorAssuranceLevel) now runs for
+        // super_admin too — if TOTP enrolled but not verified this session,
+        // they get bounced to /mfa-verify.
+        //
+        // (commit 8a24b457)
 
         // If profile is STILL null after 6s, go to /complete-profile (safe fallback)
         if (!profileAfter) {
@@ -359,6 +363,25 @@ export class AuthCallbackComponent implements OnInit {
     // On a fresh login the profile is cached, but if it was cleared or this is
     // a new device, wait up to 10s for the async profile fetch to complete.
     await this.authService.waitForProfile();
+    // Rafter v0.31: MFA enforced for super_admin at login.
+    // Previously this "already authenticated" branch (ngOnInit line 130-138)
+    // called redirectToMainApp() with NO AAL check, so a super_admin with an
+    // existing session resumed from cache would skip MFA entirely. Now we run
+    // the same AAL step-up check the post-setSession branch does, so a
+    // super_admin returning to the app on a fresh login must prove TOTP.
+    //
+    // (commit 8a24b457)
+    const { data: aalData } =
+      await this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2") {
+      const returnTo = sessionStorage.getItem("auth_return_to") || "/inicio";
+      sessionStorage.removeItem("auth_return_to");
+      console.log(
+        "[AUTH-CALLBACK] MFA step-up required (already-authenticated branch), redirecting to mfa-verify",
+      );
+      this.router.navigate(["/mfa-verify"], { state: { returnTo } });
+      return;
+    }
     this.router.navigate(["/inicio"]);
   }
 

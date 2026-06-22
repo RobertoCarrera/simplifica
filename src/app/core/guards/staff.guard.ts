@@ -46,10 +46,16 @@ export class StaffGuard implements CanActivate {
           "developer",
         ];
 
-        // Super-admin has DB-backed role; no separate bypass needed.
-        if (profile.role === 'super_admin' || profile.is_super_admin) {
-          return of(true as boolean | UrlTree);
-        }
+        // Rafter v0.31: MFA enforced for super_admin at login.
+        // Previously super_admin had an early return here that skipped the
+        // AAL2 block below entirely. Comment claimed "no separate bypass
+        // needed" but `return of(true)` is exactly a bypass. Removed so the
+        // AAL2 enforcement below (lines ~74-108, the `mfa.getAuthenticatorAssuranceLevel`
+        // call) now runs for super_admin too. If TOTP is enrolled but not
+        // verified this session, super_admin gets redirected to /mfa-verify
+        // just like staff.
+        //
+        // (commit 8a24b457)
 
         if (!allowedRoles.includes(profile.role)) {
           if (profile.role === "none") {
