@@ -1028,36 +1028,103 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   private handleAddressAndSave(customerData: any) {
     // Logic to check if we need to create an address
-    const needsAddressParams = !!(
+    const hasAnyAddressField = !!(
       this.formData.addressNombre ||
       this.formData.addressTipoVia ||
       this.formData.addressNumero ||
-      this.formData.addressLocalidadId
+      this.formData.addressLocalidadId ||
+      (this.addressLocalityName || '').trim()
     );
 
-    if (needsAddressParams) {
-      const addressPayload = {
-        tipo_via: this.formData.addressTipoVia,
-        nombre: this.formData.addressNombre,
-        numero: this.formData.addressNumero,
-        localidad_id: this.formData.addressLocalidadId,
-      } as any;
-      this.addressesService.createAddress(addressPayload).subscribe({
-        next: (addr: any) => {
-          this.performCustomerSave(customerData, addr._id || addr.id); // Check id field
+    if (!hasAnyAddressField) {
+      // No address info at all — proceed without one
+      this.performCustomerSave(customerData, null);
+      return;
+    }
+
+    // If the user typed a locality name but never selected/created one,
+    // auto-create it before persisting the address. This prevents the
+    // 400 "Invalid locality_id" error from create-address when the
+    // user forgot to click the explicit "Crear" button.
+    const localityId = (this.formData.addressLocalidadId || '').toString().trim();
+    const localityName = (this.addressLocalityName || '').trim();
+
+    if (!localityId && localityName) {
+      this.autoCreateLocalityAndAddress(customerData, localityName);
+      return;
+    }
+
+    // Locality already resolved (selected or previously created)
+    this.createAddressAndSave(customerData);
+  }
+
+  /**
+   * Auto-create the locality the user typed but never explicitly confirmed,
+   * then create the address. Falls back gracefully on failure.
+   */
+  private autoCreateLocalityAndAddress(customerData: any, localityName: string) {
+    // The createLocality service requires a postal_code. If the user did
+    // not provide one, show a clear error instead of silently failing.
+    this.toastService.info(
+      'Creando localidad...',
+      `La localidad "${localityName}" se creará automáticamente.`,
+    );
+
+    this.localitiesService
+      .createLocality({ name: localityName })
+      .subscribe({
+        next: (created) => {
+          const newId = (created as any)?._id || (created as any)?.id;
+          if (!newId) {
+            this.toastService.error(
+              'No se pudo crear la localidad',
+              'No se recibió un identificador válido.',
+            );
+            this.isLoading.set(false);
+            return;
+          }
+          this.formData.addressLocalidadId = newId;
+          this.addressLocalityName = created.nombre || localityName;
+          this.toastService.success(
+            'Localidad creada',
+            `"${this.addressLocalityName}" creada correctamente.`,
+          );
+          this.createAddressAndSave(customerData);
         },
         error: (err) => {
-          console.error('Error creating address', err);
-          this.toastService.error(
-            'Error al guardar la dirección',
-            'No se pudo crear la dirección asociada.',
-          );
+          console.error('[handleAddressAndSave] auto-create locality failed', err);
+          // The service throws VALIDATION_ERROR if CP is missing.
+          // Fall back to a clear inline message that guides the user.
+          const isValidation = err?.type === 'VALIDATION_ERROR';
+          const msg = isValidation
+            ? `Para crear "${localityName}" automáticamente se requiere su código postal. Selecciónala de la lista o créala manualmente con su CP.`
+            : `No se pudo crear la localidad "${localityName}" automáticamente. Selecciónala de la lista o créala manualmente.`;
+          this.toastService.error('Localidad requerida', msg);
           this.isLoading.set(false);
         },
       });
-    } else {
-      this.performCustomerSave(customerData, null);
-    }
+  }
+
+  private createAddressAndSave(customerData: any) {
+    const addressPayload = {
+      tipo_via: this.formData.addressTipoVia,
+      nombre: this.formData.addressNombre,
+      numero: this.formData.addressNumero,
+      localidad_id: this.formData.addressLocalidadId,
+    } as any;
+    this.addressesService.createAddress(addressPayload).subscribe({
+      next: (addr: any) => {
+        this.performCustomerSave(customerData, addr._id || addr.id);
+      },
+      error: (err) => {
+        console.error('Error creating address', err);
+        this.toastService.error(
+          'Error al guardar la dirección',
+          'No se pudo crear la dirección asociada.',
+        );
+        this.isLoading.set(false);
+      },
+    });
   }
 
   private async performCustomerSave(customerData: any, addressId: string | null) {
