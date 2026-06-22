@@ -524,8 +524,13 @@ serve(async (req) => {
   if (intErr || !integration || !integration.is_active) {
     return new Response(JSON.stringify({ error: 'Integration not found or inactive' }), { status: 404, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) });
   }
+  // Rafter v0.22 F-04 fix: cap body size BEFORE buffering to prevent memory
+  // exhaustion + CPU-DoS on HMAC verification under slow-loris attacks.
+  const cl = req.headers.get('content-length');
+  if (cl && parseInt(cl, 10) > 1_000_000) {
+    return new Response('Too large', { status: 413, headers: withSecurityHeaders({ 'Content-Type': 'text/plain' }) });
+  }
   const rawBody = await req.text();
-  const signatureHeader = req.headers.get('X-Webhook-Signature') || req.headers.get('x-webhook-signature');
   if (signatureHeader && integration.webhook_secret) {
     const valid = await verifyHmacSignature(rawBody, signatureHeader, integration.webhook_secret);
     if (!valid) {

@@ -4,7 +4,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
@@ -32,6 +33,17 @@ function originOk(origin: string | null) {
 serve(async (req) => {
   const origin = req.headers.get("origin");
   const headers = cors(origin);
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-02 fix
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`reorder-stages:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
   if (!originOk(origin)) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers });

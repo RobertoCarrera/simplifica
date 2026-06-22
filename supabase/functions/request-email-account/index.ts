@@ -7,7 +7,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 interface RequestEmailAccountPayload {
@@ -18,6 +19,16 @@ interface RequestEmailAccountPayload {
 }
 
 serve(async (req: Request) => {
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-02 fix
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`request-email-account:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: getCorsHeaders(req) });

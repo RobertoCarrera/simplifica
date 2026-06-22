@@ -67,6 +67,13 @@ Deno.serve(async (req: Request) => {
   // Only forward cf-connecting-ip as a trusted hint (set by Cloudflare edge)
   if (cfIp) upstreamHeaders['x-forwarded-for'] = cfIp;
 
+  // Rafter v0.22 F-04 fix: cap body size BEFORE buffering to prevent memory
+  // exhaustion + CPU-DoS under slow-loris / oversized credential attempts.
+  const cl = req.headers.get('content-length');
+  if (cl && parseInt(cl, 10) > 1_000_000) {
+    return new Response('Too large', { status: 413, headers: withSecurityHeaders({ 'Content-Type': 'text/plain' }) });
+  }
+
   const upstreamResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: upstreamHeaders,

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 // Config
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -53,6 +54,18 @@ function jsonResponse(status: number, body: any, origin: string | null) {
 
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-02 fix
+  const corsRespHeaders = corsHeaders(origin);
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`list-company-devices:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    corsRespHeaders.set('Content-Type', 'application/json');
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...Object.fromEntries(corsRespHeaders), ...getRateLimitHeaders(rl) }),
+    });
+  }
 
   // CORS preflight
   if (req.method === 'OPTIONS') {

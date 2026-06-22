@@ -6,7 +6,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 function getCorsHeaders(origin?: string) {
@@ -30,6 +31,16 @@ function isAllowedOrigin(origin?: string) {
 serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || undefined;
   const corsHeaders = getCorsHeaders(origin);
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-02 fix
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`create-locality:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
 
   // OPTIONS preflight
   if (req.method === "OPTIONS") {

@@ -17,6 +17,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
 async function sendBrandedEmail(params: {
@@ -101,6 +103,16 @@ async function sendViaSES(params: {
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
+
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.22 F-02 fix
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`send-waitlist-email:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ success: false, error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
 
   if (req.method === 'OPTIONS') {
     return handleCorsOptions(req);

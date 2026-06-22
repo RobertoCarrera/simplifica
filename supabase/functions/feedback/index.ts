@@ -123,6 +123,17 @@ serve(async (req) => {
   const corsRes = handleCorsOptions(req);
   if (corsRes) return corsRes;
 
+  // Rafter v0.22 F-03 fix: reject oversized bodies BEFORE parsing to prevent
+  // memory exhaustion + SES cost amplification DoS (screenshot base64 DoS).
+  const MAX_PAYLOAD_BYTES = 800 * 1024; // 800 KB hard cap
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_BYTES) {
+    return new Response(JSON.stringify({ error: 'Payload too large' }), {
+      status: 413,
+      headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
+    });
+  }
+
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     Deno.env.get('DENO_DEPLOYMENT_ID') ||
@@ -222,7 +233,7 @@ serve(async (req) => {
       headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
     });
   }
-  if (screenshot && screenshot.length > 1400000) {
+  if (screenshot && screenshot.length > 700_000) {
     return new Response(JSON.stringify({ error: 'Screenshot too large' }), {
       status: 400,
       headers: withSecurityHeaders({ ...getCorsHeaders(req), 'Content-Type': 'application/json' }),
