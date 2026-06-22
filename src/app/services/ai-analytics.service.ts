@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, shareReplay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 export interface SavingsStats {
@@ -34,6 +34,13 @@ export class AiAnalyticsService {
         this.supabase = this.sbClient.instance;
     }
 
+    // Per-company memoization so multiple subscribers (e.g. constructor effect + ngOnInit
+    // double-fire) share the same Observable instance and dedupe DB queries.
+    // Rafter v0.40 (perf audit 2026-06-22 — Finding 4).
+    private actualSavingsCache = new Map<string, Observable<number>>();
+    private usageBreakdownCache = new Map<string, Observable<AiUsageBreakdown>>();
+    private potentialSavingsCache = new Map<string, Observable<number>>();
+
     /**
      * Get total actual time saved from logs for the company
      */
@@ -41,7 +48,10 @@ export class AiAnalyticsService {
         const companyId = this.authService.companyId();
         if (!companyId) return of(0);
 
-        return from(
+        const cached = this.actualSavingsCache.get(companyId);
+        if (cached) return cached;
+
+        const obs$ = from(
             this.supabase
                 .from('ai_usage_logs')
                 .select('saved_seconds')
@@ -54,8 +64,12 @@ export class AiAnalyticsService {
                 }
                 return (data || []).reduce((acc, curr) => acc + (curr.saved_seconds || 0), 0);
             }),
-            catchError(() => of(0))
+            catchError(() => of(0)),
+            shareReplay({ bufferSize: 1, refCount: true })
         );
+
+        this.actualSavingsCache.set(companyId, obs$);
+        return obs$;
     }
 
     /**
@@ -65,7 +79,10 @@ export class AiAnalyticsService {
         const companyId = this.authService.companyId();
         if (!companyId) return of({ tickets: 0, clients: 0, devices: 0, totalSeconds: 0 });
 
-        return from(
+        const cached = this.usageBreakdownCache.get(companyId);
+        if (cached) return cached;
+
+        const obs$ = from(
             this.supabase
                 .from('ai_usage_logs')
                 .select('feature_key, saved_seconds')
@@ -91,8 +108,12 @@ export class AiAnalyticsService {
                     return acc;
                 }, { tickets: 0, clients: 0, devices: 0, totalSeconds: 0 });
             }),
-            catchError(() => of({ tickets: 0, clients: 0, devices: 0, totalSeconds: 0 }))
+            catchError(() => of({ tickets: 0, clients: 0, devices: 0, totalSeconds: 0 })),
+            shareReplay({ bufferSize: 1, refCount: true })
         );
+
+        this.usageBreakdownCache.set(companyId, obs$);
+        return obs$;
     }
 
     /**
@@ -103,6 +124,9 @@ export class AiAnalyticsService {
         const companyId = this.authService.companyId();
         if (!companyId) return of(0);
 
+        const cached = this.potentialSavingsCache.get(companyId);
+        if (cached) return cached;
+
         // We fetch counts for key entities
         // head: true returns only the count header, no row data
         const queries = [
@@ -112,7 +136,7 @@ export class AiAnalyticsService {
             this.supabase.from('devices').select('id', { count: 'exact', head: true }).eq('company_id', companyId)
         ];
 
-        return from(Promise.all(queries)).pipe(
+        const obs$ = from(Promise.all(queries)).pipe(
             map(results => {
                 const clientCount = results[0].count || 0;
                 const quoteCount = results[1].count || 0;
@@ -130,7 +154,11 @@ export class AiAnalyticsService {
             catchError(err => {
                 console.error('Error calculating potential savings', err);
                 return of(0);
-            })
+            }),
+            shareReplay({ bufferSize: 1, refCount: true })
         );
+
+        this.potentialSavingsCache.set(companyId, obs$);
+        return obs$;
     }
 }

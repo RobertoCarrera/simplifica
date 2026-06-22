@@ -1576,6 +1576,95 @@ export class SupabaseServicesService {
   }
 
   /**
+   * Batch variant of getServiceWithVariants: fetches N services with their
+   * variants in 2 queries instead of 2*N. Used by quote-form.component.ts
+   * (perf audit 2026-06-22 — Finding 6) to eliminate the N+1 round-trips
+   * triggered by `Promise.all(getServiceWithVariants(id) ...)`.
+   *
+   * Returns a Map keyed by service id. Variants keep the same shape as
+   * getServiceVariants (is_active=true only, sort_order ASC, with mapped
+   * client_assignments). Services that don't exist in the DB are simply
+   * absent from the Map.
+   */
+  async getServicesWithVariantsByIds(ids: string[]): Promise<Map<string, Service>> {
+    if (!ids || ids.length === 0) return new Map();
+
+    // Dedupe ids defensively (defends against Set->Array round-trips
+    // sending duplicates).
+    const uniqueIds = Array.from(new Set(ids));
+
+    try {
+      const client = this.supabase.getClient();
+
+      // Query 1: all services in one round-trip.
+      const { data: services, error: servicesError } = await client
+        .from('services')
+        .select('*')
+        .in('id', uniqueIds);
+
+      if (servicesError) throw servicesError;
+
+      // Query 2: all variants for those services in one round-trip, with the
+      // same filters and embeds as getServiceVariants() to keep the shape
+      // identical to getServiceWithVariants.
+      const { data: variants, error: variantsError } = await client
+        .from('service_variants')
+        .select(`
+          *,
+          client_variant_assignments(
+            id, client_id, service_id, variant_id, created_at,
+            client:clients(id, name, email)
+          )
+        `)
+        .in('service_id', uniqueIds)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('variant_name', { ascending: true });
+
+      if (variantsError) throw variantsError;
+
+      // Group variants by service_id and map to the same shape as
+      // getServiceVariants (renaming client_variant_assignments ->
+      // client_assignments).
+      const variantsByService = new Map<string, ServiceVariant[]>();
+      for (const v of (variants || []) as any[]) {
+        const mapped = {
+          ...v,
+          client_assignments: (v.client_variant_assignments || []).map((a: any) => ({
+            id: a.id,
+            client_id: a.client_id,
+            service_id: a.service_id,
+            variant_id: a.variant_id,
+            created_at: a.created_at,
+            client: a.client,
+          })),
+          client_variant_assignments: undefined,
+        } as unknown as ServiceVariant;
+
+        const list = variantsByService.get(v.service_id);
+        if (list) list.push(mapped);
+        else variantsByService.set(v.service_id, [mapped]);
+      }
+
+      // Build the result Map. Preserve caller-supplied id order? No — Maps
+      // don't guarantee order and consumers iterate ids themselves. Use plain
+      // Map.
+      const result = new Map<string, Service>();
+      for (const service of (services || []) as Service[]) {
+        result.set(service.id, {
+          ...service,
+          variants: variantsByService.get(service.id) || [],
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error getting services with variants by ids:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all services with their variants for a company
    */
   async getServicesWithVariants(companyId?: string): Promise<Service[]> {
