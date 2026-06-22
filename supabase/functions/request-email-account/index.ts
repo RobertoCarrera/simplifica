@@ -67,6 +67,22 @@ serve(async (req: Request) => {
       });
     }
 
+    // Rafter v0.23 F-10 fix: per-user rate limit (5/hour) on top of the per-IP
+    // limit. A compromised JWT from one IP could otherwise spawn 20 AWS SES
+    // notifications/min. Tighter per-user cap protects the SES bill from
+    // authenticated abuse.
+    const userRl = await checkRateLimit(`request-email-account:user:${payload.userId}`, 5, 3_600_000);
+    if (!userRl.allowed) {
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: withSecurityHeaders({
+          ...getCorsHeaders(req),
+          'Content-Type': 'application/json',
+          ...getRateLimitHeaders(userRl),
+        }),
+      });
+    }
+
     // Find the owner of the company using service role (bypasses RLS)
     const { data: ownerMember } = await privateSupabase
       .from('company_members')

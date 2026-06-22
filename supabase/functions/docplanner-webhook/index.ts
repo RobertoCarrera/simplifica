@@ -2,7 +2,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decrypt as oauthDecrypt, isEncrypted as isOAuthEncrypted, encrypt as oauthEncrypt } from '../_shared/crypto-utils.ts';
-import { withSecurityHeaders, escapeLike } from '../_shared/security.ts';
+import { withSecurityHeaders, escapeLike, getClientIP } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -531,6 +532,26 @@ serve(async (req) => {
     return new Response('Too large', { status: 413, headers: withSecurityHeaders({ 'Content-Type': 'text/plain' }) });
   }
   const rawBody = await req.text();
+  // Rafter v0.23 regression fix: restore `signatureHeader` declaration that was
+  // accidentally removed in commit 0d07872e (F-04 refactor). Without this line
+  // HMAC verification throws ReferenceError at runtime when an X-Webhook-Signature
+  // header is present.
+  const signatureHeader = req.headers.get('X-Webhook-Signature') || req.headers.get('x-webhook-signature');
+
+  // Rafter v0.23 F-09 fix: per-IP rate limit on signature verification attempts
+  // so an attacker spamming forged webhooks cannot burn CPU on HMAC + DB lookup.
+  // Tight 5/min/IP cap on verification attempts.
+  const sigFailIp = getClientIP(req);
+  const sigFailRl = await checkRateLimit(`webhook:fail:${sigFailIp}`, 5, 60000);
+  if (!sigFailRl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many failed webhook attempts' }), {
+      status: 429,
+      headers: withSecurityHeaders({
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(sigFailRl),
+      }),
+    });
+  }
   if (signatureHeader && integration.webhook_secret) {
     const valid = await verifyHmacSignature(rawBody, signatureHeader, integration.webhook_secret);
     if (!valid) {
