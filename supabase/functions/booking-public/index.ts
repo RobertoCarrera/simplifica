@@ -122,7 +122,7 @@ serve(async (req) => {
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||
     'unknown';
-  const rateLimit = await checkRateLimit(`booking:${ip}`, 30, 60000);
+  const rateLimit = await checkRateLimit(`booking-public:${ip}`, 30, 60000);
   if (!rateLimit.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -246,7 +246,7 @@ serve(async (req) => {
         try {
           const { data: productsData, error: productsError } = await privateSupabase
             .from('products')
-            .select('id, name, description, price, stock_quantity, brand, model, barcode, location')
+            .select('id, name, description, price, stock_quantity, brand, model, barcode, location, category_id, product_categories!left ( id, name )')
             .eq('company_id', company.id)
             .is('deleted_at', null)
             .order('name', { ascending: true });
@@ -263,6 +263,8 @@ serve(async (req) => {
               model: p.model ?? null,
               barcode: p.barcode ?? null,
               location: p.location ?? null,
+              category_id: p.category_id ?? null,
+              category_name: p.product_categories?.name ?? null,
             }));
           }
         } catch (shopErr) {
