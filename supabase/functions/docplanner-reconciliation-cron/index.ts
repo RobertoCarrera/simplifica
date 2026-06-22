@@ -33,6 +33,23 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ENCRYPTION_KEY    = Deno.env.get('ENCRYPTION_KEY')!;
 
+/* ── v2 API key dictionaries (auto-provisioned by the platform) ──
+ * SUPABASE_SECRET_KEYS / SUPABASE_PUBLISHABLE_KEYS are JSON objects of
+ * {name: key}. The cron RPC sends the key via the `apikey` header
+ * (not Authorization). Accept either the legacy service_role JWT or any
+ * of the configured v2 secret/publishable keys.
+ * https://supabase.com/docs/guides/functions/secrets
+ */
+const SUPABASE_SECRET_KEYS_RAW      = Deno.env.get('SUPABASE_SECRET_KEYS')      ?? '{}';
+const SUPABASE_PUBLISHABLE_KEYS_RAW = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}';
+const VALID_APIKEYS: Set<string> = (() => {
+  const out = new Set<string>();
+  try { for (const v of Object.values(JSON.parse(SUPABASE_SECRET_KEYS_RAW)))      if (typeof v === 'string') out.add(v); } catch {}
+  try { for (const v of Object.values(JSON.parse(SUPABASE_PUBLISHABLE_KEYS_RAW))) if (typeof v === 'string') out.add(v); } catch {}
+  out.add(SERVICE_ROLE_KEY); // legacy fallback
+  return out;
+})();
+
 /* ── DocPlanner constants ────────────────────────────────────── */
 const DP_DOMAIN    = 'www.doctoralia.es';
 const DP_BASE_URL  = `https://${DP_DOMAIN}/api/v3/integration`;
@@ -440,17 +457,32 @@ serve(async (req: Request) => {
     });
   }
 
-  // ── Auth: service_role key (pg_cron) or JWT (manual trigger) ──
-  const authHeader = req.headers.get('Authorization') || '';
-  const token      = authHeader.replace('Bearer ', '');
+  // ── Auth: apikey (pg_cron) or Authorization Bearer (manual trigger) ──
+  // pg_cron RPCs send the key in the `apikey` header (v2 system). Manual
+  // triggers from the Angular UI send the user JWT in `Authorization`.
+  // Accept either path.
+  const apikeyHeader = req.headers.get('apikey') || '';
+  const authHeader   = req.headers.get('Authorization') || '';
+  const bearerToken  = authHeader.replace(/^Bearer\s+/, '');
+
   const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  if (token !== SERVICE_ROLE_KEY) {
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) {
+  const isValidApikey = apikeyHeader && VALID_APIKEYS.has(apikeyHeader);
+  const isLegacyToken = bearerToken && bearerToken === SERVICE_ROLE_KEY;
+
+  if (!isValidApikey && !isLegacyToken) {
+    if (bearerToken) {
+      const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+      });
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
+        });
+      }
+    } else {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
