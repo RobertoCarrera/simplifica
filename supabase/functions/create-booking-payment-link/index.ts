@@ -355,3 +355,4 @@ Deno.serve(async (req: Request) => {
     console.error('[create-booking-payment-link] Error:', e);
     return errorResponse(500, 'Internal error', corsHeaders);
   }
+});
