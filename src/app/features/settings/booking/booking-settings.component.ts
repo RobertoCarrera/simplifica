@@ -228,18 +228,24 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   // request, so changes here are visible to the public portal within
   // a few seconds (just the time the BFF's PostgREST cache takes to
   // expire, ~5s by default).
+  // `default_mode` selects which tab the customer sees first when 2+ modes
+  // are active. Saved alongside the toggles; resolved on load via
+  // resolveDefaultMode() so the in-memory value always points to an active
+  // mode (or 'booking' as final fallback).
   portalFeatures = signal<{
     show_booking: boolean;
     show_catalog: boolean;
     show_shop: boolean;
     show_professionals: boolean;
     show_availability: boolean;
+    default_mode?: 'booking' | 'catalog' | 'shop';
   }>({
     show_booking: true,
     show_catalog: false,
     show_shop: false,
     show_professionals: true,
     show_availability: true,
+    default_mode: 'booking',
   });
   loadingPortalFeatures = signal(false);
   savingPortalFeatures = signal(false);
@@ -260,12 +266,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       if (error) throw error;
       const pf = (data as any)?.portal_features;
       // The DB has defaults but be defensive: any field missing → default.
+      const showBooking = pf?.show_booking ?? true;
+      const showCatalog = pf?.show_catalog ?? false;
+      const showShop = pf?.show_shop ?? false;
       this.portalFeatures.set({
-        show_booking: pf?.show_booking ?? true,
-        show_catalog: pf?.show_catalog ?? false,
-        show_shop: pf?.show_shop ?? false,
+        show_booking: showBooking,
+        show_catalog: showCatalog,
+        show_shop: showShop,
         show_professionals: pf?.show_professionals ?? true,
         show_availability: pf?.show_availability ?? true,
+        default_mode: this.resolveDefaultMode(pf?.default_mode, showBooking, showCatalog, showShop),
       });
     } catch (err: any) {
       console.error('[PortalFeatures] load error:', err);
@@ -297,6 +307,39 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   togglePortalFeature(flag: 'show_booking' | 'show_catalog' | 'show_shop' | 'show_professionals' | 'show_availability') {
     this.portalFeatures.update((current) => ({ ...current, [flag]: !current[flag] }));
+  }
+
+  /** Count of currently-active portal modes (booking + catalog + shop).
+   *  Used to decide whether the default-mode select is meaningful:
+   *  with only 1 active mode there's no choice to make, so we disable it. */
+  activeModeCount = computed(() => {
+    const pf = this.portalFeatures();
+    return (pf.show_booking ? 1 : 0) + (pf.show_catalog ? 1 : 0) + (pf.show_shop ? 1 : 0);
+  });
+
+  /** Resolve the effective default mode. Honors a saved value ONLY if it
+   *  points to a currently-active mode; otherwise picks the first active
+   *  mode in booking > catalog > shop priority; falls back to 'booking'
+   *  when no mode is active so the select always has a valid value. */
+  private resolveDefaultMode(
+    saved: unknown,
+    showBooking: boolean,
+    showCatalog: boolean,
+    showShop: boolean,
+  ): 'booking' | 'catalog' | 'shop' {
+    if (saved === 'booking' && showBooking) return 'booking';
+    if (saved === 'catalog' && showCatalog) return 'catalog';
+    if (saved === 'shop' && showShop) return 'shop';
+    if (showBooking) return 'booking';
+    if (showCatalog) return 'catalog';
+    if (showShop) return 'shop';
+    return 'booking';
+  }
+
+  /** Handler bound to the default-mode <select>. Persisted alongside the
+   *  rest of portal_features by savePortalFeatures() — no separate write. */
+  setDefaultMode(mode: 'booking' | 'catalog' | 'shop') {
+    this.portalFeatures.update((current) => ({ ...current, default_mode: mode }));
   }
 
   async loadPortalFilters() {

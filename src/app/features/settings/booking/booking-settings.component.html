@@ -445,6 +445,32 @@
                 </label>
               </div>
 
+              <!-- Default mode selector (only meaningful when 2+ modes are active) -->
+              <div class="flex items-start gap-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                <div class="w-9 h-9 rounded-lg bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i class="fas fa-home text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <label for="portal-default-mode" class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    Página principal del portal
+                  </label>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                    Cuando varios modos están activos, los clientes ven esta sección primero.
+                  </p>
+                  <select
+                    id="portal-default-mode"
+                    class="mt-2 w-full sm:w-auto min-w-[16rem] px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    [value]="portalFeatures().default_mode ?? 'booking'"
+                    (change)="setDefaultMode($any($event.target).value)"
+                    [disabled]="activeModeCount() < 2 || savingPortalFeatures()"
+                  >
+                    <option value="booking">Reservar cita (primero)</option>
+                    <option value="catalog">Servicios y planes (primero)</option>
+                    <option value="shop">Tienda (primero)</option>
+                  </select>
+                </div>
+              </div>
+
               <!-- Nested flags (only meaningful when show_booking is on) -->
               <div class="ml-12 pl-3 border-l-2 border-gray-100 dark:border-gray-700 space-y-2">
                 <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider pt-1">Solo aplica con Reservas</p>
