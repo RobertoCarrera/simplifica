@@ -79,10 +79,13 @@ export class ModuleGuard implements CanActivate {
       try {
         await this.modulesService.fetchSidebarOrder();
       } catch {
-        // If fetch fails (e.g., network error), default to allowing access
-        // so we don't lock users out. The sidebar itself will handle the
-        // visual filtering next time it loads successfully.
-        return true;
+        // C-2/M-6: Fail closed on visibility fetch error.
+        // Allowing access on a sidebar-visibility fetch error means a `client`
+        // role user could reach a team-only module. Better to redirect to
+        // /inicio than risk privilege escalation. The next navigation will
+        // re-evaluate once the sidebar order is loaded.
+        this.router.navigate(["/inicio"]);
+        return false;
       }
     }
 

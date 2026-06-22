@@ -28,7 +28,12 @@ interface AalCacheEntry {
   timestamp: number;
 }
 const aalCacheByUser = new Map<string, AalCacheEntry>();
-const AAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// H-1: Reduced from 5min to 30s. Matches AdminGuard's lastServerRevalidation
+// window. The previous 5-minute window meant an admin demoted to member could
+// still get aal2 cache hits for 5 minutes, allowing admin route access during
+// that window. Combined with the C-3 fail-open fix this would have been a
+// privilege-persistence bug.
+const AAL_CACHE_TTL = 30 * 1000; // 30 seconds
 
 function getCachedAal(userId: string): string | null {
   const entry = aalCacheByUser.get(userId);
@@ -123,7 +128,17 @@ export class AuthGuard implements CanActivate {
             // No TOTP enrolled — allow through at AAL1
             return true as boolean | UrlTree;
           }),
-          catchError(() => of(true as boolean | UrlTree)),
+          catchError(() => {
+            // C-2: Fail closed on MFA check error (network/5xx/timeout).
+            // Returning true here would let a DoS of the Supabase MFA endpoint
+            // bypass AAL2 entirely. Redirect to /login so the user re-auths
+            // and the next navigation re-evaluates MFA correctly.
+            if (!environment.production) {
+              console.error('[AuthGuard] MFA check failed — failing closed');
+            }
+            this.router.navigate(['/login'], { queryParams: { reason: 'mfa_unavailable' } });
+            return of(false as boolean | UrlTree);
+          }),
         );
       }),
       catchError((error) => {
@@ -308,7 +323,16 @@ export class StrictAdminGuard implements CanActivate {
         this.router.navigate(["/configuracion"], { fragment: "seguridad" });
         return false;
       }),
-      catchError(() => of(true)),
+      catchError(() => {
+        // C-2: Fail closed on MFA check error.
+        // StrictAdminGuard protects admin-only routes — must never bypass AAL2
+        // on network failure.
+        if (!environment.production) {
+          console.error('[StrictAdminGuard] MFA check failed — failing closed');
+        }
+        this.router.navigate(['/login'], { queryParams: { reason: 'mfa_unavailable' } });
+        return of(false);
+      }),
     );
   }
 }
@@ -415,7 +439,16 @@ export class OwnerAdminGuard implements CanActivate {
         }
         return true;
       }),
-      catchError(() => of(true)),
+      catchError(() => {
+        // C-2: Fail closed on MFA check error.
+        // OwnerAdminGuard protects owner/admin routes — must never bypass AAL2
+        // on network failure.
+        if (!environment.production) {
+          console.error('[OwnerAdminGuard] MFA check failed — failing closed');
+        }
+        this.router.navigate(['/login'], { queryParams: { reason: 'mfa_unavailable' } });
+        return of(false);
+      }),
     );
   }
 }

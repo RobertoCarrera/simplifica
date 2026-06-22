@@ -51,13 +51,26 @@ export class EmailConfigService {
 
   /**
    * Open Google OAuth consent in a popup window and wait for callback via postMessage.
+   *
+   * C-4: CSRF protection — before opening the popup we generate a random nonce,
+   * store it in sessionStorage keyed by accountId, and append it to the OAuth
+   * `state` parameter. The callback component (oauth-callback.component.ts)
+   * extracts the nonce from the returned `state` and compares it against the
+   * stored value before forwarding the code to the backend. Without this,
+   * an attacker could craft a URL with their own auth code and trick a logged-in
+   * admin into linking the attacker's Google account to the victim's email account.
    */
   openGoogleOAuthPopup(accountId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.initiateGoogleOAuth(accountId).subscribe({
         next: async ({ authUrl }) => {
+          // Generate CSRF nonce and append to state param
+          const csrfNonce = this.generateAndStoreCsrfNonce(accountId);
+
+          const authUrlWithNonce = this.appendCsrfNonceToState(authUrl, csrfNonce);
+
           const popup = window.open(
-            authUrl,
+            authUrlWithNonce,
             'google_oauth',
             'width=600,height=700,left=100,top=100,popup=yes'
           );
@@ -88,6 +101,66 @@ export class EmailConfigService {
         error: (err) => reject(err),
       });
     });
+  }
+
+  /**
+   * C-4: Generate a fresh CSRF nonce and store it in sessionStorage keyed by
+   * accountId. The callback component reads + removes this entry on success.
+   */
+  private generateAndStoreCsrfNonce(accountId: string): string {
+    const csrfNonce = crypto.randomUUID();
+    try {
+      sessionStorage.setItem(`email_oauth_csrf_nonce_${accountId}`, csrfNonce);
+    } catch {
+      // sessionStorage unavailable (private mode, quota, etc.) — proceed anyway.
+      // The callback will reject the state mismatch and the user will see an error.
+    }
+    return csrfNonce;
+  }
+
+  /**
+   * C-4: Append the CSRF nonce to the OAuth `state` parameter using `:` as a
+   * separator. The backend's google-callback edge function tolerates the
+   * appended nonce (it uses its own state validation server-side).
+   */
+  private appendCsrfNonceToState(authUrl: string, csrfNonce: string): string {
+    try {
+      const url = new URL(authUrl);
+      if (!['https:', 'http:'].includes(url.protocol)) {
+        return authUrl; // Don't touch invalid protocol URLs
+      }
+      const originalState = url.searchParams.get('state') || '';
+      url.searchParams.set('state', `${originalState}:${csrfNonce}`);
+      return url.toString();
+    } catch {
+      return authUrl; // If URL parsing fails, return as-is (callback will fail validation)
+    }
+  }
+
+  /**
+   * C-4: Validate the CSRF nonce returned in the OAuth `state` parameter against
+   * the value stored in sessionStorage by openGoogleOAuthPopup(). Returns true
+   * if the nonce matches, false otherwise. Removes the stored entry on any
+   * outcome (one-time use).
+   */
+  validateCsrfNonce(state: string, accountId: string): boolean {
+    const storageKey = `email_oauth_csrf_nonce_${accountId}`;
+    let storedNonce: string | null = null;
+    try {
+      storedNonce = sessionStorage.getItem(storageKey);
+      sessionStorage.removeItem(storageKey);
+    } catch {
+      // sessionStorage unavailable
+      return false;
+    }
+
+    if (!storedNonce || !state) return false;
+
+    // State format from openGoogleOAuthPopup: `${originalState}:${csrfNonce}`
+    // The nonce is always the LAST segment after splitting on `:`.
+    const stateParts = state.split(':');
+    const returnedNonce = stateParts[stateParts.length - 1];
+    return returnedNonce === storedNonce;
   }
 
   /**
