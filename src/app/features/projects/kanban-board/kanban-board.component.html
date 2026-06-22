@@ -122,6 +122,7 @@
                   <app-project-card
                     [project]="project"
                     [isReviewStage]="column.stage.is_review || false"
+                    [unreadCountValue]="unreadCounts[project.id] || 0"
                     (archive)="archiveProjectInternal(project)"
                     (approve)="approveProject(project)"
                   ></app-project-card>

@@ -14,11 +14,11 @@ import { ToastService } from '../../../../services/toast.service';
       class="group project-card bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500/30 transition-all duration-200 cursor-grab active:cursor-grabbing relative overflow-hidden"
     >
       <!-- Unread Badge -->
-      @if (unreadCount() > 0) {
+      @if (unreadCountValue > 0) {
         <div
           class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 animate-pulse"
         >
-          {{ unreadCount() }}
+          {{ unreadCountValue }}
         </div>
       }
 
@@ -220,6 +220,12 @@ import { ToastService } from '../../../../services/toast.service';
 export class ProjectCardComponent implements OnInit {
   @Input() project!: Project;
   @Input() isReviewStage = false;
+  /**
+   * Unread-comments count. Passed in by the parent (kanban / list view)
+   * which fetches it batched via getUnreadCountsBatch. Default 0 so the
+   * card still renders before the batch lands.
+   */
+  @Input() unreadCountValue: number = 0;
   @Output() archive = new EventEmitter<void>();
   @Output() approve = new EventEmitter<void>();
   private projectsService = inject(ProjectsService);
@@ -231,12 +237,10 @@ export class ProjectCardComponent implements OnInit {
   ngOnInit() {
     // Subscribe to current user
     this.authService.userProfile$.subscribe((u) => (this.currentUser = u));
-
-    if (this.project?.id) {
-      this.projectsService.getUnreadCount(this.project.id).then((count) => {
-        this.unreadCount.set(count);
-      });
-    }
+    // No per-card getUnreadCount: the parent kanban/list view loads
+    // unread counts in a single batched RPC and passes them in via
+    // [unreadCountValue]. This removes the N+1 (4 queries per card)
+    // pattern that hammered the DB on first paint.
   }
 
   // Permission helpers
