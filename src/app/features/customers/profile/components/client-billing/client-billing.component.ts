@@ -349,7 +349,7 @@ export class ClientBillingComponent implements OnInit {
     this.toast.info('Descargando...', 'Generando PDF');
     this.invoicesService.getInvoicePdfUrl(invoice.id).subscribe({
       next: (url) => {
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener,noreferrer');
       },
       error: () => this.toast.error('Error', 'No se pudo descargar el PDF'),
     });

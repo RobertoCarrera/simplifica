@@ -852,7 +852,7 @@ export class InvoiceListComponent {
   async downloadPdf(invoiceId: string) {
     try {
       const signed = await firstValueFrom(this.invoicesService.getInvoicePdfUrl(invoiceId));
-      window.open(signed, '_blank');
+      window.open(signed, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.error('PDF error', e);
     }

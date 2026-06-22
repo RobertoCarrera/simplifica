@@ -400,7 +400,7 @@ export class ContractProgressDialogComponent {
     } else if (option.url) {
       // For online payment providers, redirect
       this.paymentRedirect.emit(option.url);
-      window.open(option.url, '_blank');
+      window.open(option.url, '_blank', 'noopener,noreferrer');
       this.visible.set(false);
       this.closed.emit();
     }
@@ -411,7 +411,7 @@ export class ContractProgressDialogComponent {
     if (url) {
       this.paymentRedirect.emit(url);
       // Open in new tab to preserve app state
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       // Close the dialog after opening payment
       this.visible.set(false);
       this.closed.emit();

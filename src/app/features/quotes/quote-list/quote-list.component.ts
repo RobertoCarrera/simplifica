@@ -1090,7 +1090,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
 
   downloadPdf(id: string) {
     this.quotesService.getQuotePdfUrl(id).subscribe({
-      next: (signed) => window.open(signed, '_blank'),
+      next: (signed) => window.open(signed, '_blank', 'noopener,noreferrer'),
       error: (e) => console.error('PDF error', e),
     });
   }

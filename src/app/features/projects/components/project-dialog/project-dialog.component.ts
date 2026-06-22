@@ -2326,7 +2326,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     try {
       const url = await this.projectsService.getFileUrl(file.file_path);
       if (url) {
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener,noreferrer');
       } else {
         this.toastService.error('Error', 'No se pudo obtener el enlace del archivo');
       }

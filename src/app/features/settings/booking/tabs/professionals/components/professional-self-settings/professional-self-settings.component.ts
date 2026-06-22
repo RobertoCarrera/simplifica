@@ -393,7 +393,7 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
 
   // Document methods
   downloadDocument(doc: ProfessionalDocument) {
-    window.open(doc.file_url, '_blank');
+    window.open(doc.file_url, '_blank', 'noopener,noreferrer');
   }
 
   openSignaturePad(doc: ProfessionalDocument) {
