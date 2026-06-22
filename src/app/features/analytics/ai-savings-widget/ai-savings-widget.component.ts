@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, effect, importProvidersFrom } from '@angular/core';
+import { Component, OnInit, inject, signal, effect, importProvidersFrom, untracked } from '@angular/core';
 
 import { AiAnalyticsService } from '../../../services/ai-analytics.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
@@ -39,20 +39,33 @@ export class AiSavingsWidgetComponent implements OnInit {
   displayUnit = signal('');
 
   constructor() {
-    // React to module changes
+    // React to module changes. The modulesSignal is hydrated by the parent
+    // dashboard-analytics.component (and cached in v0.36), so we don't need
+    // to re-trigger fetchEffectiveModules here. This prevents the previous
+    // double-fire pattern that re-ran all the AI analytics queries on every
+    // dashboard mount. Rafter v0.40 (perf audit 2026-06-22 — Finding 4).
     effect(() => {
       const modules = this.modulesService.modulesSignal();
       if (modules) {
         const hasAi = modules.some((m) => m.key === 'ai' && m.enabled);
-        this.hasAiModule.set(hasAi);
-        this.fetchData(hasAi);
+        // Only fetch when the AI flag actually changes, to dedupe redundant
+        // fires when the signal re-emits the same value.
+        untracked(() => {
+          if (this.hasAiModule() !== hasAi || this.isLoading()) {
+            this.hasAiModule.set(hasAi);
+            this.fetchData(hasAi);
+          }
+        });
       }
     });
   }
 
   ngOnInit() {
-    // Ensure modules are loaded
-    this.modulesService.fetchEffectiveModules().subscribe();
+    // Intentionally empty: modules are already hydrated by the parent and the
+    // constructor effect reacts to modulesSignal(). The previous
+    // `fetchEffectiveModules().subscribe()` here caused a second dashboard
+    // load that re-fired the constructor effect and doubled all the AI
+    // analytics queries. Removed in Rafter v0.40.
   }
 
   fetchData(hasAi: boolean) {

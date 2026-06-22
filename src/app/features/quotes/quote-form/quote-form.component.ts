@@ -886,9 +886,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       if (serviceIds.size > 0) {
         try {
-          const loaded = await Promise.all(
-            Array.from(serviceIds).map(async (sid) => {
-              const s = await this.servicesService.getServiceWithVariants(sid);
+          // Batch fetch (Rafter v0.40 — perf audit 2026-06-22 Finding 6):
+          // getServicesWithVariantsByIds issues 2 round-trips total instead of
+          // 2 * N for N services.
+          const idsArray = Array.from(serviceIds);
+          const servicesMap = await this.servicesService.getServicesWithVariantsByIds(idsArray);
+          const loaded: ServiceOption[] = idsArray
+            .map((sid) => {
+              const s = servicesMap.get(sid);
+              if (!s) return null;
               return {
                 id: s.id,
                 name: s.name,
@@ -901,8 +907,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
                   .filter((v) => v.is_active)
                   .sort((a, b) => a.sort_order - b.sort_order),
               } as ServiceOption;
-            }),
-          );
+            })
+            .filter((s): s is ServiceOption => s !== null);
           // Merge with any existing services (avoid duplicates by id)
           const existing = this.services();
           const map = new Map<string, ServiceOption>();
