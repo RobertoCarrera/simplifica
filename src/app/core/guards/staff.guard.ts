@@ -96,7 +96,15 @@ export class StaffGuard implements CanActivate {
             // No TOTP enrolled — allow through (AAL1)
             return true as boolean | UrlTree;
           }),
-          catchError(() => of(true as boolean | UrlTree)),
+          catchError(() => {
+            // C-2: Fail closed on MFA check error (network/5xx/timeout).
+            // Returning true here would let a DoS of the Supabase MFA endpoint
+            // bypass AAL2 entirely. Redirect to /login so the user re-auths
+            // and the next navigation re-evaluates MFA correctly.
+            console.error('🛡️ [StaffGuard] MFA check failed — failing closed');
+            this.router.navigate(['/login'], { queryParams: { reason: 'mfa_unavailable' } });
+            return of(false as boolean | UrlTree);
+          }),
         );
       }),
       catchError(() => of(this.router.parseUrl("/login"))),

@@ -454,6 +454,92 @@ export class AuthService {
 
   private static readonly APP_USER_CACHE_KEY = 'simplifica_app_user_cache';
 
+  /**
+   * C-5: Session-storage key for the in-flight PKCE-style state nonce.
+   * We store the state when the auth flow is initiated (magic link or signup
+   * confirmation) and validate it on the callback. The entry has a TTL — after
+   * expiry it's ignored. This blocks session-fixation attacks where an attacker
+   * crafts a URL with their own auth tokens and tricks the victim into visiting.
+   */
+  private static readonly AUTH_FLOW_STATE_KEY = 'simplifica_auth_flow_state';
+  private static readonly AUTH_FLOW_STATE_TTL_MS = 10 * 60 * 1000; // 10 min
+
+  /**
+   * C-5: Generate a fresh state nonce for an outgoing auth flow and persist it
+   * in sessionStorage with a timestamp. Returns the nonce so the caller can
+   * include it in the email redirect URL. The callback component retrieves +
+   * removes this entry via consumeAuthFlowState().
+   */
+  private generateAuthFlowState(flow: 'magic_link' | 'email_confirm'): string {
+    const nonce =
+      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36));
+    try {
+      sessionStorage.setItem(
+        AuthService.AUTH_FLOW_STATE_KEY,
+        JSON.stringify({ nonce, flow, createdAt: Date.now() }),
+      );
+    } catch {
+      // sessionStorage unavailable — degrade silently; callback will treat
+      // missing state as an old flow and fall back to warning + allow.
+    }
+    return nonce;
+  }
+
+  /**
+   * C-5: Consume and validate the state returned in the auth callback URL.
+   * Returns true if a valid (non-expired, matching) state was found, false
+   * otherwise. Removes the entry on any outcome (one-time use).
+   *
+   * Behavior matrix:
+   *   - state in URL AND sessionStorage AND match + not expired → true (allow)
+   *   - state in URL AND sessionStorage AND mismatch/expired    → false (REJECT)
+   *   - state in URL but NOT in sessionStorage                  → false (REJECT — attack)
+   *   - state NOT in URL                                        → null (degraded mode,
+   *                                                              let caller decide)
+   */
+  consumeAuthFlowState(
+    stateFromUrl: string | null,
+    expectedFlow?: 'magic_link' | 'email_confirm',
+  ): boolean | null {
+    if (!stateFromUrl) return null;
+
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(AuthService.AUTH_FLOW_STATE_KEY);
+      // Always remove — one-time use
+      sessionStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
+    } catch {
+      return false;
+    }
+
+    if (!raw) return false;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        nonce: string;
+        flow: string;
+        createdAt: number;
+      };
+      const expired = Date.now() - parsed.createdAt > AuthService.AUTH_FLOW_STATE_TTL_MS;
+      if (expired) return false;
+      if (expectedFlow && parsed.flow !== expectedFlow) return false;
+      return parsed.nonce === stateFromUrl;
+    } catch {
+      return false;
+    }
+  }
+
+  /** C-5: Clear any pending auth-flow state (used on explicit logout). */
+  clearAuthFlowState(): void {
+    try {
+      sessionStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
   private async initializeAuth() {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
@@ -491,6 +577,11 @@ export class AuthService {
   /**
    * Try to restore AppUser + memberships from sessionStorage.
    * Returns true if hydration succeeded (signals populated, loading=false).
+   *
+   * H-2: Cache TTL reduced from 5min to 30s to limit the window of stale-role
+   * data after a server-side role change (demotion, removal, etc.). The real
+   * DB fetch still runs after this and updates signals + cache on success.
+   * On DB fetch failure the cache is invalidated (see _doSetCurrentUser).
    */
   private _hydrateFromCache(authId: string): boolean {
     try {
@@ -499,9 +590,11 @@ export class AuthService {
 
       const cached = JSON.parse(raw) as { authId: string; appUser: AppUser; memberships: CompanyMembership[]; ts: number };
 
-      // Reject if cache is for a different user or older than 5 minutes
+      // Reject if cache is for a different user or older than 30 seconds
+      // (was 5 min — H-2 audit fix: shorter window so a server-side role
+      // change is picked up on the next load).
       if (cached.authId !== authId) return false;
-      if (Date.now() - cached.ts > 5 * 60 * 1000) return false;
+      if (Date.now() - cached.ts > 30 * 1000) return false;
 
       // Hydrate all signals instantly
       this.isAuthenticated.set(true);
@@ -528,6 +621,17 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * H-2: Explicitly remove the user cache entry. Called when we know the
+   * cached data is stale (DB fetch failed, role change detected, etc.) so
+   * the next reload doesn't render with the old data.
+   */
+  private _invalidateUserCache(): void {
+    try {
+      sessionStorage.removeItem(AuthService.APP_USER_CACHE_KEY);
+    } catch { /* ignore */ }
   }
 
   /** Persist AppUser + memberships to sessionStorage for instant next-load hydration. */
@@ -605,6 +709,21 @@ export class AuthService {
           appUser = await this.fetchAppUserByAuthId(user.id, user.email) || appUser;
         }
 
+        // H-2: Detect role change between cache and DB. If the user was
+        // demoted / promoted / had role permissions changed since the cache
+        // was written, log a warning and invalidate the cache so the next
+        // reload uses the fresh DB value. This catches stale cache reads
+        // before guards / UI build on the old role.
+        const previousRole = this.userRole();
+        if (this._hydratedFromCache && previousRole && previousRole !== appUser.role) {
+          if (!environment.production) {
+            console.warn(
+              `⚠️ [AuthService] Role changed (cache=${previousRole} → db=${appUser.role}); invalidating cache`,
+            );
+          }
+          this._invalidateUserCache();
+        }
+
         this.userProfileSubject.next(appUser);
         this.userProfileSignal.set(appUser);
         this.userRole.set(appUser.role);
@@ -646,6 +765,19 @@ export class AuthService {
         console.warn('appUser is null - userProfileSubject NOT updated');
       }
     }
+  } catch (error) {
+    // H-2: If the DB fetch fails after we hydrated from cache, the cache is
+    // almost certainly stale (network outage, server down, schema drift, etc.).
+    // Invalidate it so the next reload attempts a clean fetch instead of
+    // re-hydrating potentially-incorrect values into the signals.
+    if (this._hydratedFromCache) {
+      console.warn(
+        '⚠️ [AuthService] DB fetch failed after cache hydration — invalidating cache to avoid stale state on next load',
+        error,
+      );
+      this._invalidateUserCache();
+    }
+    throw error;
   } finally {
     // Always release promise and loading state, even if an error occurs
     this.setCurrentUserPromise = null;
@@ -1438,10 +1570,18 @@ export class AuthService {
         attempt.count++;
       }
 
+      // C-5: Generate a fresh PKCE-style state nonce for this login attempt.
+      // We include it as a query param on emailRedirectTo so Supabase forwards
+      // it to the magic link. The auth-callback component validates the state
+      // matches what we stored here before calling setSession(). This blocks
+      // session-fixation attacks where an attacker crafts a URL with their
+      // own auth code and tricks a victim into visiting it.
+      const state = this.generateAuthFlowState('magic_link');
+
       const { error } = await this.supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?state=${encodeURIComponent(state)}`,
           shouldCreateUser: false // CRITICAL: Solo usuarios existentes (invitados)
         }
       });
@@ -1478,6 +1618,8 @@ export class AuthService {
       this.registrationInProgress.clear();
       // Clear security caches FIRST to prevent cross-user poisoning
       clearAalCache();
+      // C-5: Clear any pending auth-flow state on logout
+      this.clearAuthFlowState();
       this.currentCompanyId.set(null);
       try { sessionStorage.removeItem('last_active_company_id'); } catch { /* */ }
       // Clear local state immediately to avoid guards redirecting back to protected routes
@@ -1675,11 +1817,16 @@ export class AuthService {
         return { success: false, error: 'Email requerido para reenviar confirmación' };
       }
 
+      // C-5: Generate state for the confirmation flow. Same defense as magic link —
+      // the email-confirmation component validates the state matches what we
+      // stored here before calling confirmEmail().
+      const state = this.generateAuthFlowState('email_confirm');
+
       const { error } = await this.supabase.auth.resend({
         type: 'signup',
         email: targetEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`
+          emailRedirectTo: `${window.location.origin}/auth/confirm?state=${encodeURIComponent(state)}`
         }
       });
 

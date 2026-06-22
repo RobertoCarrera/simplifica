@@ -188,6 +188,32 @@ export class EmailConfirmationComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe((params) => {
       if (params["token"] || params["type"]) {
         this.hasToken = true;
+        // C-5: PKCE-style state validation BEFORE confirming the email.
+        // Same defense as auth-callback: prevents session-fixation via crafted
+        // URLs. The state param is generated in auth.service.ts when the user
+        // requests a confirmation email (signup or resend).
+        const stateFromUrl = params['state'] || null;
+        const stateResult = this.authService.consumeAuthFlowState(
+          stateFromUrl,
+          'email_confirm',
+        );
+        if (stateResult === false) {
+          // State mismatch / missing — REJECT.
+          console.error(
+            '[EMAIL-CONFIRM] 🚨 State validation FAILED — rejecting email confirmation to prevent session fixation.',
+          );
+          this.isError = true;
+          this.errorMessage =
+            'Enlace de confirmación inválido o expirado. Por favor, solicita un nuevo correo de confirmación.';
+          this.isLoading = false;
+          this.hasToken = false;
+          return;
+        }
+        if (stateResult === null) {
+          console.warn(
+            '[EMAIL-CONFIRM] No state param in URL — proceeding in degraded mode (legacy flow).',
+          );
+        }
         this.handleEmailConfirmation(window.location.hash.substring(1));
       }
     });

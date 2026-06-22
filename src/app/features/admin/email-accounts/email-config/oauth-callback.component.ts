@@ -30,6 +30,17 @@ export class OAuthCallbackComponent implements OnInit {
       return;
     }
 
+    // C-4: CSRF state validation — compare the returned state against a nonce
+    // stored in sessionStorage by openGoogleOAuthPopup() before the OAuth flow
+    // started. Without this, an attacker could craft a URL with their own auth
+    // code and trick a logged-in admin into linking the attacker's Google
+    // account to the victim's email account.
+    const csrfValid = this.configService.validateCsrfNonce(state, accountId);
+    if (!csrfValid) {
+      this.handleError('Token CSRF inválido o expirado. Por favor, intenta el flujo OAuth de nuevo desde la página de configuración.');
+      return;
+    }
+
     try {
       await new Promise<void>((resolve, reject) => {
         this.configService.handleOAuthCallback(code, state, accountId).subscribe({

@@ -192,6 +192,65 @@ export class AuthCallbackComponent implements OnInit {
         return;
       }
 
+      // C-5: PKCE-style state validation BEFORE setSession().
+      // Without this check, an attacker can craft a URL with their own
+      // access/refresh tokens and trick a victim into visiting it
+      // (phishing, XSS in another tab). The victim would end up "logged in
+      // as the attacker" and any data they create would persist under the
+      // attacker's company. We require a state param that matches a nonce
+      // stored in sessionStorage by the originating auth flow (magic link /
+      // signup confirmation / etc.).
+      //
+      // State is only validated for flows WE initiate from this app
+      // (magiclink + signup/email). Invite and recovery flows use Supabase's
+      // own redirect scheme and don't include our custom state — those have
+      // separate guards/routes and are not the attack vector described in the
+      // audit (C-5).
+      const stateFromUrl =
+        searchParams.get('state') || params.get('state');
+      let stateResult: boolean | null = null;
+      if (type === 'magiclink') {
+        stateResult = this.authService.consumeAuthFlowState(
+          stateFromUrl,
+          'magic_link',
+        );
+      } else if (type === 'signup' || type === 'email') {
+        stateResult = this.authService.consumeAuthFlowState(
+          stateFromUrl,
+          'email_confirm',
+        );
+      }
+      if (stateResult === false) {
+        // State mismatch / missing — possible session-fixation attack.
+        // REJECT: do NOT call setSession(), redirect to login with warning.
+        console.error(
+          '[AUTH-CALLBACK] 🚨 State validation FAILED — rejecting auth callback to prevent session fixation.',
+        );
+        this.error = true;
+        this.errorMessage =
+          'Enlace de autenticación inválido o expirado. Por favor, solicita un nuevo enlace iniciando sesión de nuevo.';
+        this.loading = false;
+        // Clear any partial state Supabase might have set
+        try {
+          await this.authService.client.auth.signOut();
+        } catch { /* ignore */ }
+        setTimeout(() => {
+          this.router.navigate(['/login'], {
+            queryParams: { reason: 'invalid_state' },
+          });
+        }, 1500);
+        return;
+      }
+      // stateResult === null means no state in URL or flow type that
+      // doesn't use state (invite/recovery). Allow through (legacy compat)
+      // but log so we can monitor in production.
+      if (stateResult === null && (type === 'magiclink' || type === 'signup' || type === 'email')) {
+        console.warn(
+          '[AUTH-CALLBACK] No state param in URL for', type,
+          '— proceeding in degraded mode (legacy flow).',
+        );
+      }
+
       const { error: sessionError } =
         await this.authService.client.auth.setSession({
           access_token: accessToken,

@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import {
   HttpEvent,
   HttpInterceptor,
@@ -8,6 +8,8 @@ import {
 } from "@angular/common/http";
 import { Observable, throwError } from "rxjs";
 import { catchError } from "rxjs/operators";
+import { Router } from "@angular/router";
+import { AuthService } from "../services/auth.service";
 
 /**
  * Interceptor global para manejo de errores HTTP
@@ -15,6 +17,9 @@ import { catchError } from "rxjs/operators";
  */
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
   intercept(
     req: HttpRequest<any>,
     next: HttpHandler,
@@ -90,6 +95,21 @@ export class HttpErrorInterceptor implements HttpInterceptor {
             url: req.url,
             hint: "Token expirado o inválido",
           });
+          // C-3: On 401, clear the local session and redirect to /login.
+          // Previously the 401 just propagated to the caller, leaving the UI
+          // in a broken state (isAuthenticated=true, sidebar visible, every
+          // API call failing). We skip auth-token endpoints to avoid loops
+          // during Supabase's internal refresh attempts.
+          const isAuthEndpoint =
+            req.url.includes('/auth/v1/token') ||
+            req.url.includes('/auth/v1/signup') ||
+            req.url.includes('/auth/v1/admin') ||
+            req.url.includes('/auth/v1/verify') ||
+            req.url.includes('/auth/v1/recover') ||
+            req.url.includes('/auth/v1/otp');
+          if (!isAuthEndpoint) {
+            this.handleUnauthorized();
+          }
         }
 
         // ===================================
@@ -147,5 +167,29 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         return throwError(() => enhancedError);
       }),
     );
+  }
+
+  /**
+   * C-3: Handle 401 by clearing the local session and redirecting to /login.
+   * Uses fire-and-forget pattern — we don't want to block the interceptor on
+   * the async signOut. The router navigation is also synchronous.
+   */
+  private handleUnauthorized(): void {
+    // Only act if we think we're authenticated; otherwise this is a stale 401
+    // from before the user logged in and we shouldn't trigger a redirect.
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+    console.warn('🔒 [HttpErrorInterceptor] 401 received — clearing session and redirecting to /login');
+    try {
+      this.authService.logout().catch((e) => {
+        // logout() already handles errors and redirects, but ensure we don't crash
+        console.error('❌ Error during forced logout on 401:', e);
+        this.router.navigate(['/login']);
+      });
+    } catch (e) {
+      console.error('❌ Failed to call logout() on 401:', e);
+      this.router.navigate(['/login']);
+    }
   }
 }

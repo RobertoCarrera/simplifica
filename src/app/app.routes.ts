@@ -103,7 +103,7 @@ export const routes: Routes = [
       import("./features/tickets/detail/ticket-detail.component").then(
         (m) => m.TicketDetailComponent,
       ),
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, StaffGuard],
   },
 
   // Products
@@ -246,7 +246,7 @@ export const routes: Routes = [
       import("./features/bookings/confirm-session/confirm-session.component").then(
         (m) => m.ConfirmSessionComponent,
       ),
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, StaffGuard],
     title: "Cerrar Sesión | Simplifica CRM",
   },
 
@@ -257,7 +257,7 @@ export const routes: Routes = [
       import("./features/settings/configuracion/configuracion.component").then(
         (m) => m.ConfiguracionComponent,
       ),
-    canActivate: [],
+    canActivate: [AuthGuard, OwnerAdminGuard],
     pathMatch: "full",
   },
   {
@@ -410,7 +410,7 @@ export const routes: Routes = [
       import("./features/admin/email-accounts/email-config/oauth-callback.component").then(
         (m) => m.OAuthCallbackComponent,
       ),
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, AdminGuard],
   },
 
   // Quotes (lazy)
