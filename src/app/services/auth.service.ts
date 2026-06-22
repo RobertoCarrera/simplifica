@@ -497,18 +497,24 @@ export class AuthService {
   private static readonly APP_USER_CACHE_KEY = 'simplifica_app_user_cache';
 
   /**
-   * C-5: Session-storage key for the in-flight PKCE-style state nonce.
+   * C-5: localStorage key for the in-flight PKCE-style state nonce.
    * We store the state when the auth flow is initiated (magic link or signup
    * confirmation) and validate it on the callback. The entry has a TTL — after
    * expiry it's ignored. This blocks session-fixation attacks where an attacker
    * crafts a URL with their own auth tokens and tricks the victim into visiting.
+   *
+   * NOTE: stored in localStorage (NOT sessionStorage) because clicking the
+   * magic-link email opens a NEW tab — sessionStorage is per-tab, so any value
+   * written in the originating tab would be invisible to the callback. CSRF
+   * protection is preserved because the victim's localStorage has no matching
+   * entry (or it's expired/mismatched).
    */
   private static readonly AUTH_FLOW_STATE_KEY = 'simplifica_auth_flow_state';
   private static readonly AUTH_FLOW_STATE_TTL_MS = 10 * 60 * 1000; // 10 min
 
   /**
    * C-5: Generate a fresh state nonce for an outgoing auth flow and persist it
-   * in sessionStorage with a timestamp. Returns the nonce so the caller can
+   * in localStorage with a timestamp. Returns the nonce so the caller can
    * include it in the email redirect URL. The callback component retrieves +
    * removes this entry via consumeAuthFlowState().
    */
@@ -518,12 +524,12 @@ export class AuthService {
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2) + Date.now().toString(36));
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         AuthService.AUTH_FLOW_STATE_KEY,
         JSON.stringify({ nonce, flow, createdAt: Date.now() }),
       );
     } catch {
-      // sessionStorage unavailable — degrade silently; callback will treat
+      // localStorage unavailable — degrade silently; callback will treat
       // missing state as an old flow and fall back to warning + allow.
     }
     return nonce;
@@ -535,11 +541,11 @@ export class AuthService {
    * otherwise. Removes the entry on any outcome (one-time use).
    *
    * Behavior matrix:
-   *   - state in URL AND sessionStorage AND match + not expired → true (allow)
-   *   - state in URL AND sessionStorage AND mismatch/expired    → false (REJECT)
-   *   - state in URL but NOT in sessionStorage                  → false (REJECT — attack)
-   *   - state NOT in URL                                        → null (degraded mode,
-   *                                                              let caller decide)
+   *   - state in URL AND localStorage AND match + not expired → true (allow)
+   *   - state in URL AND localStorage AND mismatch/expired    → false (REJECT)
+   *   - state in URL but NOT in localStorage                  → false (REJECT — attack)
+   *   - state NOT in URL                                      → null (degraded mode,
+   *                                                            let caller decide)
    */
   consumeAuthFlowState(
     stateFromUrl: string | null,
@@ -549,9 +555,9 @@ export class AuthService {
 
     let raw: string | null = null;
     try {
-      raw = sessionStorage.getItem(AuthService.AUTH_FLOW_STATE_KEY);
+      raw = localStorage.getItem(AuthService.AUTH_FLOW_STATE_KEY);
       // Always remove — one-time use
-      sessionStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
+      localStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
     } catch {
       return false;
     }
@@ -576,7 +582,7 @@ export class AuthService {
   /** C-5: Clear any pending auth-flow state (used on explicit logout). */
   clearAuthFlowState(): void {
     try {
-      sessionStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
+      localStorage.removeItem(AuthService.AUTH_FLOW_STATE_KEY);
     } catch {
       /* ignore */
     }
@@ -1717,12 +1723,16 @@ export class AuthService {
    *
    * sessionStorage keys cleared:
    *   - simplifica_*          (professional mode, app user cache, modules cache,
-   *                            auth-flow state, secure-storage key)
+   *                            secure-storage key)
    *   - mfa_stepup_*          (step-up auth timestamps)
    *   - oauth_csrf_nonce / email_oauth_csrf_nonce_* (OAuth + email OAuth CSRF nonces)
    *   - auth_return_to        (post-login redirect target)
    *   - current_company_id    (tenant context)
    *   - last_active_company_id (tenant context)
+   *
+   * NOTE: auth-flow state (simplifica_auth_flow_state) lives in localStorage
+   * since the Rafter v0.25 hotfix — it is captured by the localStorage loop
+   * above (matches the simplifica_* prefix).
    *
    * Cache Storage: deletes any cache whose name starts with `ngsw:` (Angular
    * Service Worker) or `simplifica-` (custom SW). Fires-and-forgets so it
