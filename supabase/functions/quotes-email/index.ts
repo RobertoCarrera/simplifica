@@ -5,6 +5,9 @@ import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts'
 import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { withCsrf } from '../_shared/csrf-middleware.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
+// Rafter v0.27: replace the local escHtml (incomplete — missing ' escape)
+// with the shared safe-by-default escapeHtml from _shared/escape.ts.
+import { escapeHtml } from '../_shared/escape.ts';
 
 function cors(origin?: string) {
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '')
@@ -240,9 +243,10 @@ serve(withCsrf(async (req) => {
 
     const companyId = quote.client?.company_id || '';
 
-    const escHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const qNumber = escHtml(quote.full_quote_number || quote.quote_number || `PRES-${quote.year}`);
+    // Rafter v0.27: escapeHtml is imported from _shared/escape.ts (was a
+    // local incomplete escHtml that did not escape single quotes — see
+    // v0.26 fix in send-branded-email for the security rationale).
+    const qNumber = escapeHtml(quote.full_quote_number || quote.quote_number || `PRES-${quote.year}`);
 
     // Auth-only deep link (no public token). Use only the configured env var — never trust Origin header.
     const APP_URL = (Deno.env.get('FRONTEND_APP_URL') || '').replace(/\/$/, '');
@@ -254,10 +258,10 @@ serve(withCsrf(async (req) => {
     // Email HTML
     const html = `
       <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-        <p>Hola${quote.client?.name ? ' ' + escHtml(quote.client.name) : ''},</p>
-        <p>${message ? escHtml(message) : 'Te enviamos tu presupuesto para tu revisión.'}</p>
+        <p>Hola${quote.client?.name ? ' ' + escapeHtml(quote.client.name) : ''},</p>
+        <p>${message ? escapeHtml(message) : 'Te enviamos tu presupuesto para tu revisión.'}</p>
         <p><strong>Presupuesto:</strong> ${qNumber}</p>
-  ${loginLink ? `<p style=\"margin:16px 0\"><a href=\"${loginLink}\" target=\"_blank\" style=\"display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px\">Abrir presupuesto</a></p>` : ''}
+  ${loginLink ? `<p style=\"margin:16px 0\"><a href=\"${escapeHtml(loginLink)}\" target=\"_blank\" style=\"display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px\">Abrir presupuesto</a></p>` : ''}
         <p style="color:#666;font-size:12px">Si tienes cualquier consulta, responde a este email.</p>
       </div>
     `;

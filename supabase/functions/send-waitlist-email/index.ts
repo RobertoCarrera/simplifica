@@ -19,6 +19,11 @@ import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+// Rafter v0.27: replace the local destructive `.replace(/[<>"']/g, '')`
+// strip with the shared safe-by-default escapeHtml from _shared/escape.ts.
+// Stripping was safe but destroyed legitimate names containing quotes;
+// escaping preserves them while still blocking XSS.
+import { escapeHtml } from '../_shared/escape.ts';
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
 async function sendBrandedEmail(params: {
@@ -260,8 +265,12 @@ serve(async (req: Request) => {
 
     // ── Build email subject and body based on type ─────────────────────────
     const bookingLink = `${APP_URL}/portal/reservas`;
-    const safeName = recipientName.replace(/[<>"']/g, '').substring(0, 200);
-    const safeService = service_name.replace(/[<>"']/g, '').substring(0, 200);
+    // Rafter v0.27: cap the SOURCE length before escapeHtml (so we never
+    // process unbounded strings), then HTML-escape. Previously this used
+    // `.replace(/[<>"']/g, '')` which stripped legitimate characters from
+    // names like John "Big" Doe.
+    const safeName = escapeHtml(String(recipientName).substring(0, 200));
+    const safeService = escapeHtml(String(service_name).substring(0, 200));
 
     let subject: string;
     let bodyHeading: string;
@@ -303,7 +312,7 @@ serve(async (req: Request) => {
         </div>
 
         <div style="text-align: center; margin-bottom: 24px;">
-          <a href="${bookingLink}"
+          <a href="${escapeHtml(bookingLink)}"
              style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
             ${ctaLabel}
           </a>
@@ -311,7 +320,7 @@ serve(async (req: Request) => {
 
         <p style="text-align: center; font-size: 12px; color: #94a3b8;">
           Si el botón no funciona, copia y pega este enlace:<br/>
-          <a href="${bookingLink}" style="color: #667eea;">${bookingLink}</a>
+          <a href="${escapeHtml(bookingLink)}" style="color: #667eea;">${escapeHtml(bookingLink)}</a>
         </p>
 
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;"/>
