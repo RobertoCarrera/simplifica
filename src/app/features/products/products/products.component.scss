@@ -1,4 +1,165 @@
-/* ProductsComponent Styles */
+/* ProductsComponent Styles
+ * ─────────────────────────────────────────────────────────────────────
+ * The classes modal-overlay, modal-content, modal-body, modal-footer,
+ * form-label, form-input, form-textarea, form-select, btn, btn-primary,
+ * btn-secondary are normally defined in src/app/styles/shared.scss,
+ * but that file is NOT imported by src/styles.scss — it's dead code
+ * in the current build. We redefine the small subset we need here,
+ * scoped to this component via :host.
+ * ─────────────────────────────────────────────────────────────────────
+ */
+
+:host {
+  display: block;
+
+  /* ── Modal overlay (position fixed, centered, dark backdrop) ── */
+  ::ng-deep .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  ::ng-deep .modal-content {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 42rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  ::ng-deep .modal-body {
+    padding: 1.5rem;
+  }
+
+  ::ng-deep .modal-footer {
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  /* ── Form controls ── */
+  ::ng-deep .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  ::ng-deep .form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-size: 0.875rem;
+  }
+
+  ::ng-deep .form-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+
+  ::ng-deep .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  ::ng-deep .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    appearance: none;
+  }
+
+  /* ── Buttons ── */
+  ::ng-deep .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  ::ng-deep .btn-primary {
+    background-color: #2563eb;
+    color: white;
+  }
+  ::ng-deep .btn-primary:hover {
+    background-color: #1d4ed8;
+  }
+
+  ::ng-deep .btn-secondary {
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+  ::ng-deep .btn-secondary:hover {
+    background-color: #e5e7eb;
+  }
+
+  /* ── Dark mode overrides (when .dark class is on a parent) ── */
+  :host-context(.dark) {
+    ::ng-deep .modal-content {
+      background: #1f2937;
+      box-shadow: 0 25px 60px -12px rgba(2, 6, 23, 0.6);
+    }
+    ::ng-deep .modal-footer {
+      border-top-color: #334155;
+      background: #1f2937;
+    }
+    ::ng-deep .form-label {
+      color: #e2e8f0;
+    }
+    ::ng-deep .form-input {
+      background-color: #0f172a;
+      color: #e5e7eb;
+      border-color: #334155;
+    }
+    ::ng-deep .form-input::placeholder {
+      color: #94a3b8;
+    }
+    ::ng-deep .btn-secondary {
+      background-color: #334155;
+      color: #e2e8f0;
+    }
+    ::ng-deep .btn-secondary:hover {
+      background-color: #475569;
+    }
+  }
+}
+
+/* ─── Modal entrance animations ───────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-fade-in-up { animation: fade-in-up 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ─── Clamp description text to 3 lines ──────────────────────── */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
