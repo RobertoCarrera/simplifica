@@ -1,0 +1,66 @@
+/* FormNewProductComponent Styles
+ * ─────────────────────────────────────────────────────────────────────
+ * Same note as products.component.scss: classes form-input, form-label,
+ * form-select are normally in shared.scss (dead code, not imported),
+ * so we redefine them here.
+ * ─────────────────────────────────────────────────────────────────────
+ */
+
+:host {
+  display: block;
+  width: 100%;
+
+  ::ng-deep .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  ::ng-deep .form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-size: 0.875rem;
+  }
+
+  ::ng-deep .form-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+
+  ::ng-deep .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    appearance: none;
+  }
+
+  :host-context(.dark) {
+    ::ng-deep .form-label {
+      color: #e2e8f0;
+    }
+    ::ng-deep .form-input {
+      background-color: #0f172a;
+      color: #e5e7eb;
+      border-color: #334155;
+    }
+    ::ng-deep .form-input::placeholder {
+      color: #94a3b8;
+    }
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 0.2s ease-out; }

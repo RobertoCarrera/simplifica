@@ -60,12 +60,10 @@ export class ProductsService {
     const payload: any = {
       name: product.name?.trim() || 'Producto',
       description: product.description ?? null,
-      // Use normalized IDs if available, otherwise use legacy text fields
+      // Use normalized FK IDs. Legacy text columns (category, brand) were
+      // removed from the schema — sending them triggers 400 "column not found".
       category_id: product.category_id ?? null,
       brand_id: product.brand_id ?? null,
-      // Keep legacy fields for backward compatibility
-      category: product.category ?? null,
-      brand: product.brand ?? null,
       model: product.model ?? null,
       price: typeof product.price === 'number' ? product.price : Number(product.price || 0),
       stock_quantity: Number(product.stock_quantity || 0),
@@ -89,7 +87,11 @@ export class ProductsService {
 
   private async patchProduct(productId: string, updateData: Partial<Product>): Promise<any> {
     const client = this.supabase.getClient();
+    // Strip legacy text columns that no longer exist in the schema.
+    // Only the FK fields (category_id, brand_id) and model are sent on update.
     const payload: any = { ...updateData };
+    delete payload.category;
+    delete payload.brand;
     if (payload.price !== undefined) payload.price = Number(payload.price || 0);
     if (payload.stock_quantity !== undefined) payload.stock_quantity = Number(payload.stock_quantity || 0);
 

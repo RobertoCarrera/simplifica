@@ -1,32 +1,47 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { BrandsService } from '../../../services/brands.service';
 import { SosService } from '../../../services/sos.service';
 import { ModelsService } from '../../../services/models.service';
 import { CpusService } from '../../../services/cpus.service';
+import { RamsService } from '../../../services/rams.service';
+import { SsdsService } from '../../../services/ssds.service';
+import { HhdsService } from '../../../services/hhds.service';
+import { InchesService } from '../../../services/inches.service';
+import { GraphicCardsService } from '../../../services/graphic-cards.service';
+import { ToastService } from '../../../services/toast.service';
 import { Brand } from '../../../models/brand';
 import { So } from '../../../models/so';
 import { Model } from '../../../models/model';
 import { Cpu } from '../../../models/cpu';
-
-import { FormsModule } from '@angular/forms';
 import { Ram } from '../../../models/ram';
-import { RamsService } from '../../../services/rams.service';
 import { Ssd } from '../../../models/ssd';
-import { SsdsService } from '../../../services/ssds.service';
 import { Hhd } from '../../../models/hhd';
-import { HhdsService } from '../../../services/hhds.service';
 import { Inch } from '../../../models/inch';
-import { InchesService } from '../../../services/inches.service';
 import { GraphicCard } from '../../../models/graphic-card';
-import { GraphicCardsService } from '../../../services/graphic-cards.service';
+
+const DEFAULT_COMPANY_ID = '671eca034ecc7019c9ea3bd3';
 
 @Component({
   selector: 'app-form-new-product',
+  standalone: true,
   imports: [FormsModule],
   templateUrl: './form-new-product.component.html',
   styleUrls: ['./form-new-product.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FormNewProductComponent implements OnInit {
+  private brandsService = inject(BrandsService);
+  private sosService = inject(SosService);
+  private modelService = inject(ModelsService);
+  private cpuService = inject(CpusService);
+  private ramService = inject(RamsService);
+  private ssdService = inject(SsdsService);
+  private hhdService = inject(HhdsService);
+  private inchService = inject(InchesService);
+  private graphicCardsService = inject(GraphicCardsService);
+  private toastService = inject(ToastService);
+
   brands: Brand[] = [];
   sos: So[] = [];
   models: Model[] = [];
@@ -37,133 +52,75 @@ export class FormNewProductComponent implements OnInit {
   inches: Inch[] = [];
   graphicCards: GraphicCard[] = [];
 
-  filteredModels: Model[] = [...this.models];
-  filteredCPUs: Cpu[] = [...this.cpus];
-  filteredGraphicCards: GraphicCard[] = [...this.graphicCards];
+  filteredModels: Model[] = [];
+  filteredCPUs: Cpu[] = [];
+  filteredGraphicCards: GraphicCard[] = [];
 
   selectedBrand: Brand | null = null;
+  serialNumber = '';
+  selectedModelName = '';
+  selectedCPUModel = '';
+  selectedBrandName = '';
+  selectedSOName = '';
+  selectedProductRAM = '';
+  selectedProductSSD = '';
+  selectedProductHHD = '';
+  selectedProductInches = '';
+  selectedGraphicCards = '';
 
-  serialNumber: string = '';
-  selectedModelName: string = '';
-  selectedCPUModel: string = '';
-  selectedBrandName: string = '';
-  selectedSOName: string = '';
-  selectedProductRAM: string = '';
-  selectedProductSSD: string = '';
-  selectedProductHHD: string = '';
-  selectedProductInches: string = '';
-  selectedGraphicCards: string = '';
-
-  isSelectedBrand: boolean = false;
-  selectedSO: boolean = false;
-  selectedRAM: boolean = false;
-  selectedSSD: boolean = false;
-  selectedHHD: boolean = false;
-  selectedInches: boolean = false;
-  selectedGraphic: boolean = false;
-
-  constructor(
-    private brandsService: BrandsService,
-    private sosService: SosService,
-    private modelService: ModelsService,
-    private cpuService: CpusService,
-    private ramService: RamsService,
-    private ssdService: SsdsService,
-    private hhdService: HhdsService,
-    private inchService: InchesService,
-    private graphiCardsService: GraphicCardsService,
-  ) {}
+  isSelectedBrand = false;
+  selectedSO = false;
+  selectedRAM = false;
+  selectedSSD = false;
+  selectedHHD = false;
+  selectedInches = false;
+  selectedGraphic = false;
 
   ngOnInit(): void {
-    // Cargar marcas
-    this.brandsService.getBrands('671eca034ecc7019c9ea3bd3').subscribe((brand) => {
-      this.brands = brand;
-
-      console.log(this.brands);
+    this.brandsService.getBrands(DEFAULT_COMPANY_ID).subscribe({
+      next: (brand) => (this.brands = brand),
+      error: (err) => {
+        console.error('Error cargando marcas', err);
+        this.toastService.error('Error', 'No se pudieron cargar las marcas');
+      },
     });
-
-    // Cargar CPUs
-    this.cpuService.getCPUs().subscribe((cpu) => {
-      this.cpus = cpu;
-    });
-    this.ramService.getRAMs().subscribe((ram) => {
-      this.rams = ram;
-    });
-    this.ssdService.getSSDs().subscribe((ssd) => {
-      this.ssds = ssd;
-    });
-    this.hhdService.getHHDs().subscribe((hhd) => {
-      this.hhds = hhd;
-    });
-    this.inchService.getInches().subscribe((inch) => {
-      this.inches = inch;
-    });
-    this.graphiCardsService.getGraphicCards().subscribe((graphic) => {
-      this.graphicCards = graphic;
-    });
+    this.cpuService.getCPUs().subscribe({ next: (cpu) => (this.cpus = cpu), error: (err) => console.error('Error cargando CPUs', err) });
+    this.ramService.getRAMs().subscribe({ next: (ram) => (this.rams = ram), error: (err) => console.error('Error cargando RAMs', err) });
+    this.ssdService.getSSDs().subscribe({ next: (ssd) => (this.ssds = ssd), error: (err) => console.error('Error cargando SSDs', err) });
+    this.hhdService.getHHDs().subscribe({ next: (hhd) => (this.hhds = hhd), error: (err) => console.error('Error cargando HHDs', err) });
+    this.inchService.getInches().subscribe({ next: (inch) => (this.inches = inch), error: (err) => console.error('Error cargando pulgadas', err) });
+    this.graphicCardsService.getGraphicCards().subscribe({ next: (graphic) => (this.graphicCards = graphic), error: (err) => console.error('Error cargando tarjetas gráficas', err) });
   }
 
-  // Método para buscar modelos
-  onSearchProductModel(event: any) {
-    const search = event.target.value;
-
-    this.filteredModels = this.models.filter((model) =>
-      model.nombre.toLowerCase().includes(search.toLowerCase()),
-    );
+  onSearchProductModel(event: Event): void {
+    const search = (event.target as HTMLInputElement).value;
+    this.filteredModels = this.models.filter((model) => model.nombre.toLowerCase().includes(search.toLowerCase()));
   }
 
-  // Método para buscar CPUs
-  onSearchProductCPU(event: any) {
-    const search = event.target.value;
-
-    this.filteredCPUs = this.cpus.filter((cpu) => cpu.serie.toLowerCase().includes(search));
+  onSearchProductCPU(event: Event): void {
+    const search = (event.target as HTMLInputElement).value;
+    this.filteredCPUs = this.cpus.filter((cpu) => cpu.serie.toLowerCase().includes(search.toLowerCase()));
   }
 
-  onSearchProductGraphicCard(event: any) {
-    const search = event.target.value;
-
-    this.filteredGraphicCards = this.graphicCards.filter((graphic) =>
-      graphic.nombre.toLowerCase().includes(search),
-    );
+  onSearchProductGraphicCard(event: Event): void {
+    const search = (event.target as HTMLInputElement).value;
+    this.filteredGraphicCards = this.graphicCards.filter((graphic) => graphic.nombre.toLowerCase().includes(search.toLowerCase()));
   }
 
-  // Método para seleccionar un modelo
-  selectModel(model: Model): void {
-    this.selectedModelName = model.nombre;
-    this.filteredModels = []; // Reinicia la lista filtrada
-  }
+  selectModel(model: Model): void { this.selectedModelName = model.nombre; this.filteredModels = []; }
+  selectCPU(cpu: Cpu): void { this.selectedCPUModel = cpu.serie; this.filteredCPUs = []; }
+  selectGraphicCard(graphicCard: GraphicCard): void { this.selectedGraphicCards = graphicCard.nombre; this.filteredGraphicCards = []; }
 
-  // Método para seleccionar una CPU
-  selectCPU(cpu: Cpu): void {
-    this.selectedCPUModel = cpu.serie;
-    this.filteredCPUs = []; // Reinicia la lista filtrada
-  }
-
-  // Método para seleccionar una CPU
-  selectGraphicCard(graphicCard: GraphicCard): void {
-    this.selectedGraphicCards = graphicCard.nombre;
-    this.filteredGraphicCards = []; // Reinicia la lista filtrada
-  }
-
-  // Método para manejar el cambio de SO según la marca
   onBrandChange(): void {
     if (this.selectedBrand?.nombre === 'Apple') {
-      this.sosService.getSOs('true').subscribe((so) => {
-        this.sos = so;
-      });
+      this.sosService.getSOs('true').subscribe((so) => (this.sos = so));
     } else {
-      this.sosService.getSOs('false').subscribe((so) => {
-        this.sos = so;
-      });
+      this.sosService.getSOs('false').subscribe((so) => (this.sos = so));
     }
-
-    this.modelService
-      .getModels('671eca034ecc7019c9ea3bd3', this.selectedBrand!._id)
-      .subscribe((model) => {
-        this.models = model;
-        this.filteredModels = this.models;
-      });
-
+    this.modelService.getModels(DEFAULT_COMPANY_ID, this.selectedBrand!._id).subscribe({
+      next: (model) => { this.models = model; this.filteredModels = this.models; },
+      error: (err) => console.error('Error cargando modelos', err),
+    });
     this.isSelectedBrand = true;
   }
 }

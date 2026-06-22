@@ -1,54 +1,334 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  inject,
+  signal,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProductsService } from '../../../services/products.service';
-import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { firstValueFrom } from 'rxjs';
+import { ProductsService } from '../../../services/products.service';
+import { ProductBrand, ProductCategory, ProductMetadataService } from '../../../services/product-metadata.service';
+import { ToastService } from '../../../services/toast.service';
+import { AuthService } from '../../../services/auth.service';
+import { ConfirmModalComponent, ConfirmModalOptions } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { Product } from '../../../models/product';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmModalComponent],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductsComponent implements OnInit, OnDestroy {
-  products: any[] = [];
-  filteredProducts: any[] = [];
-  searchTerm: string = '';
+  products = signal<Product[]>([]);
+  isLoading = signal<boolean>(true);
+  showForm = signal<boolean>(false);
+  editingProduct = signal<Product | null>(null);
+  searchTerm = signal<string>('');
+  filteredProducts = signal<Product[]>([]);
 
-  newProduct: any = {
-    name: '',
-    description: '',
-    price: 0,
-    stock_quantity: 0,
-    brand: '',
-    category: '',
-    model: '',
-  };
-  editingProduct: any = null;
-  isLoading = false;
-  showNewProductForm = false;
+  newProduct: any = this.emptyDraft();
 
-  // Autocomplete for brands and categories
-  availableBrands: any[] = [];
-  filteredBrands: any[] = [];
-  brandSearchText: string = '';
-  showBrandInput = false;
+  availableBrands = signal<ProductBrand[]>([]);
+  filteredBrands = signal<ProductBrand[]>([]);
+  brandSearchText = signal<string>('');
+  showBrandInput = signal<boolean>(false);
 
-  availableCategories: any[] = [];
-  filteredCategories: any[] = [];
-  categorySearchText: string = '';
-  showCategoryInput = false;
+  availableCategories = signal<ProductCategory[]>([]);
+  filteredCategories = signal<ProductCategory[]>([]);
+  categorySearchText = signal<string>('');
+  showCategoryInput = signal<boolean>(false);
 
   private productsService = inject(ProductsService);
   private productMetadataService = inject(ProductMetadataService);
+  private toastService = inject(ToastService);
+  private auth = inject(AuthService);
 
-  // History management for modals
-  private popStateListener: any = null;
+  @ViewChild(ConfirmModalComponent) confirmModal!: ConfirmModalComponent;
 
-  // Helpers to mimic Services modal behavior (prevent background scroll and hide bottom nav)
-  private lockBody() {
+  ngOnInit(): void { this.loadProducts(); }
+
+  ngOnDestroy(): void { this.unlockBody(); }
+
+  loadProducts(): void {
+    this.isLoading.set(true);
+    this.productsService.getProducts().subscribe({
+      next: (products) => {
+        this.products.set(products ?? []);
+        this.filterProducts();
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        this.toastService.error('Error', 'No se pudieron cargar los productos');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  filterProducts(): void {
+    const term = this.searchTerm().toLowerCase().trim();
+    if (!term) { this.filteredProducts.set([...this.products()]); return; }
+    this.filteredProducts.set(this.products().filter((product) =>
+      product.name?.toLowerCase().includes(term) ||
+      product.description?.toLowerCase().includes(term) ||
+      product.brand?.toLowerCase().includes(term) ||
+      product.category?.toLowerCase().includes(term) ||
+      product.model?.toLowerCase().includes(term)));
+  }
+
+  resetForm(): void {
+    this.newProduct = this.emptyDraft();
+    this.editingProduct.set(null);
+    this.showForm.set(false);
+    this.brandSearchText.set('');
+    this.categorySearchText.set('');
+    this.showBrandInput.set(false);
+    this.showCategoryInput.set(false);
+    this.unlockBody();
+  }
+
+  openForm(): void {
+    this.editingProduct.set(null);
+    this.newProduct = this.emptyDraft();
+    this.brandSearchText.set('');
+    this.categorySearchText.set('');
+    this.showForm.set(true);
+    this.loadBrands();
+    this.loadCategories();
+    this.lockBody();
+  }
+
+  editProduct(product: Product): void {
+    this.editingProduct.set(product);
+    this.newProduct = {
+      name: product.name,
+      description: product.description || '',
+      price: product.price,
+      stock_quantity: product.stock_quantity,
+      brand: product.brand || '',
+      category: product.category || '',
+      model: product.model || '',
+    };
+    this.brandSearchText.set(product.brand || '');
+    this.categorySearchText.set(product.category || '');
+    this.showForm.set(true);
+    this.loadBrands();
+    this.loadCategories();
+    this.lockBody();
+  }
+
+  async saveProduct(): Promise<void> {
+    if (!this.newProduct.name?.trim()) {
+      this.toastService.error('Error', 'El nombre del producto es obligatorio');
+      return;
+    }
+    const draft = {
+      ...this.newProduct,
+      name: this.newProduct.name.trim(),
+      price: Number(this.newProduct.price) || 0,
+      stock_quantity: Number(this.newProduct.stock_quantity) || 0,
+      brand_id: this.newProduct.brand_id || null,
+      category_id: this.newProduct.category_id || null,
+      brand: this.newProduct.brand?.trim() || null,
+      category: this.newProduct.category?.trim() || null,
+      model: this.newProduct.model?.trim() || null,
+      description: this.newProduct.description?.trim() || null,
+    };
+    const editing = this.editingProduct();
+    const request$ = editing ? this.productsService.updateProduct(editing.id, draft) : this.productsService.createProduct(draft);
+    request$.subscribe({
+      next: () => {
+        this.toastService.success('Guardado', editing ? 'Producto actualizado' : 'Producto creado');
+        this.resetForm();
+        this.loadProducts();
+      },
+      error: (error: any) => {
+        console.error('Error saving product:', error);
+        const backendMessage = error?.message || error?.error?.message || error?.details || error?.hint;
+        this.toastService.error('Error al guardar', backendMessage || 'No se pudo guardar el producto');
+      },
+    });
+  }
+
+  async deleteProduct(product: Product): Promise<void> {
+    const confirmed = await this.confirmModal.open({
+      title: '¿Eliminar producto?',
+      message: `Se eliminará "${product.name}" del catálogo. Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      icon: 'fa-trash-alt',
+      iconColor: 'red',
+    } as ConfirmModalOptions);
+    if (!confirmed) return;
+    this.productsService.deleteProduct(product.id).subscribe({
+      next: () => {
+        this.toastService.success('Eliminado', 'Producto eliminado correctamente');
+        this.loadProducts();
+      },
+      error: (error) => {
+        console.error('Error deleting product:', error);
+        this.toastService.error('Error', 'No se pudo eliminar el producto');
+      },
+    });
+  }
+
+  formatDate(dateString: string | null | undefined): string {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  formatPrice(price: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(price ?? 0);
+  }
+
+  async loadBrands(): Promise<void> {
+    try {
+      const brands = await firstValueFrom(this.productMetadataService.getBrands());
+      const deduped = this.dedupeById(brands ?? []);
+      this.availableBrands.set(deduped);
+      this.filteredBrands.set(deduped);
+    } catch (error) {
+      console.error('Error cargando marcas:', error);
+      this.availableBrands.set([]);
+      this.filteredBrands.set([]);
+    }
+  }
+
+  onBrandSearchChange(): void {
+    const term = this.brandSearchText().toLowerCase().trim();
+    if (!term) { this.filteredBrands.set([...this.availableBrands()]); return; }
+    this.filteredBrands.set(this.availableBrands().filter((b) => b.name.toLowerCase().includes(term)));
+  }
+
+  selectBrand(brand: ProductBrand): void {
+    this.newProduct.brand = brand.name;
+    this.newProduct.brand_id = brand.id;
+    this.brandSearchText.set(brand.name);
+    this.showBrandInput.set(false);
+  }
+
+  hasExactBrandMatch(): boolean {
+    const term = this.brandSearchText().toLowerCase().trim();
+    if (!term) return false;
+    return this.availableBrands().some((b) => b.name.toLowerCase() === term);
+  }
+
+  getExactBrandMatch(): ProductBrand | undefined {
+    const term = this.brandSearchText().toLowerCase().trim();
+    return this.availableBrands().find((b) => b.name.toLowerCase() === term);
+  }
+
+  selectExistingBrandMatch(): void {
+    const match = this.getExactBrandMatch();
+    if (match) this.selectBrand(match);
+  }
+
+  async createNewBrand(): Promise<void> {
+    const text = this.brandSearchText().trim();
+    if (!text) return;
+    const companyId = this.auth.companyId();
+    if (!companyId) {
+      this.toastService.error('Error', 'No se pudo detectar tu empresa activa.');
+      return;
+    }
+    try {
+      const newBrand = await this.productMetadataService.createBrand(text, companyId);
+      this.availableBrands.update((list) => [...list, newBrand]);
+      this.selectBrand(newBrand);
+    } catch (error: any) {
+      console.error('Error creando marca:', error);
+      const message = error?.message?.includes('already exists') || error?.code === '23505'
+        ? `La marca "${text}" ya existe.`
+        : 'No se pudo crear la marca. Puede que ya exista.';
+      this.toastService.error('Error', message);
+    }
+  }
+
+  async loadCategories(): Promise<void> {
+    try {
+      const categories = await firstValueFrom(this.productMetadataService.getCategories());
+      const deduped = this.dedupeById(categories ?? []);
+      this.availableCategories.set(deduped);
+      this.filteredCategories.set(deduped);
+    } catch (error) {
+      console.error('Error cargando categorías:', error);
+      this.availableCategories.set([]);
+      this.filteredCategories.set([]);
+    }
+  }
+
+  onCategorySearchChange(): void {
+    const term = this.categorySearchText().toLowerCase().trim();
+    if (!term) { this.filteredCategories.set([...this.availableCategories()]); return; }
+    this.filteredCategories.set(this.availableCategories().filter((c) => c.name.toLowerCase().includes(term)));
+  }
+
+  selectCategory(category: ProductCategory): void {
+    this.newProduct.category = category.name;
+    this.newProduct.category_id = category.id;
+    this.categorySearchText.set(category.name);
+    this.showCategoryInput.set(false);
+  }
+
+  hasExactCategoryMatch(): boolean {
+    const term = this.categorySearchText().toLowerCase().trim();
+    if (!term) return false;
+    return this.availableCategories().some((c) => c.name.toLowerCase() === term);
+  }
+
+  getExactCategoryMatch(): ProductCategory | undefined {
+    const term = this.categorySearchText().toLowerCase().trim();
+    return this.availableCategories().find((c) => c.name.toLowerCase() === term);
+  }
+
+  selectExistingCategoryMatch(): void {
+    const match = this.getExactCategoryMatch();
+    if (match) this.selectCategory(match);
+  }
+
+  async createNewCategory(): Promise<void> {
+    const text = this.categorySearchText().trim();
+    if (!text) return;
+    const companyId = this.auth.companyId();
+    if (!companyId) {
+      this.toastService.error('Error', 'No se pudo detectar tu empresa activa.');
+      return;
+    }
+    try {
+      const newCategory = await this.productMetadataService.createCategory(text, companyId);
+      this.availableCategories.update((list) => [...list, newCategory]);
+      this.selectCategory(newCategory);
+    } catch (error: any) {
+      console.error('Error creando categoría:', error);
+      const message = error?.message?.includes('already exists') || error?.code === '23505'
+        ? `La categoría "${text}" ya existe.`
+        : 'No se pudo crear la categoría. Puede que ya exista.';
+      this.toastService.error('Error', message);
+    }
+  }
+
+  private dedupeById<T extends { id: string }>(items: T[]): T[] {
+    const seen = new Set<string>();
+    const result: T[] = [];
+    for (const item of items) {
+      if (!item || !item.id || seen.has(item.id)) continue;
+      seen.add(item.id);
+      result.push(item);
+    }
+    return result;
+  }
+
+  private emptyDraft() {
+    return { name: '', description: '', price: 0, stock_quantity: 0, brand: '', category: '', model: '' };
+  }
+
+  private lockBody(): void {
     try {
       document.body.classList.add('modal-open');
       document.body.style.overflow = 'hidden';
@@ -59,7 +339,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  private unlockBody() {
+  private unlockBody(): void {
     try {
       document.body.classList.remove('modal-open');
       document.body.style.overflow = '';
@@ -68,338 +348,5 @@ export class ProductsComponent implements OnInit, OnDestroy {
       document.body.style.height = '';
       document.documentElement.style.overflow = '';
     } catch {}
-  }
-
-  ngOnInit() {
-    this.loadProducts();
-  }
-
-  ngOnDestroy() {
-    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.width = '';
-    document.body.style.height = '';
-    document.documentElement.style.overflow = '';
-
-    // Limpiar listener de popstate
-    if (this.popStateListener) {
-      window.removeEventListener('popstate', this.popStateListener);
-      this.popStateListener = null;
-    }
-  }
-
-  async loadProducts() {
-    try {
-      this.isLoading = true;
-      this.productsService.getProducts().subscribe({
-        next: (products) => {
-          this.products = products;
-          this.filteredProducts = [...products];
-          this.filterProducts();
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading products:', error);
-          this.isLoading = false;
-        },
-      });
-    } catch (error) {
-      console.error('Error loading products:', error);
-      this.isLoading = false;
-    }
-  }
-
-  filterProducts() {
-    if (!this.searchTerm.trim()) {
-      this.filteredProducts = [...this.products];
-      return;
-    }
-
-    const searchText = this.searchTerm.toLowerCase().trim();
-    this.filteredProducts = this.products.filter(
-      (product) =>
-        product.name?.toLowerCase().includes(searchText) ||
-        product.description?.toLowerCase().includes(searchText) ||
-        product.brand?.toLowerCase().includes(searchText) ||
-        product.category?.toLowerCase().includes(searchText) ||
-        product.model?.toLowerCase().includes(searchText),
-    );
-  }
-
-  async saveProduct() {
-    try {
-      if (this.newProduct.name.trim()) {
-        if (this.editingProduct) {
-          // Actualizar producto existente
-          this.productsService.updateProduct(this.editingProduct.id, this.newProduct).subscribe({
-            next: () => {
-              this.resetForm();
-              this.loadProducts();
-            },
-            error: (error) => {
-              console.error('Error updating product:', error);
-            },
-          });
-        } else {
-          // Crear nuevo producto
-          this.productsService.createProduct(this.newProduct).subscribe({
-            next: () => {
-              this.resetForm();
-              this.loadProducts();
-            },
-            error: (error) => {
-              console.error('Error saving product:', error);
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error saving product:', error);
-    }
-  }
-
-  editProduct(product: any) {
-    this.editingProduct = product;
-    this.newProduct = {
-      name: product.name,
-      description: product.description || '',
-      price: product.price,
-      stock_quantity: product.stock_quantity,
-      brand: product.brand || '',
-      category: product.category || '',
-      model: product.model || '',
-    };
-    this.brandSearchText = product.brand || '';
-    this.categorySearchText = product.category || '';
-    this.showNewProductForm = true;
-    this.loadBrands();
-    this.loadCategories();
-    this.lockBody();
-  }
-
-  async deleteProduct(product: any) {
-    if (confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
-      try {
-        this.productsService.deleteProduct(product.id).subscribe({
-          next: () => {
-            this.loadProducts();
-          },
-          error: (error) => {
-            console.error('Error deleting product:', error);
-          },
-        });
-      } catch (error) {
-        console.error('Error deleting product:', error);
-      }
-    }
-  }
-
-  resetForm() {
-    this.newProduct = {
-      name: '',
-      description: '',
-      price: 0,
-      stock_quantity: 0,
-      brand: '',
-      category: '',
-      model: '',
-    };
-    this.editingProduct = null;
-    this.showNewProductForm = false;
-    this.brandSearchText = '';
-    this.categorySearchText = '';
-    this.showBrandInput = false;
-    this.showCategoryInput = false;
-    this.unlockBody();
-
-    // Retroceder en el historial solo si hay entrada de modal
-    if (window.history.state && window.history.state.modal) {
-      window.history.back();
-    }
-  }
-
-  toggleForm() {
-    this.showNewProductForm = !this.showNewProductForm;
-    if (this.showNewProductForm) {
-      this.loadBrands();
-      this.loadCategories();
-    } else {
-      this.resetForm();
-    }
-  }
-
-  openForm() {
-    this.showNewProductForm = true;
-    this.loadBrands();
-    this.loadCategories();
-
-    // Añadir entrada al historial para que el botón "atrás" cierre el modal
-    history.pushState({ modal: 'product-form' }, '');
-
-    // Configurar listener de popstate si no existe
-    if (!this.popStateListener) {
-      this.popStateListener = (event: PopStateEvent) => {
-        if (this.showNewProductForm) {
-          this.resetForm();
-        }
-      };
-      window.addEventListener('popstate', this.popStateListener);
-    }
-
-    this.lockBody();
-  }
-
-  closeFormIfClickOutside(event: MouseEvent) {
-    // Overlay receives this click; modal panel stops propagation
-    this.resetForm();
-  }
-
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString();
-  }
-
-  formatPrice(price: number): string {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(price);
-  }
-
-  // Brand autocomplete methods
-  async loadBrands() {
-    try {
-      this.availableBrands = await firstValueFrom(this.productMetadataService.getBrands());
-      this.filteredBrands = [...this.availableBrands];
-    } catch (error) {
-      console.error('Error cargando marcas:', error);
-      this.availableBrands = [];
-      this.filteredBrands = [];
-    }
-  }
-
-  onBrandSearchChange() {
-    if (!this.brandSearchText.trim()) {
-      this.filteredBrands = [...this.availableBrands];
-      return;
-    }
-    const searchText = this.brandSearchText.toLowerCase().trim();
-    this.filteredBrands = this.availableBrands.filter((brand) =>
-      brand.name.toLowerCase().includes(searchText),
-    );
-  }
-
-  selectBrand(brand: any) {
-    this.newProduct.brand = brand.name;
-    this.newProduct.brand_id = brand.id;
-    this.brandSearchText = brand.name;
-    this.showBrandInput = false;
-  }
-
-  hasExactBrandMatch(): boolean {
-    if (!this.brandSearchText.trim()) return false;
-    const searchText = this.brandSearchText.toLowerCase().trim();
-    return this.availableBrands.some((b) => b.name.toLowerCase() === searchText);
-  }
-
-  getExactBrandMatch(): any {
-    const searchText = this.brandSearchText.toLowerCase().trim();
-    return this.availableBrands.find((b) => b.name.toLowerCase() === searchText);
-  }
-
-  selectExistingBrandMatch() {
-    const match = this.getExactBrandMatch();
-    if (match) {
-      this.selectBrand(match);
-    }
-  }
-
-  async createNewBrand() {
-    try {
-      if (!this.brandSearchText.trim()) return;
-
-      // Get current company_id from localStorage or wherever it's stored
-      const companyId = localStorage.getItem('selectedCompanyId') || '';
-
-      const newBrand = await this.productMetadataService.createBrand(
-        this.brandSearchText.trim(),
-        companyId,
-      );
-
-      this.availableBrands.push(newBrand);
-      this.selectBrand(newBrand);
-    } catch (error) {
-      console.error('Error creando marca:', error);
-      alert('Error al crear la marca. Puede que ya exista.');
-    }
-  }
-
-  // Category autocomplete methods
-  async loadCategories() {
-    try {
-      this.availableCategories = await firstValueFrom(this.productMetadataService.getCategories());
-      this.filteredCategories = [...this.availableCategories];
-    } catch (error) {
-      console.error('Error cargando categorías:', error);
-      this.availableCategories = [];
-      this.filteredCategories = [];
-    }
-  }
-
-  onCategorySearchChange() {
-    if (!this.categorySearchText.trim()) {
-      this.filteredCategories = [...this.availableCategories];
-      return;
-    }
-    const searchText = this.categorySearchText.toLowerCase().trim();
-    this.filteredCategories = this.availableCategories.filter((category) =>
-      category.name.toLowerCase().includes(searchText),
-    );
-  }
-
-  selectCategory(category: any) {
-    this.newProduct.category = category.name;
-    this.newProduct.category_id = category.id;
-    this.categorySearchText = category.name;
-    this.showCategoryInput = false;
-  }
-
-  hasExactCategoryMatch(): boolean {
-    if (!this.categorySearchText.trim()) return false;
-    const searchText = this.categorySearchText.toLowerCase().trim();
-    return this.availableCategories.some((c) => c.name.toLowerCase() === searchText);
-  }
-
-  getExactCategoryMatch(): any {
-    const searchText = this.categorySearchText.toLowerCase().trim();
-    return this.availableCategories.find((c) => c.name.toLowerCase() === searchText);
-  }
-
-  selectExistingCategoryMatch() {
-    const match = this.getExactCategoryMatch();
-    if (match) {
-      this.selectCategory(match);
-    }
-  }
-
-  async createNewCategory() {
-    try {
-      if (!this.categorySearchText.trim()) return;
-
-      // Get current company_id from localStorage or wherever it's stored
-      const companyId = localStorage.getItem('selectedCompanyId') || '';
-
-      const newCategory = await this.productMetadataService.createCategory(
-        this.categorySearchText.trim(),
-        companyId,
-      );
-
-      this.availableCategories.push(newCategory);
-      this.selectCategory(newCategory);
-    } catch (error) {
-      console.error('Error creando categoría:', error);
-      alert('Error al crear la categoría. Puede que ya exista.');
-    }
   }
 }
