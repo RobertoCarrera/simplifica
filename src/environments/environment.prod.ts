@@ -16,22 +16,23 @@ export const environment = {
   edgeFunctionsBaseUrl: "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1",
 
   // GDPR Configuration - Production
+  // Values are baked at build time (Angular CLI does NOT replace process.env
+  // in browser bundles — any reference to process.env.X throws ReferenceError
+  // at runtime). Override at deploy via assets/runtime-config.json + a
+  // RuntimeConfigService consumer if you need different values per env.
   gdpr: {
-    enabled: process.env["ENABLE_GDPR"] === "true" || true, // Activar GDPR en producción
-    dpoEmail: process.env["GDPR_DPO_EMAIL"] || "dpo@simplificacrm.es",
-    retentionYears: parseInt(process.env["GDPR_RETENTION_YEARS"] || "7"),
-    autoDeleteAfterDays: parseInt(
-      process.env["GDPR_AUTO_DELETE_AFTER_DAYS"] || "2555",
-    ),
-    breachNotificationHours: parseInt(
-      process.env["GDPR_BREACH_NOTIFICATION_HOURS"] || "72",
-    ),
-    requestDeadlineDays: parseInt(
-      process.env["GDPR_REQUEST_DEADLINE_DAYS"] || "30",
-    ),
+    enabled: true, // Activar GDPR en producción
+    dpoEmail: "dpo@simplificacrm.es",
+    retentionYears: 7, // Años de retención (normativa española)
+    autoDeleteAfterDays: 2555, // 7 años en días
+    breachNotificationHours: 72, // Horas para notificar brechas (Art. 33)
+    requestDeadlineDays: 30, // Días para responder solicitudes (Art. 12.3)
   },
 
   // AnyChat API Configuration - Production
-  // ⚠️ CONFIGURAR en Vercel: Settings → Environment Variables → ANYCHAT_API_KEY
-  anychatApiKey: process.env["ANYCHAT_API_KEY"] || "",
+  // anychatApiKey is intentionally empty here. The AnyChat key is consumed
+  // server-side (Edge Function) — never ship it in the client bundle. If you
+  // need to gate any client-side feature, toggle it via runtime-config.json's
+  // features.anychatConversationsEnabled (consumed by RuntimeConfigService).
+  anychatApiKey: "",
 };
