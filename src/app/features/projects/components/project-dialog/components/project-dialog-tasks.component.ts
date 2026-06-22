@@ -24,7 +24,7 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
   selector: 'app-project-dialog-tasks',
   standalone: true,
   imports: [CommonModule, FormsModule, DragDropModule, ProjectDialogSubtasksComponent, SubtaskOverdueModalComponent, ProjectDialogTaskDocumentsComponent],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     .task-detail-panel {
       max-height: 0;
@@ -78,7 +78,7 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
         (cdkDropListDropped)="dropped.emit($event)"
       >
         <!-- Pending Tasks -->
-        @for (task of pendingTasks; track trackByTask($index, task)) {
+        @for (task of pendingTasks; track task.id ?? task.position ?? $index) {
           <div
             cdkDrag
             [cdkDragData]="task"
@@ -87,7 +87,10 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
           >
             <!-- Task Row (clickable) -->
             <div
-              class="task-row group flex items-center space-x-2 p-2 bg-white dark:bg-gray-800 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-sm rounded-lg transition-all cursor-pointer"
+              class="task-row group flex items-center space-x-2 p-2 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-sm rounded-lg transition-all cursor-pointer"
+              [ngClass]="expandedIndex === $index
+                ? 'bg-transparent'
+                : 'bg-white dark:bg-gray-800'"
               (click)="toggleTask($index, task)"
             >
               <!-- Drag Handle -->

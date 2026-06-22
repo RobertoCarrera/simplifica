@@ -27,7 +27,6 @@ export class ProjectsService {
 
     private getCompanyId(): string {
         const companyId = this.authService.currentCompanyId();
-        console.log('[ProjectsService] Current Company ID:', companyId);
         if (!companyId) {
             console.error('[ProjectsService] No active company found');
             throw new Error('No active company found');
@@ -117,6 +116,24 @@ export class ProjectsService {
         return from(Promise.all(updates)).pipe(map(results => {
             const err = results.find(r => r.error);
             if (err?.error) throw err.error;
+        }));
+    }
+
+    /**
+     * Single-statement reorder for projects. Replaces the previous N+1
+     * pattern that fired one update per project on every kanban drop.
+     * Backed by migration 20260622130002_reorder_projects_rpc.sql.
+     */
+    reorderProjects(orderedIds: string[]): Observable<number> {
+        if (!orderedIds.length) return from(Promise.resolve(0));
+        return from(
+            this.supabase.rpc('reorder_projects', {
+                p_company_id: this.getCompanyId(),
+                p_ordered_ids: orderedIds,
+            })
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return (data as number) || 0;
         }));
     }
 
@@ -547,7 +564,7 @@ export class ProjectsService {
         return from(
             this.supabase
                 .from('project_tasks')
-                .select('*')
+                .select('id, project_id, title, description, is_completed, due_date, assigned_to, position, created_at, updated_at')
                 .eq('project_id', projectId)
                 .order('position', { ascending: true })
         ).pipe(map(({ data, error }) => {
@@ -665,7 +682,7 @@ export class ProjectsService {
         return from(
             this.supabase
                 .from('project_subtasks')
-                .select('*')
+                .select('id, task_id, title, description, start_date, due_date, is_completed, assigned_to, position, created_at, updated_at')
                 .eq('task_id', taskId)
                 .order('position', { ascending: true })
         ).pipe(map(({ data, error }) => {
@@ -755,7 +772,7 @@ export class ProjectsService {
         return from(
             this.supabase
                 .from('project_subtask_overdue_justifications')
-                .select('*')
+                .select('id, subtask_id, justification, new_due_date, created_by, created_at')
                 .eq('subtask_id', subtaskId)
                 .order('created_at', { ascending: false })
         ).pipe(map(({ data, error }) => {
@@ -916,10 +933,22 @@ export class ProjectsService {
 
         const { count, error } = await this.supabase
             .from('project_comments')
-            .select('*', { count: 'exact', head: true })
+            .select('id', { count: 'exact', head: true })
             .eq('project_id', projectId)
             .gt('created_at', lastReadAt);
 
+        if (error) {
+            // count=exact can fail under RLS for HEAD requests; fall back to
+            // a non-counting select and count in JS. This path is rare
+            // (now backed by idx_project_comments_project_created).
+            const { data } = await this.supabase
+                .from('project_comments')
+                .select('id')
+                .eq('project_id', projectId)
+                .gt('created_at', lastReadAt)
+                .limit(1000);
+            return data?.length || 0;
+        }
         return count || 0;
     }
 
@@ -1157,7 +1186,7 @@ export class ProjectsService {
     async getProjectFiles(projectId: string): Promise<any[]> {
         const { data, error } = await this.supabase
             .from('project_files')
-            .select('*')
+            .select('id, project_id, name, file_path, file_type, size, is_folder, parent_id, created_at, created_by')
             .eq('project_id', projectId)
             .order('created_at', { ascending: false })
             .limit(500);
@@ -1301,7 +1330,7 @@ export class ProjectsService {
         // 1. Get associations
         const { data: links, error } = await this.supabase
             .from('project_task_documents')
-            .select('*')
+            .select('id, task_id, document_id, document_type, created_at, created_by')
             .eq('task_id', taskId)
             .order('created_at', { ascending: false });
 

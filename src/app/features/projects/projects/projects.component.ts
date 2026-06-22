@@ -11,6 +11,7 @@ import { ProjectsService } from '../../../core/services/projects.service';
 import { Project, ProjectStage } from '../../../models/project';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { AuthService } from '../../../services/auth.service';
 import { getClientDisplayName } from '../../../models/quote.model';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -57,6 +58,7 @@ export class ProjectsComponent implements OnInit, OnDestroy {
 
   // Realtime subscriptions
   private sbService = inject(SupabaseClientService);
+  private authService = inject(AuthService);
   private projectsChannel: RealtimeChannel | null = null;
   private tasksChannel: RealtimeChannel | null = null;
 
@@ -99,31 +101,81 @@ export class ProjectsComponent implements OnInit, OnDestroy {
 
   private setupRealtimeSubscriptions() {
     const supabase = this.sbService.instance;
+    const companyId = this.authService.currentCompanyId?.();
+    const filter = companyId ? `company_id=eq.${companyId}` : undefined;
 
-    // Subscribe to projects changes
+    // Subscribe to projects changes (scoped to the current company).
+    // Without this filter, any project change in any tenant triggers a
+    // full refetch — which on a busy multi-tenant DB fires constantly.
     this.projectsChannel = supabase
       .channel('projects-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
-        console.log('🔄 Projects realtime event:', payload.eventType);
-        this.loadData();
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          ...(filter ? { filter } : {}),
+        },
+        (payload) => {
+          // Surgical patch: apply the new row to the local list instead of
+          // refetching the whole project list. This avoids a full reload
+          // per realtime event.
+          this.applyRealtimePatch(payload);
+        },
+      )
       .subscribe();
 
-    // Subscribe to project_tasks changes
+    // Subscribe to project_tasks changes. project_tasks has no
+    // company_id column (only project_id), so we can't filter at the
+    // realtime level. The current handler just calls loadData() with a
+    // 500ms debounce, which is OK for cross-tenant noise. If realtime
+    // volume becomes a problem, denormalize company_id onto
+    // project_tasks and add a filter here.
     this.tasksChannel = supabase
       .channel('tasks-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'project_tasks' },
         (payload) => {
-          console.log('🔄 Tasks realtime event:', payload.eventType);
-          // Wait a bit database triggers might be running
+          // Wait a bit so database triggers have committed
           setTimeout(() => this.loadData(), 500);
         },
       )
       .subscribe();
+  }
 
-    console.log('📡 Realtime subscriptions active for projects and tasks');
+  /**
+   * Surgical patch: instead of refetching the entire projects list on
+   * every realtime event, mutate the local arrays in place. Falls back
+   * to loadData() if the payload shape is unexpected.
+   */
+  private applyRealtimePatch(payload: any): void {
+    try {
+      const row = (payload.new ?? payload.old) as Project | undefined;
+      if (!row) return;
+
+      if (payload.eventType === 'DELETE') {
+        this.filteredProjects = this.filteredProjects.filter((p) => p.id !== row.id);
+        this.projects = this.projects.filter((p) => p.id !== row.id);
+        return;
+      }
+      if (payload.eventType === 'INSERT') {
+        // Add to top of list; user will see it on next render. We avoid a
+        // full reload to keep things snappy.
+        this.projects = [row, ...this.projects];
+        this.applyFilters();
+        return;
+      }
+      if (payload.eventType === 'UPDATE') {
+        this.projects = this.projects.map((p) => (p.id === row.id ? { ...p, ...row } : p));
+        this.applyFilters();
+        return;
+      }
+    } catch {
+      // Any unexpected shape: fall back to a full reload.
+      this.loadData();
+    }
   }
 
   private cleanupRealtimeSubscriptions() {

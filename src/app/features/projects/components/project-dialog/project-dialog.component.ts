@@ -11,7 +11,9 @@ import {
   ElementRef,
   AfterViewChecked,
   OnDestroy, OnInit, OnChanges,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -889,7 +891,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                     />
                   </svg>
                 </button>
-                @for (folder of currentPath; track folder) {
+                @for (folder of currentPath; track folder.id) {
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4 mx-2 text-gray-400"
@@ -952,7 +954,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
               <!-- GRID VIEW -->
               @if (!isLoadingFiles && currentFiles.length > 0 && viewMode === 'grid') {
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  @for (file of currentFiles; track file) {
+                      @for (file of currentFiles; track file.id) {
                     <div
                       (dblclick)="file.is_folder ? navigateTo(file) : viewFile(file)"
                       class="group relative flex flex-col items-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
@@ -1120,7 +1122,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                     <tbody
                       class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
                     >
-                      @for (file of currentFiles; track file) {
+                  @for (file of currentFiles; track file.id) {
                         <tr
                           (dblclick)="file.is_folder ? navigateTo(file) : viewFile(file)"
                           class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
@@ -1325,6 +1327,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   private projectsService = inject(ProjectsService);
   private supabaseClient = inject(SupabaseClientService);
   private customersService = inject(SupabaseCustomersService);
+  private destroyRef = inject(DestroyRef);
 
   formData: Partial<Project> = {};
   tasks: Partial<ProjectTask>[] = [];
@@ -1438,9 +1441,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   };
 
   ngOnInit() {
-    this.customersService.getCustomers().subscribe((clients) => {
-      this.clients = clients;
-    });
+    this.customersService.getCustomers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((clients) => {
+        this.clients = clients;
+      });
   }
 
   ngOnChanges() {
@@ -1487,10 +1492,12 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   }
 
   loadTasks(projectId: string) {
-    this.projectsService.getTasks(projectId).subscribe((tasks) => {
-      this.tasks = tasks;
-      this.deletedTaskIds = [];
-    });
+    this.projectsService.getTasks(projectId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((tasks) => {
+        this.tasks = tasks;
+        this.deletedTaskIds = [];
+      });
   }
 
   get pendingTasks(): Partial<ProjectTask>[] {
@@ -1804,7 +1811,9 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   constructor() {
     // Load current user
-    this.authService.userProfile$.subscribe((u) => (this.currentUser = u));
+    this.authService.userProfile$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((u) => (this.currentUser = u));
 
     // Load professionals (for task assignment)
     // Load team members and company setting (for project association)
@@ -1847,7 +1856,9 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   loadProfessionals() {
     // Load company members for project assignment
-    this.projectsService.getCompanyMembers().subscribe({
+    this.projectsService.getCompanyMembers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: (members) => {
         this.professionals = members.map((m) => ({
           id: m.user_id,
@@ -1951,13 +1962,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   private isClient(): boolean {
     // Compare auth_user_id, NOT users.id
-    const isClientMatch = this.currentUser?.auth_user_id === this.project?.client?.auth_user_id;
-    console.log('🔍 isClient check:', {
-      currentUserAuthId: this.currentUser?.auth_user_id,
-      clientAuthId: this.project?.client?.auth_user_id,
-      isClient: isClientMatch,
-    });
-    return isClientMatch;
+    return this.currentUser?.auth_user_id === this.project?.client?.auth_user_id;
   }
 
   canCreateTask(): boolean {
@@ -1970,17 +1975,8 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   canCompleteTask(task: Partial<ProjectTask> | null): boolean {
     if (!this.currentUser) return false;
     if (this.isOwnerOrAdmin()) return true;
-
-    const clientCheck = this.isClient();
-    console.log('🔒 canCompleteTask:', {
-      isOwnerOrAdmin: this.isOwnerOrAdmin(),
-      isClient: clientCheck,
-      permission: this.permissions.client_can_complete_tasks,
-      result: clientCheck ? this.permissions.client_can_complete_tasks : true,
-    });
-
-    if (clientCheck) return this.permissions.client_can_complete_tasks;
-    return true;
+    if (this.isClient()) return this.permissions.client_can_complete_tasks;
+    return true; // Team members can complete
   }
 
   canEditTask(task: Partial<ProjectTask> | null): boolean {

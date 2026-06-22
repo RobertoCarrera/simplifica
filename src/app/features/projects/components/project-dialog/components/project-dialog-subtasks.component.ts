@@ -13,7 +13,7 @@ import { ProjectSubtask } from '../../../../../models/project';
   selector: 'app-project-dialog-subtasks',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     .subtask-row {
       transition: background-color 0.15s ease;

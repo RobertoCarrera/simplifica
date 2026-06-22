@@ -16,7 +16,7 @@ import { ProjectTaskDocument } from '../../../../../models/project';
   selector: 'app-project-dialog-task-documents',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     .doc-row {
       transition: background-color 0.15s ease;
