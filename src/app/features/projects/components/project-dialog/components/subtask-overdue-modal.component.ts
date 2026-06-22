@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-subtask-overdue-modal',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible) {
       <!-- Backdrop -->

@@ -14,7 +14,7 @@ export interface TeamMember {
   selector: 'app-project-dialog-properties',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full md:w-80 bg-gray-50/50 dark:bg-gray-900/20 p-6 md:p-8 space-y-6">
       <!-- Stage -->
@@ -29,7 +29,7 @@ export interface TeamMember {
           (ngModelChange)="fieldChange.emit({ field: 'stage_id', value: $event })"
           class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50"
         >
-          @for (stage of stages; track stage) {
+          @for (stage of stages; track stage.id) {
             <option [value]="stage.id">{{ stage.name }}</option>
           }
         </select>
@@ -81,7 +81,7 @@ export interface TeamMember {
               class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
             >
               <option [value]="null">Seleccionar Cliente</option>
-              @for (client of clients; track client) {
+              @for (client of clients; track client.id) {
                 <option [value]="client.id">
                   {{ getClientDisplayName(client, '') }}
                 </option>
@@ -117,7 +117,7 @@ export interface TeamMember {
               class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
             >
               <option [value]="null">Seleccionar Miembro</option>
-              @for (member of teamMembers; track member) {
+              @for (member of teamMembers; track member.id) {
                 <option [value]="member.id">{{ member.displayName }}</option>
               }
             </select>

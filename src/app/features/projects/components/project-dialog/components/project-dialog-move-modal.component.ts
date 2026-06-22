@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
                 </svg>
               }
             </button>
-            @for (folder of availableFolders; track folder) {
+            @for (folder of availableFolders; track folder.id) {
               <button
                 (click)="selectedFolderId = folder.id"
                 [class.bg-blue-50]="selectedFolderId === folder.id"

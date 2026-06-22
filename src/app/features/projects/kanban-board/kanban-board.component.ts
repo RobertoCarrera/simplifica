@@ -156,10 +156,19 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
   }
 
   updatePositions(projects: Project[]) {
-    projects.forEach((project, index) => {
-      project.position = index;
-      // Ideally debounce this or save all positions at once
-      this.projectsService.updateProject(project.id, { position: index }).subscribe();
+    // Single batched RPC instead of one update per project. For a 30-card
+    // column this is 1 round trip + 1 statement instead of 30 + 30.
+    if (!projects.length) return;
+    const orderedIds = projects.map((p) => p.id);
+    this.projectsService.reorderProjects(orderedIds).subscribe({
+      next: () => {
+        // Local state already matches; nothing else to do.
+      },
+      error: (err) => {
+        console.error('[kanban] reorderProjects failed', err);
+        // On failure, refetch to recover server-truth.
+        this.refresh.emit();
+      },
     });
   }
 

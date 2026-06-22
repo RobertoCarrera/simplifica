@@ -33,7 +33,7 @@ import { CommonModule } from '@angular/common';
             <p class="text-xs text-gray-400">Sin actividad registrada</p>
           </div>
         }
-        @for (activity of activities; track activity) {
+        @for (activity of activities; track activity.id) {
           <div
             class="flex items-start space-x-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >

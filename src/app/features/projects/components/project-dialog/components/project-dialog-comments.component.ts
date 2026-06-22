@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-project-dialog-comments',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.Default,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex-1 overflow-hidden flex flex-col bg-gray-50/30 dark:bg-gray-900/10">
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
@@ -23,7 +23,7 @@ import { FormsModule } from '@angular/forms';
             <p class="text-sm">No hay comentarios aún. ¡Sé el primero en comentar!</p>
           </div>
         }
-        @for (comment of comments; track comment) {
+        @for (comment of comments; track comment.id) {
           <div class="flex space-x-3 group w-full">
             <div
               class="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase"
