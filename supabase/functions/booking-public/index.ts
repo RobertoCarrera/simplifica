@@ -942,6 +942,84 @@ serve(async (req) => {
                   },
                 });
                 console.log('✅ Notification created for professional:', prof.user_id);
+
+                // Email the professional as well (best-effort, like the
+                // owner notification flow). We look up the professional's
+                // email via the auth schema's users table.
+                try {
+                  const { data: profAuthUser } = await privateSupabase
+                    .schema('auth')
+                    .from('users')
+                    .select('email')
+                    .eq('id', prof.user_id)
+                    .maybeSingle();
+                  const profEmail = (profAuthUser as any)?.email;
+                  if (profEmail && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
+                    const profFromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || `reservas@simplificacrm.es`;
+                    const safeClientName = sanitizeText(client_name, 200);
+                    const safeServiceName = sanitizeText(serviceName, 200);
+                    // Derive a human-friendly plan label from the variant
+                    // pricing snapshot (if any). Mirrors the logic used in
+                    // the customer email block, scoped to this function.
+                    const profVSnap: any = (data as any)?.variant_pricing_snapshot;
+                    const profBilling: Record<string, string> = {
+                      monthly: 'mes',
+                      annual: 'año',
+                      one_time: 'pago único',
+                      session: 'sesión',
+                      custom: '',
+                    };
+                    const profPriceCell = profVSnap
+                      ? `${profVSnap.base_price}€${profVSnap.billing_period ? ' / ' + (profBilling[profVSnap.billing_period] || profVSnap.billing_period) : ''}`
+                      : '';
+                    const profSubject = `Nueva reserva asignada: ${safeServiceName} — ${dateFormatted} ${timeFormatted}`;
+                    const tierBlock = profPriceCell
+                      ? `<tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Plan</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${profPriceCell}</td></tr>`
+                      : '';
+                    const profHtml = `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #3B82F6;">📅 Nueva reserva asignada</h2>
+                        <p>Hola,</p>
+                        <p>Se te ha asignado una nueva reserva en <strong>${safeServiceName}</strong>${profPriceCell ? ' (plan ' + profPriceCell + ')' : ''}.</p>
+                        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+                          <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Cliente</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeClientName}</td></tr>
+                          <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Email cliente</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${client_email}</td></tr>
+                          <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Fecha</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${dateFormatted}</td></tr>
+                          <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Hora</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${timeFormatted}</td></tr>
+                          ${tierBlock}
+                        </table>
+                        <p>Revisa tu agenda para confirmar.</p>
+                      </div>`;
+                    const profParams = new URLSearchParams();
+                    profParams.append('Action', 'SendEmail');
+                    profParams.append('Source', `"${company.name}" <${profFromEmail}>`);
+                    profParams.append('Destination.ToAddresses.member.1', profEmail);
+                    profParams.append('Message.Subject.Data', profSubject);
+                    profParams.append('Message.Body.Html.Data', profHtml);
+                    profParams.append(
+                      'Message.Body.Text.Data',
+                      `Nueva reserva: ${safeServiceName} el ${dateFormatted} a las ${timeFormatted}. Cliente: ${safeClientName}.`,
+                    );
+                    const profAws = new AwsClient({
+                      accessKeyId: AWS_ACCESS_KEY_ID,
+                      secretAccessKey: AWS_SECRET_ACCESS_KEY,
+                      region: AWS_REGION,
+                      service: 'email',
+                    });
+                    const profSes = await profAws.fetch(`https://email.${AWS_REGION}.amazonaws.com`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                      body: profParams.toString(),
+                    });
+                    if (profSes.ok) {
+                      console.log(`✅ Professional email sent to ${profEmail}`);
+                    } else {
+                      console.warn(`⚠ Professional email failed: ${profSes.status}`);
+                    }
+                  }
+                } catch (profEmailErr: any) {
+                  console.warn('⚠️ Professional email failed (non-blocking):', profEmailErr.message);
+                }
               }
             }
           } catch (notifyErr: any) {
