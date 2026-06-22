@@ -40,6 +40,8 @@ import {
   Clock,
   Star,
   BookOpen,
+  ClipboardCheck,
+  Activity,
 } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
@@ -121,6 +123,8 @@ interface MenuItem {
         ArrowLeft,
         Star,
         BookOpen,
+        ClipboardCheck,
+        Activity,
       }),
     },
   ],
@@ -561,7 +565,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       sidebarKey: 'core_/inbound-mail',
     },
     {
-      id: 100,
+      id: 103,
       label: 'nav.adminInboundMail',
       icon: 'shield',
       route: '/admin/inbound-mail',
@@ -570,7 +574,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       sidebarKey: 'core_/admin/inbound-mail',
     },
     {
-      id: 12,
+      id: 101,
       label: 'nav.proyectos',
       icon: 'layout-grid',
       route: '/projects',
@@ -597,7 +601,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       sidebarKey: 'core_/admin/modulos',
     },
     {
-      id: 98,
+      id: 102,
       label: 'nav.systemHealth',
       icon: 'activity',
       route: '/admin/system-health',
