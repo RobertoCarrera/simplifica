@@ -141,6 +141,24 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
+    // Kill switch: if super_admin has paused notify-inactive-clients, short-circuit.
+    // Same pattern as process-reminders: fail-open if settings read fails.
+    const { data: systemSettings, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('notify_inactive_clients_paused')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error('notify-inactive-clients: failed to read system_settings:', settingsError);
+      // Fail open: if we can't read settings, process normally
+    } else if (systemSettings?.notify_inactive_clients_paused === true) {
+      return new Response(
+        JSON.stringify({ paused: true, processed: 0, message: 'notify-inactive-clients is paused by admin' }),
+        { status: 200, headers: withSecurityHeaders({ 'Content-Type': 'application/json' }) },
+      );
+    }
+
     // 1. Fetch unnotified log entries from the last 25 hours
     const cutoff = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     const { data: logEntries, error: logErr } = await supabase

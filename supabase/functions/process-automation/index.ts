@@ -49,6 +49,24 @@ serve(async (req) => {
             }
         );
 
+        // Kill switch: if super_admin has paused marketing-automation, short-circuit.
+        // Same pattern as process-reminders: fail-open if settings read fails.
+        const { data: systemSettings, error: settingsError } = await supabaseClient
+            .from('system_settings')
+            .select('marketing_automation_paused')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (settingsError) {
+            console.error('process-automation: failed to read system_settings:', settingsError);
+            // Fail open: if we can't read settings, process normally
+        } else if (systemSettings?.marketing_automation_paused === true) {
+            return new Response(
+                JSON.stringify({ paused: true, processed: 0, message: 'marketing-automation is paused by admin' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
         console.log("Staring Automation Check...");
 
         // 1. Fetch Active Automated Campaigns
