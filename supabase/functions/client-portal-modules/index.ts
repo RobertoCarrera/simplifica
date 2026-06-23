@@ -427,7 +427,7 @@ async function handleServicesList(ctx, req, corsHeaders) {
   // can read the table at all for this company.
   const availableRes = await crmFetch(
     'services',
-    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,unit_type,tags,has_variants,company_id,created_at` +
+    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,unit_type,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
     `&order=name.asc`,
   );
