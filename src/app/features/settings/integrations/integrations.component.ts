@@ -10,12 +10,13 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { CompanyEmailService } from '../../../services/company-email.service';
 import { CompanyEmailAccount, UpdateEmailAccountDto } from '../../../models/company-email.models';
+import { RedsysConfigComponent } from './redsys-config/redsys-config.component';
 
 
 @Component({
   selector: 'app-integrations',
   standalone: true,
-  imports: [FormsModule, DatePipe, JsonPipe],
+  imports: [FormsModule, DatePipe, JsonPipe, RedsysConfigComponent],
   templateUrl: './integrations.component.html',
   styleUrls: ['./integrations.component.scss'],
 })
