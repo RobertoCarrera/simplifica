@@ -26,6 +26,31 @@ interface HealthPayload {
   };
 }
 
+/**
+ * One row of the global kill-switch matrix.
+ * Each entry corresponds to a boolean column on public.system_settings,
+ * read at the top of its target EF. Toggling is independent per switch.
+ */
+interface KillSwitch {
+  /** Stable id used in templates and persistence. */
+  key: 'process_reminders' | 'notify_inactive_clients' | 'marketing_automation';
+  /** Column name on public.system_settings holding the paused flag. */
+  flag: string;
+  /** Column name holding the paused_at timestamp. */
+  pausedAtCol: string;
+  /** Column name holding the paused_by user uuid. */
+  pausedByCol: string;
+  /** Spanish title shown on the card. */
+  label: string;
+  /** Multi-line description (qué, cuándo, a quién) — preserves whitespace. */
+  description: string;
+  paused: boolean;
+  pausedAt: Date | null;
+  pausedBy: string | null;
+  loading: boolean;
+  saving: boolean;
+}
+
 @Component({
   selector: 'app-system-health',
   standalone: true,
@@ -108,68 +133,81 @@ interface HealthPayload {
         <div class="px-4 py-3 border-b flex items-center justify-between">
           <h2 class="font-semibold flex items-center gap-2">
             <i class="fas fa-sliders text-blue-600"></i>
-            Controles Globales
+            Controles Globales (kill switches)
           </h2>
-          @if (killSwitchLoading()) {
-            <span class="text-xs text-gray-500">
-              <i class="fas fa-spinner fa-spin mr-1"></i>
-              Cargando...
-            </span>
+          <span class="text-xs text-gray-500">
+            3 interruptores independientes · solo super_admin
+          </span>
+        </div>
+
+        <div class="divide-y">
+          @for (ks of killSwitches(); track ks.key) {
+            <div class="p-4 flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">{{ ks.label }}</div>
+                <!-- Multi-line description with whitespace preserved.
+                     CSS: whitespace-pre-line + break-words so bullets & newlines render,
+                     long URLs wrap without overflowing the card. -->
+                <p
+                  class="text-xs text-gray-600 mt-1 whitespace-pre-line break-words"
+                >{{ ks.description }}</p>
+
+                @if (ks.loading) {
+                  <div class="mt-2 text-xs text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                    Cargando estado...
+                  </div>
+                } @else if (ks.paused) {
+                  <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 inline-block">
+                    <i class="fas fa-circle-info mr-1"></i>
+                    Pausado
+                    @if (ks.pausedAt; as at) {
+                      el {{ at | date: 'short' }}
+                    }
+                    @if (ks.pausedBy; as by) {
+                      por
+                      @if (by === currentUserId()) {
+                        ti
+                      } @else {
+                        otro super_admin ({{ shortId(by) }})
+                      }
+                    }
+                  </div>
+                } @else {
+                  <div class="mt-2 text-xs text-green-700">
+                    <i class="fas fa-circle-check mr-1"></i>
+                    Activo: el cron envía emails con normalidad.
+                  </div>
+                }
+              </div>
+
+              <label class="inline-flex items-center cursor-pointer select-none shrink-0">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  [checked]="ks.paused"
+                  [disabled]="ks.loading || ks.saving || readOnly()"
+                  (change)="onToggleKillSwitch(ks, $event)"
+                />
+                <div
+                  class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-orange-500
+                         peer-disabled:opacity-50 relative transition-colors
+                         after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                         after:bg-white after:border after:rounded-full after:h-5 after:w-5
+                         after:transition-transform peer-checked:after:translate-x-5"
+                ></div>
+              </label>
+            </div>
           }
         </div>
 
-        <div class="p-4 flex items-start justify-between gap-4">
-          <div class="flex-1">
-            <div class="font-medium text-sm">
-              Pausar envío de recordatorios a clientes
-            </div>
-            <p class="text-xs text-gray-500 mt-1">
-              Cuando está activo, el cron <code>process-reminders</code> no envía
-              emails de recordatorio 24h/1h ni solicitudes de reseña. Los demás
-              crons no se ven afectados.
-            </p>
-
-            @if (killSwitchPaused()) {
-              <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 inline-block">
-                <i class="fas fa-circle-info mr-1"></i>
-                Pausado
-                @if (killSwitchPausedAt(); as at) {
-                  el {{ at | date: 'short' }}
-                }
-                @if (killSwitchPausedBy(); as by) {
-                  por
-                  @if (by === currentUserId()) {
-                    ti
-                  } @else {
-                    otro super_admin
-                  }
-                }
-              </div>
-            } @else if (!killSwitchLoading()) {
-              <div class="mt-2 text-xs text-green-700">
-                <i class="fas fa-circle-check mr-1"></i>
-                Activo: los recordatorios se envían con normalidad.
-              </div>
-            }
+        @if (readOnly()) {
+          <div class="px-4 py-2 bg-gray-50 border-t text-xs text-gray-600">
+            <i class="fas fa-info-circle mr-1"></i>
+            Modo lectura: no tienes permisos para modificar los kill switches
+            (o no se pudo leer el estado por RLS).
           </div>
-
-          <label class="inline-flex items-center cursor-pointer select-none">
-            <input
-              type="checkbox"
-              class="sr-only peer"
-              [checked]="killSwitchPaused()"
-              [disabled]="killSwitchLoading() || killSwitchSaving()"
-              (change)="onToggleKillSwitch($event)"
-            />
-            <div
-              class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-orange-500
-                     peer-disabled:opacity-50 relative transition-colors
-                     after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                     after:bg-white after:border after:rounded-full after:h-5 after:w-5
-                     after:transition-transform peer-checked:after:translate-x-5"
-            ></div>
-          </label>
-        </div>
+        }
       </div>
 
       <!-- Help text -->
@@ -205,12 +243,75 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
   lastChecked = signal<Date | null>(null);
   errorMessage = signal<string | null>(null);
 
-  // Kill switch state
-  killSwitchLoading = signal(true);
-  killSwitchSaving = signal(false);
-  killSwitchPaused = signal(false);
-  killSwitchPausedAt = signal<Date | null>(null);
-  killSwitchPausedBy = signal<string | null>(null);
+  /**
+   * Set to true when the initial read of system_settings returned 0 rows
+   * (most likely RLS rejection for non-super_admin callers). In that mode
+   * the toggles stay disabled and we surface a banner.
+   */
+  readOnly = signal(false);
+
+  /**
+   * Three independent kill switches. Loaded from system_settings in one query
+   * (we select all 9 columns together to avoid 3 round-trips). Each entry is
+   * mutated in-place when the user toggles it.
+   */
+  killSwitches = signal<KillSwitch[]>([
+    {
+      key: 'process_reminders',
+      flag: 'process_reminders_paused',
+      pausedAtCol: 'process_reminders_paused_at',
+      pausedByCol: 'process_reminders_paused_by',
+      label: 'Recordatorios a clientes (24h / 1h / reseña)',
+      description:
+        'Pausa el envío de emails automáticos a clientes sobre sus citas:\n' +
+        '- Recordatorio 24h antes de la cita\n' +
+        '- Recordatorio 1h antes de la cita\n' +
+        '- Petición de reseña 2h después\n' +
+        '\n' +
+        'Cuándo corre: cada hora (cron: 0 * * * *)\n' +
+        'A quién: al cliente de cada reserva (booking.client.email)\n' +
+        'Histórico: estuvo roto del 2026-03-29 al 2026-06-23 (referencia a clients.full_name que ya no existía). No se reenvían los perdidos.',
+      paused: false,
+      pausedAt: null,
+      pausedBy: null,
+      loading: true,
+      saving: false,
+    },
+    {
+      key: 'notify_inactive_clients',
+      flag: 'notify_inactive_clients_paused',
+      pausedAtCol: 'notify_inactive_clients_paused_at',
+      pausedByCol: 'notify_inactive_clients_paused_by',
+      label: 'Reactivación de clientes inactivos',
+      description:
+        'Pausa los emails de "te echamos de menos" a clientes que llevan tiempo sin reservar.\n' +
+        '\n' +
+        'Cuándo corre: cada día a las 02:30 (cron: 30 2 * * *)\n' +
+        'A quién: clientes sin reservas recientes (frecuencia configurable por empresa)',
+      paused: false,
+      pausedAt: null,
+      pausedBy: null,
+      loading: true,
+      saving: false,
+    },
+    {
+      key: 'marketing_automation',
+      flag: 'marketing_automation_paused',
+      pausedAtCol: 'marketing_automation_paused_at',
+      pausedByCol: 'marketing_automation_paused_by',
+      label: 'Automatizaciones de marketing',
+      description:
+        'Pausa las campañas de marketing, secuencias de follow-up y nutrición de leads.\n' +
+        '\n' +
+        'Cuándo corre: cada día a las 09:30 (cron: 30 9 * * *)\n' +
+        'A quién: leads y clientes según las reglas de marketing configuradas por empresa',
+      paused: false,
+      pausedAt: null,
+      pausedBy: null,
+      loading: true,
+      saving: false,
+    },
+  ]);
 
   currentUserId = computed<string | null>(
     () => this.authService.userProfileSignal()?.auth_user_id ?? null,
@@ -301,7 +402,7 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.refresh();
-    this.loadKillSwitch();
+    this.loadKillSwitches();
     this.pollHandle = setInterval(() => this.refresh(), this.POLL_INTERVAL_MS);
   }
 
@@ -353,72 +454,114 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load the current value of the process-reminders kill switch.
-   * RLS enforces super_admin only — non-super_admin calls return 0 rows
-   * (PostgREST treats them as [], not as an error).
+   * Load all 3 kill switches in a single query (9 columns at once).
+   * RLS enforces super_admin only — non-super_admin callers get [] (not an
+   * error). When that happens we flip into read-only mode and surface a
+   * banner so the user understands why they can't toggle.
    */
-  async loadKillSwitch() {
-    this.killSwitchLoading.set(true);
+  async loadKillSwitches() {
+    const ksList = this.killSwitches();
+    for (const ks of ksList) ks.loading = true;
+    this.killSwitches.set([...ksList]);
+
     try {
       const { data, error } = await this.simpleSupabase
         .getClient()
         .from('system_settings')
-        .select('process_reminders_paused, process_reminders_paused_at, process_reminders_paused_by')
+        // One row trip — select all 9 columns at once.
+        .select(
+          [
+            'process_reminders_paused',
+            'process_reminders_paused_at',
+            'process_reminders_paused_by',
+            'notify_inactive_clients_paused',
+            'notify_inactive_clients_paused_at',
+            'notify_inactive_clients_paused_by',
+            'marketing_automation_paused',
+            'marketing_automation_paused_at',
+            'marketing_automation_paused_by',
+          ].join(', '),
+        )
         .eq('id', 1)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (data) {
-        this.killSwitchPaused.set(!!data.process_reminders_paused);
-        this.killSwitchPausedAt.set(
-          data.process_reminders_paused_at ? new Date(data.process_reminders_paused_at) : null,
+      if (!data) {
+        // No row returned: most likely not super_admin (RLS) or row not seeded.
+        this.readOnly.set(true);
+        this.toastService.error(
+          'Kill switches',
+          'No se pudo leer el estado (¿eres super_admin?). Modo lectura activo.',
         );
-        this.killSwitchPausedBy.set(data.process_reminders_paused_by ?? null);
+        for (const ks of ksList) {
+          ks.paused = false;
+          ks.pausedAt = null;
+          ks.pausedBy = null;
+          ks.loading = false;
+        }
       } else {
-        // No row returned: most likely not super_admin (RLS) or row not seeded yet.
-        // Reset to defaults; the toggle stays disabled because we can't prove permission.
-        this.killSwitchPaused.set(false);
-        this.killSwitchPausedAt.set(null);
-        this.killSwitchPausedBy.set(null);
+        const row = data as unknown as Record<string, unknown>;
+        for (const ks of ksList) {
+          ks.paused = !!row[ks.flag];
+          const at = row[ks.pausedAtCol];
+          const by = row[ks.pausedByCol];
+          ks.pausedAt = at ? new Date(at as string) : null;
+          ks.pausedBy = (by as string | null) ?? null;
+          ks.loading = false;
+        }
       }
     } catch (e: any) {
-      // RLS denial or network error — surface as a toast but keep UI usable.
+      // Network error / etc. — surface a toast but keep the UI usable.
       this.toastService.error(
-        'Kill switch',
-        e?.message ?? 'No se pudo leer el estado del kill switch (¿eres super_admin?)',
+        'Kill switches',
+        e?.message ?? 'Error al leer el estado de los kill switches.',
       );
+      for (const ks of ksList) {
+        ks.loading = false;
+      }
     } finally {
-      this.killSwitchLoading.set(false);
+      this.killSwitches.set([...ksList]);
     }
   }
 
   /**
-   * Handle user toggling the kill switch.
-   * Optimistically flips the local state, then persists; rolls back on error.
+   * Handle user toggling a kill switch.
+   * Optimistic update + rollback on failure. Independent per-switch so
+   * toggling one doesn't lock the others.
    */
-  async onToggleKillSwitch(event: Event) {
+  async onToggleKillSwitch(ks: KillSwitch, event: Event) {
     const input = event.target as HTMLInputElement;
     const desired = input.checked;
 
-    if (this.killSwitchSaving()) return;
+    if (ks.saving || this.readOnly()) return;
 
-    const previousPaused = this.killSwitchPaused();
-    this.killSwitchSaving.set(true);
-    // Optimistic update
-    this.killSwitchPaused.set(desired);
+    const previousPaused = ks.paused;
+    const previousAt = ks.pausedAt;
+    const previousBy = ks.pausedBy;
+
+    ks.saving = true;
+    ks.paused = desired;
+    if (desired) {
+      ks.pausedAt = new Date();
+      ks.pausedBy = this.currentUserId();
+    } else {
+      ks.pausedAt = null;
+      ks.pausedBy = null;
+    }
+    this.killSwitches.set([...this.killSwitches()]);
 
     try {
-      const patch: Record<string, unknown> = {
-        process_reminders_paused: desired,
-      };
+      const patch: Record<string, unknown> = {};
       if (desired) {
-        patch['process_reminders_paused_at'] = new Date().toISOString();
+        patch[ks.flag] = true;
+        patch[ks.pausedAtCol] = ks.pausedAt!.toISOString();
         const uid = this.currentUserId();
-        if (uid) patch['process_reminders_paused_by'] = uid;
+        if (uid) patch[ks.pausedByCol] = uid;
       } else {
-        patch['process_reminders_paused_at'] = null;
-        patch['process_reminders_paused_by'] = null;
+        patch[ks.flag] = false;
+        patch[ks.pausedAtCol] = null;
+        patch[ks.pausedByCol] = null;
       }
 
       const { data, error } = await this.simpleSupabase
@@ -426,26 +569,35 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
         .from('system_settings')
         .update(patch)
         .eq('id', 1)
-        .select('process_reminders_paused, process_reminders_paused_at, process_reminders_paused_by')
+        .select(
+          [
+            ks.flag,
+            ks.pausedAtCol,
+            ks.pausedByCol,
+          ].join(', '),
+        )
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        this.killSwitchPaused.set(!!data.process_reminders_paused);
-        this.killSwitchPausedAt.set(
-          data.process_reminders_paused_at ? new Date(data.process_reminders_paused_at) : null,
-        );
-        this.killSwitchPausedBy.set(data.process_reminders_paused_by ?? null);
+        const row = data as unknown as Record<string, unknown>;
+        ks.paused = !!row[ks.flag];
+        const at = row[ks.pausedAtCol];
+        const by = row[ks.pausedByCol];
+        ks.pausedAt = at ? new Date(at as string) : null;
+        ks.pausedBy = (by as string | null) ?? null;
         this.toastService.success(
           'Kill switch',
           desired
-            ? 'process-reminders pausado. No se enviarán recordatorios hasta nuevo aviso.'
-            : 'process-reminders reactivado.',
+            ? `${ks.label} pausado. No se enviarán emails hasta nuevo aviso.`
+            : `${ks.label} reactivado.`,
         );
       } else {
         // RLS silently returned no rows — restore previous state and surface error.
-        this.killSwitchPaused.set(previousPaused);
+        ks.paused = previousPaused;
+        ks.pausedAt = previousAt;
+        ks.pausedBy = previousBy;
         input.checked = previousPaused;
         this.toastService.error(
           'Kill switch',
@@ -453,16 +605,23 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
         );
       }
     } catch (e: any) {
-      // Roll back optimistic update
-      this.killSwitchPaused.set(previousPaused);
+      ks.paused = previousPaused;
+      ks.pausedAt = previousAt;
+      ks.pausedBy = previousBy;
       input.checked = previousPaused;
       this.toastService.error(
         'Kill switch',
-        e?.message ?? 'Error al guardar el estado del kill switch.',
+        e?.message ?? `Error al guardar el estado de ${ks.label}.`,
       );
     } finally {
-      this.killSwitchSaving.set(false);
+      ks.saving = false;
+      this.killSwitches.set([...this.killSwitches()]);
     }
+  }
+
+  /** Render the first 8 chars of a UUID for compact "otro super_admin" labels. */
+  shortId(id: string): string {
+    return id.slice(0, 8);
   }
 
   private toCard(
