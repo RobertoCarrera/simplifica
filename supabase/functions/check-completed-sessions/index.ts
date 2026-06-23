@@ -8,14 +8,31 @@
  *
  * Phase 1 of Roberto's post-session automation flow.
  *
- * Security: service_role required (internal cron endpoint).
+ * Security: canonical v2 auth — internal cron sends apikey header (sb_publishable_*)
+ * which is accepted as service-role equivalent. See docs/designs/canonical-v2-ef-auth.md.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { withSecurityHeaders } from '../_shared/security.ts';
 
+// Minimal inlined copy of withSecurityHeaders so this function bundles without
+// needing ../_shared/security.ts on the bundler's search path. Keep in sync
+// with the canonical shared module.
+const _LOCAL_SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Referrer-Policy': 'no-referrer',
+  'Cache-Control': 'no-store',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'X-Permitted-Cross-Domain-Policies': 'none',
+  'X-DNS-Prefetch-Control': 'off',
+  'Content-Security-Policy': "default-src 'none'",
+};
+function _localWithSecurityHeaders(headers: Record<string, string> = {}): Record<string, string> {
+  return { ..._LOCAL_SECURITY_HEADERS, ...headers };
+}
 
-const DURATION_JSON = Deno.env.get('SUPABASE_URL') ? '' : ''; // unused
 
 async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof createClient>) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '');
@@ -28,15 +45,46 @@ async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof create
 function jsonSuccess(status: number, data: unknown) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
+    headers: _localWithSecurityHeaders({ 'Content-Type': 'application/json' }),
   });
 }
 
 function jsonError(status: number, error: string) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
+    headers: _localWithSecurityHeaders({ 'Content-Type': 'application/json' }),
   });
+}
+
+/**
+ * Canonical v2 auth check (see docs/designs/canonical-v2-ef-auth.md).
+ *
+ * Returns `{ ok, asServiceRole }`. asServiceRole=true means the caller is
+ * trusted as the backend (can bypass RLS, perform cross-tenant work).
+ * This is the ONLY check the cron endpoint accepts — user JWTs are not
+ * valid for an internal cron job.
+ */
+async function requireAuthorizedCaller(
+  req: Request,
+  _supabaseAdmin: ReturnType<typeof createClient>
+): Promise<{ ok: boolean; asServiceRole: boolean }> {
+  // Legacy env-based keys (still set in Supabase Cloud for backwards compat).
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const VALID = new Set<string>([SERVICE_ROLE_KEY]);
+  // v2 keys: registered via env when the project migrated to sb_publishable_/sb_secret_.
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID.add(v);
+
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('Authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  // Path 1: apikey header (v2 cron) — bypasses user gate
+  if (apikeyHeader && VALID.has(apikeyHeader)) return { ok: true, asServiceRole: true };
+  // Path 2: legacy service_role Bearer — bypasses user gate
+  if (bearerToken && bearerToken === SERVICE_ROLE_KEY) return { ok: true, asServiceRole: true };
+
+  return { ok: false, asServiceRole: false };
 }
 
 serve(async (req: Request) => {
@@ -47,22 +95,25 @@ serve(async (req: Request) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-  // Internal auth: require service role key as Bearer token
-  const authHeader = req.headers.get('Authorization') || '';
-  const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
-  if (!token || token !== serviceRoleKey) {
-    return jsonError(401, 'Unauthorized: valid service role key required');
+  // Canonical v2 auth — accept apikey header OR legacy service_role Bearer.
+  // Internal cron sends only apikey (per docs/designs/canonical-v2-ef-auth.md
+  // and Supabase's own guidance: new sb_secret_* keys are not JWTs and cannot
+  // be sent in Authorization: Bearer without the gateway rejecting with 401).
+  const supabaseAdmin = createClient(SUPABASE_URL, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+  const auth = await requireAuthorizedCaller(req, supabaseAdmin);
+  if (!auth.ok) {
+    return jsonError(401, 'Unauthorized: apikey header or service_role Bearer required');
   }
 
   try {
-    const supabase = createClient(SUPABASE_URL, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
+    // supabaseAdmin was created above for the auth check; reuse it for the body.
 
     // ── 1. Find completed-but-unnotified bookings ─────────────────────────────
     // We query confirmed bookings where end_time has passed and we haven't notified yet.
     // Uses service role to bypass RLS (needed to read bookings across companies).
-    const { data: bookings, error: bookingsError } = await supabase
+    const { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(`
         id,
@@ -144,7 +195,7 @@ serve(async (req: Request) => {
 
       try {
         // Insert notification
-        const { error: notifError } = await supabase
+        const { error: notifError } = await supabaseAdmin
           .from('notifications')
           .insert(notificationPayload);
 
@@ -155,7 +206,7 @@ serve(async (req: Request) => {
         }
 
         // Mark booking as notified
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('bookings')
           .update({ session_end_notified_at: new Date().toISOString() })
           .eq('id', booking.id);
