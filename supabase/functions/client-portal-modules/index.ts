@@ -511,7 +511,7 @@ async function handleServiceVariants(ctx, serviceId, corsHeaders) {
   // 2. Fetch active+visible variants for this service
   const vRes = await crmFetch(
     'service_variants',
-    `select=id,service_id,variant_name,base_price,pricing,features,display_config,is_active,is_hidden,sort_order,created_at,updated_at` +
+    `select=id,service_id,variant_name,pricing,features,display_config,is_active,is_hidden,sort_order,created_at,updated_at` +
     `&service_id=eq.${encodeURIComponent(serviceId)}` +
     `&is_active=eq.true` +
     `&is_hidden=eq.false` +
@@ -566,7 +566,7 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   if (variantId) {
     const vRes = await crmFetch(
       'service_variants',
-      `select=id,service_id,variant_name,base_price,pricing,is_active,is_hidden,display_config` +
+      `select=id,service_id,variant_name,pricing,is_active,is_hidden,display_config` +
       `&id=eq.${encodeURIComponent(variantId)}` +
       `&service_id=eq.${encodeURIComponent(serviceId)}` +
       `&is_active=eq.true` +
@@ -579,8 +579,8 @@ async function handleServiceContract(ctx, req, corsHeaders) {
 
     contractedName = variant.variant_name || service.name;
 
-    // Resolve price: try pricing_period → pricing[0] → base_price
-    let resolvedPrice = variant.base_price ?? null;
+    // Resolve price: try pricing_period → pricing[0] → 0
+    let resolvedPrice: number | null = null;
     if (Array.isArray(variant.pricing) && variant.pricing.length > 0) {
       const match = pricingPeriod
         ? variant.pricing.find((p) => p?.period === pricingPeriod)
