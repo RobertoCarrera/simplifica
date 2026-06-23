@@ -99,11 +99,17 @@ serve(async (req) => {
     });
   }
 
-  // This endpoint is internal-only: caller must present the service role key as Bearer token.
-  const authHeader = req.headers.get('authorization') || '';
-  const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+  // v2 auth (internal cron/trigger): apikey header | legacy Bearer service_role.
+  // No user-JWT branch — this EF is only called by pg_cron `notify-inactive-clients`.
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-  if (!token || token !== serviceRoleKey) {
+  const VALID_KEYS = new Set<string>([serviceRoleKey]);
+  try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
+  try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
+  const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || (bearerToken && bearerToken === serviceRoleKey);
+  if (!authed) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
