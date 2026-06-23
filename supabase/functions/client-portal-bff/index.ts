@@ -503,17 +503,38 @@ async function handleConsents(
 }
 
 /**
- * Create a Supabase admin client for the CRM database (cross-project access).
- * Returns null if CRM credentials are not configured.
+ * Cross-project PostgREST helper. The CRM service role is now stored as a
+ * `sb_secret_` key, which `supabase-js@2.49.1` does NOT accept as a
+ * service-role bypass (the JS client expects a legacy JWT). The only
+ * working pattern is direct fetch to PostgREST with the secret in two
+ * headers: `apikey` and `Authorization: Bearer <secret>`.
  */
-function createCrmAdminClient(): ReturnType<typeof createClient> | null {
+async function crmFetch(
+  table: string,
+  query: string,
+): Promise<{ data: any[] | null; error: string | null; status?: number }> {
   if (!CRM_SUPABASE_URL || !CRM_SERVICE_ROLE_KEY) {
-    console.warn('[client-portal-bff] CRM credentials not configured — cross-project reads will fail');
-    return null;
+    return { data: null, error: 'CRM env vars not configured' };
   }
-  return createClient(CRM_SUPABASE_URL, CRM_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  const url = `${CRM_SUPABASE_URL}/rest/v1/${table}?${query}`;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        apikey: CRM_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${CRM_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { data: null, error: `HTTP ${res.status}: ${body.substring(0, 200)}`, status: res.status };
+    }
+    const data = await res.json();
+    return { data: Array.isArray(data) ? data : null, error: null };
+  } catch (e: any) {
+    return { data: null, error: e?.message ?? String(e) };
+  }
 }
 
 async function handleModules(
@@ -523,77 +544,63 @@ async function handleModules(
 ): Promise<Response> {
   // The tables modules_catalog / company_modules / user_modules /
   // sidebar_navigation_order live in the CRM project (`simplifica`), NOT in
-  // this portal project (`simplifica-public`). Use a cross-project admin
-  // client to read them. If CRM credentials are not configured, fall back
-  // to the local admin client (which will fail with 42P01 and return 500,
-  // surfacing the configuration issue clearly to the operator).
-  const crmAdmin = createCrmAdminClient();
-  const db = crmAdmin ?? admin;
-
-  if (!crmAdmin) {
-    console.error(
-      '[client-portal-bff] /modules: CRM_SUPABASE_URL / CRM_SERVICE_ROLE_KEY not set. ' +
-        'Reading modules from the portal project will fail because modules_catalog lives in the CRM.',
-    );
+  // this portal project. We use direct PostgREST calls with the CRM's
+  // `sb_secret_` key in the apikey/Bearer headers — `supabase-js` does
+  // not support this key format.
+  if (!CRM_SUPABASE_URL || !CRM_SERVICE_ROLE_KEY) {
+    console.error('[client-portal-bff] /modules: CRM env vars not set');
+    return jsonError(500, 'CRM credentials not configured', corsHeaders);
   }
 
-  const { data: catalog, error: catalogErr } = await db
-    .from('modules_catalog')
-    .select('key, label')
-    .order('key', { ascending: true });
-
-  if (catalogErr) {
-    console.error('[client-portal-bff] Modules catalog error:', catalogErr.message);
-    return jsonError(500, 'Failed to load modules', corsHeaders);
+  const catalogRes = await crmFetch('modules_catalog', 'select=key,label&order=key.asc');
+  if (catalogRes.error) {
+    console.error('[client-portal-bff] modules_catalog error:', catalogRes.error);
+    return jsonError(500, `modules_catalog: ${catalogRes.error}`, corsHeaders);
   }
+  const catalog = catalogRes.data ?? [];
 
-  const { data: companyMods, error: companyErr } = await db
-    .from('company_modules')
-    .select('module_key, status')
-    .eq('company_id', ctx.companyId);
-
-  if (companyErr) {
-    console.error('[client-portal-bff] Company modules error:', companyErr.message);
-    return jsonError(500, 'Failed to load company modules', corsHeaders);
+  const companyModsRes = await crmFetch(
+    'company_modules',
+    `select=module_key,status&company_id=eq.${encodeURIComponent(ctx.companyId)}`,
+  );
+  if (companyModsRes.error) {
+    console.error('[client-portal-bff] company_modules error:', companyModsRes.error);
+    return jsonError(500, `company_modules: ${companyModsRes.error}`, corsHeaders);
   }
+  const companyMods = companyModsRes.data ?? [];
 
-  const { data: userMods, error: userErr } = await db
-    .from('user_modules')
-    .select('module_key, status')
-    .eq('user_id', ctx.userId);
-
-  if (userErr) {
-    console.error('[client-portal-bff] User modules error:', userErr.message);
-    return jsonError(500, 'Failed to load user modules', corsHeaders);
-  }
+  const userModsRes = await crmFetch(
+    'user_modules',
+    `select=module_key,status&user_id=eq.${encodeURIComponent(ctx.userId)}`,
+  );
+  // user_modules is not critical — fall back to company-level only
+  const userMods = userModsRes.data ?? [];
 
   const companyMap = new Map<string, string>(
-    (companyMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
+    companyMods.map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
   );
   const userMap = new Map<string, string>(
-    (userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
+    userMods.map((m: any) => [m.module_key, (m.status || '').toLowerCase()]),
   );
 
-  // Fetch sidebar visibility flags for all modules
-  const { data: sidebarOrder, error: sidebarErr } = await db
-    .from('sidebar_navigation_order')
-    .select('module_key, is_dev_mode, visible_to_clients')
-    .in('module_key', (catalog || []).map((m: any) => m.key));
-
-  if (sidebarErr) {
-    console.error('[client-portal-bff] Sidebar order fetch error:', sidebarErr.message);
-    // Non-fatal: continue without visibility flags
-  }
+  // Sidebar visibility flags
+  const catalogKeys = catalog.map((m: any) => m.key).join(',');
+  const sidebarRes = await crmFetch(
+    'sidebar_navigation_order',
+    `select=module_key,is_dev_mode,visible_to_clients&module_key=in.(${catalogKeys})`,
+  );
+  // Non-fatal: continue without visibility flags
+  const sidebarOrder = sidebarRes.data ?? [];
 
   const sidebarMap = new Map<string, { devMode: boolean; visibleToClients: boolean }>();
-  (sidebarOrder || []).forEach((entry: any) => {
+  sidebarOrder.forEach((entry: any) => {
     sidebarMap.set(entry.module_key, {
       devMode: entry.is_dev_mode ?? false,
       visibleToClients: entry.visible_to_clients ?? true,
     });
   });
 
-  const result = (catalog || []).map((m: any) => {
+  const result = catalog.map((m: any) => {
     const userStatus = userMap.get(m.key);
     const companyStatus = companyMap.get(m.key);
     let enabled = false;

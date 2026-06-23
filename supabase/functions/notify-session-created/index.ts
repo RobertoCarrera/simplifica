@@ -19,10 +19,15 @@ interface SessionCreatedPayload {
 }
 
 serve(async (req) => {
-  // Internal-only: called by pg_net (service role auth), not by public clients
-  const authHeader = req.headers.get("authorization") ?? "";
-  const token = authHeader.replace("Bearer ", "");
-  if (token && token !== SERVICE_ROLE_KEY) {
+  // ── v2 auth (internal trigger only): apikey header | legacy Bearer service_role ──
+  // No user-JWT branch — this EF is only called by DB trigger via pg_net (trigger-only, dead code today per audit #2 but kept safe).
+  const apikeyHdr = req.headers.get("apikey") ?? "";
+  const bearerTok = (req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i) || [])[1] ?? "";
+  const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
+  for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}")))      if (typeof v === "string") VALID_KEYS.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}"))) if (typeof v === "string") VALID_KEYS.add(v);
+  const authed = (apikeyHdr && VALID_KEYS.has(apikeyHdr)) || bearerTok === SERVICE_ROLE_KEY;
+  if (!authed) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },

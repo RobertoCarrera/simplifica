@@ -169,10 +169,15 @@ serve(async (req) => {
       const targetEmail = extractEmail(to);
 
       // 1. Find Account & Company
+      // CRITICAL: Only match ACTIVE mail accounts. Deactivated accounts (e.g.
+      // the operator moved their email flow to GWS and asked the CRM to stop
+      // intercepting) must fall through so the email reaches GWS. Otherwise
+      // we silently steal messages that should go to Gmail.
       const { data: account, error: accountError } = await supabaseClient
         .from('mail_accounts')
         .select('id, user_id, users:user_id(company_id)')
         .eq('email', targetEmail)
+        .eq('is_active', true)
         .single();
 
       if (accountError || !account) {

@@ -219,7 +219,22 @@ async function encryptClientPii(
   }
 }
 
+// Normalize phone to last 9 digits for dedup
+function normalizePhoneLast9(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/[^\d]/g, '');
+  if (digits.length < 9) return null;
+  return digits.slice(-9);
+}
+
+// Normalize name/surname for dedup
+function normalizeForDedup(name: string | null | undefined): string {
+  if (!name) return '';
+  return name.toUpperCase().trim().replace(/\s+/g, ' ');
+}
+
 serve(withCsrf(async (req) => {
+  const requestId = generateRequestId();
   const origin = req.headers.get('origin') || req.headers.get('Origin') || undefined;
   const headers = corsHeaders(origin, requestId);
 
@@ -605,30 +620,77 @@ serve(withCsrf(async (req) => {
         { status: 200, headers },
       );
     } else {
-      // Create new client
-      const { data: dupCheck, error: dupErr } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('company_id', company_id)
-        .ilike('email', row.email)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
+      // ── 3-step deduplication cascade ──
+      let dedupMatch: any = null;
+      let dedupMatchType: string | null = null;
 
-      if (dupErr && dupErr.code !== 'PGRST116') {
-        console.error('[upsert-client] Error checking duplicates:', dupErr);
-        return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), {
-          status: 500,
-          headers,
-        });
+      // Step 1: Email (case-insensitive)
+      if (!dedupMatch && row.email) {
+        const { data: emailMatch } = await supabaseAdmin
+          .from('clients')
+          .select('id, company_id, name, surname, email, phone, is_active, deleted_at')
+          .eq('company_id', company_id)
+          .ilike('email', row.email)
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
+        if (emailMatch) {
+          dedupMatch = emailMatch;
+          dedupMatchType = 'email';
+        }
       }
 
-      if (dupCheck) {
+      // Step 2: Phone last 9 digits (via RPC)
+      if (!dedupMatch && row.phone) {
+        const phoneLast9 = normalizePhoneLast9(row.phone);
+        if (phoneLast9) {
+          const { data: phoneMatch } = await supabaseAdmin.rpc('find_client_by_phone_last9', {
+            p_company_id: company_id,
+            p_phone_last9: phoneLast9,
+          });
+          if (phoneMatch && phoneMatch.id) {
+            dedupMatch = phoneMatch;
+            dedupMatchType = 'phone';
+          }
+        }
+      }
+
+      // Step 3: Name + surname (normalized)
+      if (!dedupMatch && row.name && row.surname) {
+        const normName = normalizeForDedup(row.name);
+        const normSurname = normalizeForDedup(row.surname);
+        const { data: nameMatches } = await supabaseAdmin
+          .from('clients')
+          .select('id, company_id, name, surname, email, phone, is_active, deleted_at')
+          .eq('company_id', company_id)
+          .is('deleted_at', null)
+          .limit(50);  // fetch candidates, filter in JS
+        if (nameMatches) {
+          const match = nameMatches.find((c: any) => {
+            return normalizeForDedup(c.name) === normName &&
+                   normalizeForDedup(c.surname) === normSurname;
+          });
+          if (match) {
+            dedupMatch = match;
+            dedupMatchType = 'name_surname';
+          }
+        }
+      }
+
+      // If duplicate found → return it
+      if (dedupMatch) {
         return new Response(
-          JSON.stringify({ error: 'A client with this email already exists in your company' }),
-          { status: 409, headers },
+          JSON.stringify({
+            ok: true,
+            method: 'found',
+            dedup_match_type: dedupMatchType,
+            client: dedupMatch,
+          }),
+          { status: 200, headers },
         );
       }
+
+      // No duplicate → insert new (rest of existing insert logic continues below)
 
       // ── Task 1.2: Consent gate — block health-data inserts without explicit consent ──
       // A client is flagged as health-data when metadata.is_health_client = true.

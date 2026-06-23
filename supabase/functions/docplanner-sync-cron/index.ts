@@ -576,22 +576,53 @@ async function upsertBookingFromDP(
 
     // Step 4: Create new client
     if (!clientId && (patient.name || patient.surname)) {
-      const { data: newClient } = await serviceClient
-        .from('clients')
-        .insert({
-          company_id: companyId,
-          name: patient.name || '',
-          surname: patient.surname || '',
-          email: normalizedEmail,
-          phone: patient.phone || null,
-          docplanner_patient_id: String(patient.id),
-        })
-        .select('id')
-        .single();
+      const hasContactInfo = !!(normalizedEmail || patient.phone);
 
-      if (newClient) {
-        clientId = newClient.id;
-        if (tagId) await tagRecord(serviceClient, tagId, newClient.id, 'client');
+      if (!hasContactInfo) {
+        // No phone AND no email: look for an existing INACTIVE pending client
+        // with the same name+surname (synthetic ID deduplication).
+        // This prevents creating multiple pending records for the same patient
+        // when DocPlanner sends bookings with different "name|surname" synthetic IDs.
+        const { data: existingPending } = await serviceClient
+          .from('clients')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('is_active', false)
+          .ilike('name', patient.name || '')
+          .ilike('surname', patient.surname || '')
+          .limit(1);
+
+        if (existingPending) {
+          // Reuse the existing pending client — just update its docplanner_patient_id
+          await serviceClient
+            .from('clients')
+            .update({ docplanner_patient_id: String(patient.id) })
+            .eq('id', existingPending[0].id);
+          clientId = existingPending[0].id;
+        }
+      }
+
+      if (!clientId) {
+        // No existing pending match — create a new one
+        const { data: newClient } = await serviceClient
+          .from('clients')
+          .insert({
+            company_id: companyId,
+            name: patient.name || '',
+            surname: patient.surname || '',
+            email: normalizedEmail,
+            phone: patient.phone || null,
+            docplanner_patient_id: String(patient.id),
+            is_active: hasContactInfo,
+            metadata: hasContactInfo ? {} : { pending_docplanner_import: true },
+          })
+          .select('id')
+          .single();
+
+        if (newClient) {
+          clientId = newClient.id;
+          if (tagId && hasContactInfo) await tagRecord(serviceClient, tagId, newClient.id, 'client');
+        }
       }
     }
   }

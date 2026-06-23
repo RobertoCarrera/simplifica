@@ -277,46 +277,149 @@ async function handleGetAvailability(
 ): Promise<Response> {
     const slug = url.searchParams.get('slug')?.toLowerCase().trim() ?? '';
     const weekStart = url.searchParams.get('week_start') ?? '';
-    const professionalId = url.searchParams.get('professional_id') ?? null;
+    const profesionalId = url.searchParams.get('professional_id') ?? url.searchParams.get('profesional_id') ?? null;
+    const serviceId = url.searchParams.get('service_id') ?? null;
 
     if (!slug || !SLUG_RE.test(slug)) return json({ error: 'Valid slug required' }, 400, cors);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) return json({ error: 'week_start must be YYYY-MM-DD' }, 400, cors);
-    if (professionalId && !UUID_RE.test(professionalId)) return json({ error: 'Invalid professional_id' }, 400, cors);
+    if (profesionalId && !UUID_RE.test(profesionalId)) return json({ error: 'Invalid professional_id' }, 400, cors);
+    if (serviceId && !UUID_RE.test(serviceId)) return json({ error: 'Invalid service_id' }, 400, cors);
 
     let query = db
         .from('bookings')
-        .select('start_time, end_time, professional_id')
+        .select('start_time, end_time, professional_id, service_id')
         .gte('start_time', weekStart)
         .lt('start_time', addDays(weekStart, 7))
         .in('status', ['pending', 'confirmed']);
 
-    if (professionalId) {
-        query = query.eq('professional_id', professionalId);
+    if (serviceId) {
+        query = query.eq('service_id', serviceId);
+    }
+
+    // Resolve the company up-front so we can also fetch the schedule.
+    const { data: company } = await db
+        .from('companies')
+        .select('id')
+        .eq('slug', slug)
+        .eq('is_active', true)
+        .maybeSingle();
+    if (!company) return json({ error: 'Company not found' }, 404, cors);
+
+    if (profesionalId) {
+        query = query.eq('professional_id', profesionalId);
     } else {
-        const { data: company } = await db
-            .from('companies')
+        const { data: profs } = await db
+            .from('professionals')
             .select('id')
-            .eq('slug', slug)
-            .maybeSingle();
-        if (company) {
-            const { data: profs } = await db
-                .from('professionals')
-                .select('id')
-                .eq('company_id', (company as any).id)
-                .eq('is_active', true);
-            const ids = (profs ?? []).map((p: any) => p.id);
-            if (ids.length > 0) query = query.in('professional_id', ids);
-        }
+            .eq('company_id', (company as any).id)
+            .eq('is_active', true)
+            .eq('is_public', true);
+        const ids = (profs ?? []).map((p: any) => p.id);
+        if (ids.length > 0) query = query.in('professional_id', ids);
     }
 
     const { data: bookings, error } = await query;
     if (error) throw error;
+
+    // Fetch the working schedule for the active+public profesionales of this
+    // company. When the request includes a `profesionalId`, scope to that
+    // professional so the payload is smaller and the frontend can't pick up
+    // another professional's window. The frontend uses this to draw day-by-day
+    // availability and show Saturday only when the profesional works.
+    let scheduleData: any[] = [];
+    try {
+        let schedQ = db
+            .from('professional_schedules')
+            .select('professional_id, day_of_week, start_time, end_time, break_start, break_end, is_active');
+        if (profesionalId) schedQ = schedQ.eq('professional_id', profesionalId);
+        const res = await schedQ;
+        if (res.error) {
+            console.error('[booking-public] schedule query error:', res.error);
+        } else {
+            scheduleData = (res.data ?? []).filter((s: any) => s.is_active !== false);
+        }
+    } catch (schedErr) {
+        console.error('[booking-public] schedule unexpected error:', schedErr);
+    }
+
+    // Professional blocked dates (vacations, days off, etc).
+    // Scoped to the company for performance. Date range overlap with the week.
+    const weekEnd = addDays(weekStart, 7); // exclusive
+    let profBlocks: any[] = [];
+    try {
+        let q = db
+            .from('professional_blocked_dates')
+            .select('professional_id, start_date, end_date, all_day, start_time, end_time')
+            .eq('company_id', (company as any).id)
+            .lte('start_date', weekEnd)
+            .gte('end_date', weekStart);
+        if (profesionalId) q = q.eq('professional_id', profesionalId);
+        const { data, error } = await q;
+        if (error) {
+            console.error('[booking-public] prof_blocked_dates query error:', error);
+        } else {
+            profBlocks = data ?? [];
+        }
+    } catch (e) {
+        console.error('[booking-public] prof_blocked_dates unexpected error:', e);
+    }
+
+    // Service blocked dates (a specific service is unavailable for a range).
+    // Scoped to the company.
+    let svcBlocks: any[] = [];
+    try {
+        let q = db
+            .from('service_blocked_dates')
+            .select('service_id, start_date, end_date, all_day, start_time, end_time')
+            .eq('company_id', (company as any).id)
+            .lte('start_date', weekEnd)
+            .gte('end_date', weekStart);
+        if (serviceId) q = q.eq('service_id', serviceId);
+        const { data, error } = await q;
+        if (error) {
+            console.error('[booking-public] svc_blocked_dates query error:', error);
+        } else {
+            svcBlocks = data ?? [];
+        }
+    } catch (e) {
+        console.error('[booking-public] svc_blocked_dates unexpected error:', e);
+    }
+
+    // Resource busy periods (non-booking busy slots, e.g. maintenance).
+    // No dedicated table yet — schema lookup confirmed only professional_blocked_dates
+    // and service_blocked_dates exist. Returning empty array for forward-compat.
+    const resource_busy_periods: any[] = [];
 
     return json({
         busy_periods: (bookings ?? []).map((b: any) => ({
             start: b.start_time,
             end: b.end_time,
         })),
+        schedule: (scheduleData ?? []).map((s: any) => ({
+            professional_id: s.professional_id,
+            day_of_week: s.day_of_week,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            break_start: s.break_start,
+            break_end: s.break_end,
+        })),
+        professional_blocked_dates: profBlocks.map((b: any) => ({
+            professional_id: b.professional_id,
+            start_date: b.start_date,
+            end_date: b.end_date,
+            all_day: b.all_day,
+            start_time: b.start_time,
+            end_time: b.end_time,
+        })),
+        service_blocked_dates: svcBlocks.map((b: any) => ({
+            service_id: b.service_id,
+            start_date: b.start_date,
+            end_date: b.end_date,
+            all_day: b.all_day,
+            start_time: b.start_time,
+            end_time: b.end_time,
+        })),
+        resource_busy_periods,
     }, 200, cors);
 }
 
@@ -339,6 +442,13 @@ async function handleCreateBooking(
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(client_email))) return json({ error: 'Invalid email' }, 400, cors);
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(datetime))) return json({ error: 'datetime must be ISO 8601' }, 400, cors);
 
+    // Datetime must be in the future
+    const slotStart = new Date(datetime);
+    if (isNaN(slotStart.getTime())) return json({ error: 'Invalid datetime' }, 400, cors);
+    if (slotStart.getTime() < Date.now() - 60_000) {
+        return json({ error: 'Cannot book a slot in the past' }, 400, cors);
+    }
+
     const safeName = String(client_name).trim().slice(0, 100);
     const safeEmail = String(client_email).trim().toLowerCase().slice(0, 254);
     const safePhone = String(client_phone ?? '').trim().slice(0, 20) || null;
@@ -356,35 +466,174 @@ async function handleCreateBooking(
         .eq('is_active', true)
         .maybeSingle();
     if (!company) return json({ error: 'Company not found' }, 404, cors);
+    const companyId = (company as any).id;
 
-    // Compute slot end time
+    // Validate the service belongs to this company AND is bookable+public+active.
+    // Reject early if the service does not exist or is not bookable.
     const { data: svc } = await db
         .from('services')
-        .select('duration_minutes')
+        .select('id, duration_minutes, name')
         .eq('id', service_id)
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .eq('is_bookable', true)
+        .eq('is_public', true)
         .maybeSingle();
-    const slotEnd = new Date(datetime);
-    if (svc) slotEnd.setMinutes(slotEnd.getMinutes() + (svc as any).duration_minutes);
+    if (!svc) return json({ error: 'Service not available' }, 404, cors);
 
-    // Conflict check
-    let conflictQuery = db
+    // If a professional is specified, it must belong to this company, be active+public,
+    // AND offer the requested service (via professional_services).
+    let profDefaultResource: string | null = null;
+    if (professional_id) {
+        const { data: prof } = await db
+            .from('professionals')
+            .select('id, default_resource_id')
+            .eq('id', professional_id)
+            .eq('company_id', companyId)
+            .eq('is_active', true)
+            .eq('is_public', true)
+            .maybeSingle();
+        if (!prof) return json({ error: 'Professional not available' }, 404, cors);
+        profDefaultResource = (prof as any).default_resource_id ?? null;
+
+        const { data: link } = await db
+            .from('professional_services')
+            .select('professional_id, service_id')
+            .eq('professional_id', professional_id)
+            .eq('service_id', service_id)
+            .maybeSingle();
+        if (!link) return json({ error: 'Professional does not offer this service' }, 400, cors);
+    }
+
+    // Compute slot end from the validated service duration
+    const slotEnd = new Date(slotStart.getTime() + (svc as any).duration_minutes * 60_000);
+
+    // Check the day is not blocked for the professional (if specified) or for the service.
+    const dayStr = datetime.slice(0, 10); // YYYY-MM-DD
+    if (professional_id) {
+        const { data: profBlock } = await db
+            .from('professional_blocked_dates')
+            .select('id, all_day, start_time, end_time')
+            .eq('professional_id', professional_id)
+            .lte('start_date', dayStr)
+            .gte('end_date', dayStr)
+            .maybeSingle();
+        if (profBlock) {
+            if ((profBlock as any).all_day) return json({ error: 'Day is blocked for this professional' }, 409, cors);
+            // Time-of-day block: if the requested slot overlaps the block window
+            const blockStart = (profBlock as any).start_time;
+            const blockEnd = (profBlock as any).end_time;
+            if (blockStart && blockEnd) {
+                const t = datetime.slice(11, 19); // HH:MM:SS
+                if (t >= blockStart && t < blockEnd) {
+                    return json({ error: 'Time slot is blocked for this professional' }, 409, cors);
+                }
+            }
+        }
+    }
+    const { data: svcBlock } = await db
+        .from('service_blocked_dates')
+        .select('id, all_day, start_time, end_time')
+        .eq('service_id', service_id)
+        .lte('start_date', dayStr)
+        .gte('end_date', dayStr)
+        .maybeSingle();
+    if (svcBlock) {
+        if ((svcBlock as any).all_day) return json({ error: 'Service is not available on this day' }, 409, cors);
+        const blockStart = (svcBlock as any).start_time;
+        const blockEnd = (svcBlock as any).end_time;
+        if (blockStart && blockEnd) {
+            const t = datetime.slice(11, 19);
+            if (t >= blockStart && t < blockEnd) {
+                return json({ error: 'Time slot is not available for this service' }, 409, cors);
+            }
+        }
+    }
+
+    // Professional-level conflict check (the slot may be blocked for THIS prof
+    // even if a resource happens to be free).
+    let profConflictQuery = db
         .from('bookings')
         .select('id')
         .lt('start_time', slotEnd.toISOString())
         .gt('end_time', datetime)
         .in('status', ['pending', 'confirmed']);
-    if (professional_id) conflictQuery = conflictQuery.eq('professional_id', professional_id);
+    if (professional_id) profConflictQuery = profConflictQuery.eq('professional_id', professional_id);
+    const { data: profConflict } = await profConflictQuery.maybeSingle();
+    if (profConflict) return json({ error: 'Time slot not available' }, 409, cors);
 
-    const { data: conflict } = await conflictQuery.maybeSingle();
-    if (conflict) return json({ error: 'Time slot not available' }, 409, cors);
+    // Resource assignment. Strategy:
+    //   1. If the professional has `default_resource_id` set, use it.
+    //   2. Otherwise, list active resources for the company and pick the FIRST one
+    //      that has NO overlapping booking in [datetime, slotEnd).
+    //   3. If none free, return 409 — the slot is genuinely full.
+    // The DB-level `bookings_no_resource_overlap` EXCLUDE constraint guarantees
+    // atomic no-overlap even under concurrent requests, so the chosen resource_id
+    // cannot be claimed by another booking at the same time.
+    let resourceId: string | null = null;
+    if (profDefaultResource) {
+        // Verify the default resource is still free at this slot (defensive).
+        const { data: defaultBusy } = await db
+            .from('bookings')
+            .select('id')
+            .eq('resource_id', profDefaultResource)
+            .lt('start_time', slotEnd.toISOString())
+            .gt('end_time', datetime)
+            .in('status', ['pending', 'confirmed'])
+            .maybeSingle();
+        if (!defaultBusy) {
+            resourceId = profDefaultResource;
+        }
+    }
+    if (!resourceId) {
+        // List the company's active resources ordered by `order_position` then name
+        // for stable assignment (NOT round-robin, NOT random — first free wins).
+        const { data: resources, error: resErr } = await db
+            .from('resources')
+            .select('id, name, capacity')
+            .eq('company_id', companyId)
+            .eq('is_active', true)
+            .order('order_position', { ascending: true })
+            .order('name', { ascending: true });
+        if (resErr) throw resErr;
 
-    // Insert
+        if (!resources || resources.length === 0) {
+            return json({ error: 'No resources configured for this company' }, 409, cors);
+        }
+
+        // Find resources that are NOT occupied during the slot. For each candidate,
+        // count active bookings that overlap [datetime, slotEnd). If count < capacity,
+        // the resource is free. (Capacity 1 = exclusive; capacity > 1 = chairs.)
+        for (const r of resources as any[]) {
+            const cap = typeof r.capacity === 'number' && r.capacity > 0 ? r.capacity : 1;
+            const { count, error: cntErr } = await db
+                .from('bookings')
+                .select('id', { count: 'exact', head: true })
+                .eq('resource_id', r.id)
+                .lt('start_time', slotEnd.toISOString())
+                .gt('end_time', datetime)
+                .in('status', ['pending', 'confirmed']);
+            if (cntErr) throw cntErr;
+            if ((count ?? 0) < cap) {
+                resourceId = r.id;
+                break;
+            }
+        }
+    }
+    if (!resourceId) {
+        return json({ error: 'No resources available at this time' }, 409, cors);
+    }
+
+    // Insert with the assigned resource. The DB EXCLUDE constraint will reject
+    // any concurrent attempt to claim the same resource+time window, so a 23P01
+    // error here means we lost the race — surface that as 409.
     const { data: booking, error: insertError } = await db
         .from('bookings')
         .insert({
-            company_id: (company as any).id,
+            company_id: companyId,
             service_id,
             professional_id: professional_id || null,
+            resource_id: resourceId,
             customer_name: safeName,
             customer_email: safeEmail,
             customer_phone: safePhone,
@@ -395,9 +644,15 @@ async function handleCreateBooking(
         })
         .select('id')
         .single();
-    if (insertError) throw insertError;
+    if (insertError) {
+        // 23P01 = exclusion_violation, 23505 = unique_violation
+        if (insertError.code === '23P01' || insertError.code === '23505') {
+            return json({ error: 'Resource was just booked by another request. Please try another slot.' }, 409, cors);
+        }
+        throw insertError;
+    }
 
-    return json({ success: true, booking_id: (booking as any).id }, 201, cors);
+    return json({ success: true, booking_id: (booking as any).id, resource_id: resourceId }, 201, cors);
 }
 
 // ── Main router ───────────────────────────────────────────────────────────────
