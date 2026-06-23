@@ -15,9 +15,18 @@ import { withSecurityHeaders } from '../_shared/security.ts';
 const TRASH_RETENTION_DAYS = 60;
 
 serve(async (req: Request) => {
-  // Only allow internal cron invocations
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // Internal auth: accept apikey header (cron v2) OR Bearer service_role (legacy)
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('Authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const VALID_KEYS = new Set<string>([serviceRoleKey]);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')     ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+
+  const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || bearerToken === serviceRoleKey;
+  if (!authed) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),

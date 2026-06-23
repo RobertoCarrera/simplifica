@@ -55,14 +55,28 @@ serve(async (req: Request) => {
   }
 
   // ── Auth ──────────────────────────────────────────────────────
-  const authHeader = req.headers.get('Authorization') || '';
-  const token      = authHeader.replace('Bearer ', '');
+  // Accept: apikey header (cron v2) | Bearer service_role (legacy) | Bearer user JWT (manual)
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('Authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')     ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+
+  const authedAsServiceRole = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || bearerToken === SERVICE_ROLE_KEY;
   const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Service role key → cron caller. JWT → manual trigger.
-  if (token !== SERVICE_ROLE_KEY) {
+  // Manual trigger path — validate as user JWT
+  if (!authedAsServiceRole) {
+    if (!bearerToken) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
+      });
+    }
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
+      global: { headers: { Authorization: `Bearer ${bearerToken}` } },
     });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {

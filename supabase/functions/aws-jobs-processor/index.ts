@@ -375,28 +375,37 @@ async function processPendingJobs(
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
-async function requireSuperAdminOrServiceRole(
+async function requireAuthorizedCaller(
   req: Request,
   supabaseAdmin: ReturnType<typeof createClient>
-): Promise<{ ok: boolean; userId: string | null }> {
-  const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  if (authHeader.length > 0 && authHeader === serviceRoleKey) {
-    return { ok: true, userId: null };
+): Promise<{ ok: boolean; userId: string | null; asServiceRole: boolean }> {
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const VALID = new Set<string>([SERVICE_ROLE_KEY]);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID.add(v);
+
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('Authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  // Path 1: apikey header (v2 cron) — bypasses super_admin gate
+  if (apikeyHeader && VALID.has(apikeyHeader)) return { ok: true, userId: null, asServiceRole: true };
+  // Path 2: legacy service_role Bearer — bypasses super_admin gate
+  if (bearerToken && bearerToken === SERVICE_ROLE_KEY) return { ok: true, userId: null, asServiceRole: true };
+  // Path 3: user JWT Bearer — requires super_admin role for manual /peek and /run
+  if (bearerToken) {
+    const { data: { user } } = await supabaseAdmin.auth.getUser(bearerToken);
+    if (!user) return { ok: false, userId: null, asServiceRole: false };
+    const { data: row } = await supabaseAdmin
+      .from('users')
+      .select('id, app_role_id, app_roles:app_role_id(name)')
+      .eq('auth_user_id', user.id)
+      .single();
+    if ((row as any)?.app_roles?.name === 'super_admin') {
+      return { ok: true, userId: (row as any).id, asServiceRole: false };
+    }
   }
-  const token = authHeader;
-  if (!token) return { ok: false, userId: null };
-  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-  if (!user) return { ok: false, userId: null };
-  const { data: row } = await supabaseAdmin
-    .from('users')
-    .select('id, app_role_id, app_roles:app_role_id(name)')
-    .eq('auth_user_id', user.id)
-    .single();
-  if ((row as any)?.app_roles?.name === 'super_admin') {
-    return { ok: true, userId: (row as any).id };
-  }
-  return { ok: false, userId: null };
+  return { ok: false, userId: null, asServiceRole: false };
 }
 
 function jsonError(status: number, error: string, req: Request) {
@@ -426,14 +435,14 @@ serve(async (req) => {
   const method = req.method.toUpperCase();
 
   if (method === 'POST' && url.pathname.endsWith('/run')) {
-    const auth = await requireSuperAdminOrServiceRole(req, supabaseAdmin);
+    const auth = await requireAuthorizedCaller(req, supabaseAdmin);
     if (!auth.ok) return jsonError(401, 'Unauthorized', req);
     const result = await processPendingJobs(supabaseAdmin);
     return jsonSuccess(result, req);
   }
 
   if (method === 'GET' && url.pathname.endsWith('/peek')) {
-    const auth = await requireSuperAdminOrServiceRole(req, supabaseAdmin);
+    const auth = await requireAuthorizedCaller(req, supabaseAdmin);
     if (!auth.ok) return jsonError(401, 'Unauthorized', req);
     const { data } = await supabaseAdmin
       .from('aws_jobs')

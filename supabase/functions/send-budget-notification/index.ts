@@ -44,12 +44,18 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-/* ── Auth guard ───────────────────────────────────────────────── */
+/* ── Auth guard (v2: apikey | Bearer service_role; no user-JWT path — internal-only) ── */
 function assertServiceRole(req: Request): Response | null {
-  const authHeader = req.headers.get('Authorization') || '';
-  const token      = authHeader.replace('Bearer ', '');
-  if (token !== SERVICE_ROLE_KEY) {
-    return jsonResponse(401, { error: 'Unauthorized — service role required' });
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const bearerToken  = (req.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
+  try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
+  try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
+
+  const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || (bearerToken && bearerToken === SERVICE_ROLE_KEY);
+  if (!authed) {
+    return jsonResponse(401, { error: 'Unauthorized — service role or valid apikey required' });
   }
   return null;
 }
