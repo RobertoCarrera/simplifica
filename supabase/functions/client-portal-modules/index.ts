@@ -970,7 +970,9 @@ serve(async (req) => {
     if (sTail.length === 1 && sTail[0] === 'contract' && req.method === 'POST') {
       route = 'service-contract';
     } else if (sTail.length === 2 && sTail[1] === 'variants' && req.method === 'GET') {
-      route = 'service-variants';
+      // /services/<id>/variants — handled by the 'services' case below
+      // when serviceIdSegment is set, so we just keep the route name.
+      route = 'services';
       serviceIdSegment = sTail[0];
     }
   }
