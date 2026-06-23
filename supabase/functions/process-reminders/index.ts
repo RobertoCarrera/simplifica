@@ -1,6 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escapeHtml } from "../_shared/escape.ts";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -106,7 +106,7 @@ serve(async (req) => {
                             booking,
                             type: 'reminder_24h',
                             label: 'Mañana',
-                            subject: `Recordatorio: ${booking.service?.name} es mañana`
+                            subject: `Recordatorio: ${escapeHtml(booking.service?.name || '')} es mañana`
                         });
                     }
                 }
@@ -119,7 +119,7 @@ serve(async (req) => {
                             booking,
                             type: 'reminder_1h',
                             label: 'Pronto',
-                            subject: `Recordatorio: ${booking.service?.name} es en ${rule1.offset_hours} hora(s)`
+                            subject: `Recordatorio: ${escapeHtml(booking.service?.name || '')} es en ${rule1.offset_hours} hora(s)`
                         });
                     }
                 }
@@ -140,7 +140,7 @@ serve(async (req) => {
                             booking,
                             type: 'review_request',
                             label: 'Gracias',
-                            subject: `Gracias por tu visita a ${booking.service?.name} - ¿Qué tal fue?`
+                            subject: `Gracias por tu visita a ${escapeHtml(booking.service?.name || '')} - ¿Qué tal fue?`
                         });
                     }
                 }
@@ -166,11 +166,11 @@ serve(async (req) => {
                         to: booking.client.email,
                         subject: subject,
                         html: `
-                        <h1>Hola ${((booking.client.name || '') + (booking.client.surname ? ' ' + booking.client.surname : '')).trim()},</h1>
+                        <h1>Hola ${escapeHtml(((booking.client.name || '') + (booking.client.surname ? ' ' + booking.client.surname : '')).trim())},</h1>
                         <p>${type === 'review_request' ? 'Esperamos que hayas disfrutado tu servicio.' : 'Este es un recordatorio de tu cita.'}</p>
                         <ul>
-                            <li><strong>Servicio:</strong> ${booking.service?.name}</li>
-                            <li><strong>Fecha:</strong> ${new Date(booking.start_time).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</li>
+                            <li><strong>Servicio:</strong> ${escapeHtml(booking.service?.name || '')}</li>
+                            <li><strong>Fecha:</strong> ${escapeHtml(new Date(booking.start_time).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}</li>
                         </ul>
                         ${type === 'review_request' ? '<p>¿Nos dejarías una reseña?</p>' : '<p>¡Te esperamos!</p>'}
                         `
