@@ -107,7 +107,7 @@ serve(async (req) => {
         const notificationsToSend: any[] = [];
 
         // 2. Logic Per Booking
-        for (const booking of (bookings || [])) {
+        for (const booking of ((bookings || []) as any[])) {
             const companySettingsList = booking.company?.company_settings as any[];
             const settings = (companySettingsList && companySettingsList.length > 0) ? companySettingsList[0] : {};
             const automation = settings?.automation || {};
