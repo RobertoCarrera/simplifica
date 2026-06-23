@@ -427,7 +427,7 @@ async function handleServicesList(ctx, req, corsHeaders) {
   // can read the table at all for this company.
   const availableRes = await crmFetch(
     'services',
-    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,tax_rate,unit_type,tags,has_variants,company_id,created_at` +
+    `select=id,name,description,base_price,estimated_hours,category,is_active,is_public,is_bookable,allow_direct_contracting,features,min_quantity,max_quantity,duration_minutes,buffer_minutes,booking_color,unit_type,tags,has_variants,company_id,created_at` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
     `&order=name.asc`,
   );
@@ -450,21 +450,16 @@ async function handleServicesList(ctx, req, corsHeaders) {
     return jsonError(500, `Contracted services: ${contractedRes.error}`, corsHeaders);
   }
 
-  // DEBUG: log the full response structure we're about to send
-  const responsePayload = {
-    available,
-    contracted: contractedRes.data ?? [],
-    _debug: {
-      ctx_companyId: ctx.companyId,
-      ctx_clientId: ctx.clientId,
-      available_count: available.length,
-      contracted_count: (contractedRes.data ?? []).length,
-      first_available: available[0] ?? null,
-      crm_url: CRM_SUPABASE_URL,
-      crm_query_for_available: `select=id,name,...,is_public,is_bookable,...&company_id=eq.${encodeURIComponent(ctx.companyId)}&order=name.asc`,
-    },
-  };
-  return jsonOk(responsePayload, corsHeaders);
+  // Log for observability (visible in Supabase dashboard function logs)
+  console.log('[handleServicesList]', {
+    companyId: ctx.companyId,
+    clientId: ctx.clientId,
+    available_count: available.length,
+    contracted_count: (contractedRes.data ?? []).length,
+    available_error: availableRes.error ?? null,
+    first_available: available[0] ?? null,
+  });
+  return jsonOk({ available, contracted: contractedRes.data ?? [] }, corsHeaders);
 }
 
 /**
