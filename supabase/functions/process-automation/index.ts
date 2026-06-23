@@ -31,12 +31,20 @@ serve(async (req) => {
     }
 
     try {
+        // Inner client uses SERVICE_ROLE_KEY for admin access. The incoming
+        // Authorization header is passed through for "act as caller" semantics
+        // when the caller is a user JWT — but for cron calls (apikey-only),
+        // it's null, so we fall back to Bearer service_role to avoid
+        // `Authorization: null` (which would break downstream RLS-context calls).
+        const callerAuth = req.headers.get('Authorization')?.startsWith('Bearer ')
+            ? req.headers.get('Authorization')!
+            : `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`;
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
             {
                 global: {
-                    headers: { Authorization: req.headers.get('Authorization')! },
+                    headers: { Authorization: callerAuth },
                 },
             }
         );
