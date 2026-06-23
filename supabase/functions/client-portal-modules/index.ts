@@ -519,10 +519,24 @@ async function handleServiceVariants(ctx, serviceId, corsHeaders) {
   );
   if (vRes.error) return jsonError(500, `Variants: ${vRes.error}`, corsHeaders);
 
+  // Map the CRM's pricing shape ({ base_price, billing_period, ... }) to the
+  // portal-friendly shape ({ price, period, currency }) the frontend expects.
+  const variants = (vRes.data ?? []).map((v) => ({
+    ...v,
+    pricing: Array.isArray(v.pricing)
+      ? v.pricing.map((p) => ({
+          price: typeof p?.base_price === 'number' ? p.base_price : null,
+          period: p?.billing_period ?? null,
+          currency: p?.currency ?? null,
+          estimated_hours: p?.estimated_hours ?? null,
+        }))
+      : v.pricing,
+  }));
+
   return jsonOk({
     service_id: serviceId,
     has_variants: !!service.has_variants,
-    variants: vRes.data ?? [],
+    variants,
   }, corsHeaders);
 }
 
@@ -579,16 +593,26 @@ async function handleServiceContract(ctx, req, corsHeaders) {
 
     contractedName = variant.variant_name || service.name;
 
+    // Normalize the CRM pricing shape ({ base_price, billing_period, ... })
+    // to the portal shape ({ price, period, currency }) before resolving.
+    const normalizedPricing = Array.isArray(variant.pricing)
+      ? variant.pricing.map((p) => ({
+          price: typeof p?.base_price === 'number' ? p.base_price : null,
+          period: p?.billing_period ?? null,
+          currency: p?.currency ?? null,
+        }))
+      : [];
+
     // Resolve price: try pricing_period → pricing[0] → 0
     let resolvedPrice: number | null = null;
-    if (Array.isArray(variant.pricing) && variant.pricing.length > 0) {
+    if (normalizedPricing.length > 0) {
       const match = pricingPeriod
-        ? variant.pricing.find((p) => p?.period === pricingPeriod)
-        : variant.pricing[0];
-      if (match && typeof match.price !== 'undefined') {
+        ? normalizedPricing.find((p) => p?.period === pricingPeriod)
+        : normalizedPricing[0];
+      if (match && typeof match.price === 'number') {
         resolvedPrice = match.price;
-      } else if (variant.pricing[0] && typeof variant.pricing[0].price !== 'undefined') {
-        resolvedPrice = variant.pricing[0].price;
+      } else if (normalizedPricing[0] && typeof normalizedPricing[0].price === 'number') {
+        resolvedPrice = normalizedPricing[0].price;
       }
     }
     if (resolvedPrice != null) price = resolvedPrice;
