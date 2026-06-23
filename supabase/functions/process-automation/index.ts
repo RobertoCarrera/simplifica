@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { escapeHtml } from "../_shared/escape.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -65,6 +66,19 @@ serve(async (req) => {
             return new Response(
                 JSON.stringify({ paused: true, processed: 0, message: 'marketing-automation is paused by admin' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Rate limit by IP AFTER kill switch (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP).
+        // Kill switch must come first so a paused cron returns {paused:true} not 429.
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+                || req.headers.get('x-real-ip')
+                || 'unknown';
+        const rateCheck = await checkRateLimit(`process-automation:${ip}`, 600, 60_000);
+        if (!rateCheck.allowed) {
+            return new Response(
+                JSON.stringify({ error: 'Too many requests' }),
+                { status: 429, headers: { ...getRateLimitHeaders(rateCheck), ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
