@@ -8,6 +8,7 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
+import { escapeOrFilterValue } from '../../../shared/utils/escape-like';
 
 interface SimpleClient {
   id: string;
@@ -648,7 +649,7 @@ export class ServiceVariantsComponent implements OnInit {
       const supabase = this.supabaseService.getClient();
       // Search by name, email, or business_name using ilike
       // Syntax: or=(name.ilike.%term%,email.ilike.%term%,business_name.ilike.%term%)
-      const searchPattern = `%${term}%`;
+      const searchPattern = `%${escapeOrFilterValue(term)}%`;
       const { data, error } = await supabase
         .from('clients')
         .select('id, name, email, business_name')

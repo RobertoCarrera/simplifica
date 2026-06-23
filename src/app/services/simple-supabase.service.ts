@@ -3,6 +3,7 @@ import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { escapeOrFilterValue } from '../shared/utils/escape-like';
 import { environment } from '../../environments/environment';
 
 // Tipos súper simples
@@ -296,10 +297,11 @@ export class SimpleSupabaseService {
    */
   async searchClients(searchTerm: string): Promise<{ success: boolean; data?: SimpleClient[]; error?: string }> {
     try {
+      const st = escapeOrFilterValue(searchTerm);
       let query = this.supabase
         .from('clients')
         .select('*')
-        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+        .or(`name.ilike.%${st}%,email.ilike.%${st}%`)
         .is('deleted_at', null)
         .limit(500);
 

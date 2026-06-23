@@ -12,6 +12,7 @@ import { AuthService } from './auth.service';
 import { CsrfService } from './csrf.service';
 import { GdprComplianceService } from './gdpr-compliance.service';
 import { environment } from '../../environments/environment';
+import { escapeOrFilterValue, escapeLike } from '../shared/utils/escape-like';
 
 export interface CustomerFilters {
   search?: string;
@@ -129,7 +130,7 @@ export class SupabaseCustomersService {
       .from('clients')
       .select('id', { count: 'exact', head: true })
       .eq('company_id', companyId)
-      .ilike('email', email.trim().toLowerCase())
+      .ilike('email', escapeLike(email.trim().toLowerCase()))
       .is('deleted_at', null);
     if (excludeId) {
       query = query.neq('id', excludeId);
@@ -374,7 +375,8 @@ export class SupabaseCustomersService {
 
     // Aplicar filtros de búsqueda
     if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      const s = escapeOrFilterValue(filters.search);
+      query = query.or(`name.ilike.%${s}%,surname.ilike.%${s}%,email.ilike.%${s}%`);
     }
 
     // Filtros Adicionales
@@ -467,7 +469,10 @@ export class SupabaseCustomersService {
 
         const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
-        if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        if (filters.search) {
+          const s2 = escapeOrFilterValue(filters.search);
+          q2 = q2.or(`name.ilike.%${s2}%,surname.ilike.%${s2}%,email.ilike.%${s2}%`);
+        }
 
         if (filters.industry) q2 = q2.eq('industry', filters.industry);
         if (filters.status) q2 = q2.eq('status', filters.status);
@@ -556,7 +561,8 @@ export class SupabaseCustomersService {
 
         // Aplicar filtros de búsqueda
         if (filters.search) {
-          query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+          const s3 = escapeOrFilterValue(filters.search);
+          query = query.or(`name.ilike.%${s3}%,surname.ilike.%${s3}%,email.ilike.%${s3}%`);
         }
 
         // Filtros Adicionales
@@ -719,7 +725,8 @@ export class SupabaseCustomersService {
     }
 
     if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      const s4 = escapeOrFilterValue(filters.search);
+      query = query.or(`name.ilike.%${s4}%,surname.ilike.%${s4}%,email.ilike.%${s4}%`);
     }
 
     // Ordenamiento consistente con estándar: activos (deleted_at NULL) primero
@@ -1494,10 +1501,11 @@ export class SupabaseCustomersService {
       return this.customers$;
     }
 
+    const sq = escapeOrFilterValue(query);
     let searchQuery = this.supabase
       .from('clients')
       .select('*')
-      .or(`name.ilike.%${query}%,surname.ilike.%${query}%,email.ilike.%${query}%,dni.ilike.%${query}%,phone.ilike.%${query}%`)
+      .or(`name.ilike.%${sq}%,surname.ilike.%${sq}%,email.ilike.%${sq}%,dni.ilike.%${sq}%,phone.ilike.%${sq}%`)
       .order('created_at', { ascending: false });
 
     // Apply company filter in dev mode

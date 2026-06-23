@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, OnInit, Output, inject, computed } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Ticket } from '../../../../services/supabase-tickets.service';
+import { escapeLike } from '../../../../shared/utils/escape-like';
 import { SupabaseTicketStagesService, TicketStage } from '../../../../services/supabase-ticket-stages.service';
 import { SupabaseServicesService, Service, ServiceVariant } from '../../../../services/supabase-services.service';
 import { ProductsService } from '../../../../services/products.service';
@@ -120,7 +121,7 @@ export class TicketFormComponent implements OnInit {
             .from('clients')
             .select('id, name, email, phone')
             .eq('company_id', this.companyId)
-            .ilike('name', `%${term}%`)
+            .ilike('name', `%${escapeLike(term)}%`)
             .limit(10);
 
         this.filteredCustomers = data || [];

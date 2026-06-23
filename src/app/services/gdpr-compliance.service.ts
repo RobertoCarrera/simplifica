@@ -5,6 +5,7 @@ import { map, catchError, tap, switchMap } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { AuthService } from './auth.service';
+import { escapeLike } from '../shared/utils/escape-like';
 
 export interface GdprAccessRequest {
   id?: string;
@@ -101,7 +102,7 @@ export class GdprComplianceService {
             .from('clients')
             .select('id')
             .eq('company_id', companyId)
-            .ilike('email', request.subject_email.trim())
+            .ilike('email', escapeLike(request.subject_email.trim()))
             .is('deleted_at', null)
             .limit(1)
             .maybeSingle()

@@ -5,6 +5,7 @@ import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 import { SupabaseSettingsService } from './supabase-settings.service';
 import { environment } from '../../environments/environment';
+import { escapeOrFilterValue } from '../shared/utils/escape-like';
 import {
   Quote,
   QuoteItem,
@@ -94,7 +95,8 @@ export class SupabaseQuotesService {
       }
 
       if (filters.search) {
-        query = query.or(`title.ilike.%${filters.search}%,full_quote_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        const s = escapeOrFilterValue(filters.search);
+        query = query.or(`title.ilike.%${s}%,full_quote_number.ilike.%${s}%,description.ilike.%${s}%`);
       }
 
       if (filters.is_expired !== undefined) {
