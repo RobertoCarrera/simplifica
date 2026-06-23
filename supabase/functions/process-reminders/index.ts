@@ -33,6 +33,24 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
+        // Kill switch: if super_admin has paused process-reminders, short-circuit.
+        // Single-row table; default is paused=false so behavior is unchanged.
+        const { data: systemSettings, error: settingsError } = await supabaseClient
+            .from('system_settings')
+            .select('process_reminders_paused')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (settingsError) {
+            console.error('process-reminders: failed to read system_settings:', settingsError);
+            // Fail open: if we can't read settings, process normally
+        } else if (systemSettings?.process_reminders_paused === true) {
+            return new Response(
+                JSON.stringify({ paused: true, processed: 0, message: 'process-reminders is paused by admin' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
         const now = new Date();
         const MAX_LOOKAHEAD_HOURS = 72; // Max booking lookahead
         const MAX_LOOKBACK_HOURS = 24;  // Max history lookback for reviews
