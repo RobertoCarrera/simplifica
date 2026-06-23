@@ -436,6 +436,23 @@ async function handleServicesList(ctx, req, corsHeaders) {
     console.error('[handleServicesList] primary query error:', availableRes.error);
   }
 
+  // 3. Resolve category names (services.category is a UUID with no FK to
+  // service_categories). Pull the categories for this company and ship
+  // them in the payload so the client can render names + colors without
+  // a second roundtrip.
+  const categoriesRes = await crmFetch(
+    'service_categories',
+    `select=id,name,color,icon` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&order=name.asc`,
+  );
+  if (categoriesRes.error) {
+    console.error('[handleServicesList] categories error:', categoriesRes.error);
+  }
+  const categories = (categoriesRes.data ?? []).map((c) => ({
+    id: c.id, name: c.name ?? null, color: c.color ?? null, icon: c.icon ?? null,
+  }));
+
   // 2. Services already contracted by this client (active only)
   const contractedRes = await crmFetch(
     'contracted_services',
@@ -456,10 +473,15 @@ async function handleServicesList(ctx, req, corsHeaders) {
     clientId: ctx.clientId,
     available_count: available.length,
     contracted_count: (contractedRes.data ?? []).length,
+    categories_count: categories.length,
     available_error: availableRes.error ?? null,
+    categories_error: categoriesRes.error ?? null,
     first_available: available[0] ?? null,
   });
-  return jsonOk({ available, contracted: contractedRes.data ?? [] }, corsHeaders);
+  return jsonOk(
+    { available, contracted: contractedRes.data ?? [], categories },
+    corsHeaders,
+  );
 }
 
 /**
