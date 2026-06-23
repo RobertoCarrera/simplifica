@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { escapeOrFilterValue } from '../shared/utils/escape-like';
 
 export interface MarketingCampaign {
   id: string;
@@ -317,7 +318,8 @@ export class SupabaseMarketingService {
 
     // Tags - match any
     if (filters.tags && filters.tags.length > 0) {
-      query = query.or(`tags.cs.${JSON.stringify(filters.tags)}`);
+      const safeTags = filters.tags.map((t: string) => JSON.stringify(escapeOrFilterValue(t))).join(',');
+      query = query.or(`tags.cs.{${safeTags}}`);
     }
 
     // Date range - created_at
@@ -412,7 +414,7 @@ export class SupabaseMarketingService {
     }
 
     if (search) {
-      const term = `%${search}%`;
+      const term = `%${escapeOrFilterValue(search)}%`;
       query = query.or(`name.ilike.${term},surname.ilike.${term},email.ilike.${term}`);
     }
 
@@ -469,7 +471,7 @@ export class SupabaseMarketingService {
     }
 
     if (search) {
-      const term = `%${search}%`;
+      const term = `%${escapeOrFilterValue(search)}%`;
       query = query.or(`name.ilike.${term},surname.ilike.${term},email.ilike.${term}`);
     }
 

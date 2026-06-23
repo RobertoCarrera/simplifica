@@ -18,6 +18,7 @@ import {
 import { AuthService } from './auth.service';
 import { SupabaseClientService } from './supabase-client.service';
 import { environment } from '../../environments/environment';
+import { escapeLike } from '../shared/utils/escape-like';
 
 @Injectable({
   providedIn: 'root'
@@ -603,7 +604,7 @@ export class SupabaseInvoicesService {
         query = query.lte('invoice_date', filters.date_to);
       }
       if (filters.invoice_number) {
-        query = query.ilike('full_invoice_number', `%${filters.invoice_number}%`);
+        query = query.ilike('full_invoice_number', `%${escapeLike(filters.invoice_number)}%`);
       }
       if (filters.min_amount) {
         query = query.gte('total', filters.min_amount);

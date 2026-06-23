@@ -11,6 +11,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { Router, ActivatedRoute } from "@angular/router";
 import { TicketModalService } from "../../../services/ticket-modal.service";
+import { escapeLike } from "../../../shared/utils/escape-like";
 import {
   SupabaseTicketsService,
   Ticket,
@@ -239,7 +240,7 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
         query = query.eq("priority", this.filterPriority);
       if (this.searchTerm) {
         // naive search
-        query = query.ilike("title", `%${this.searchTerm}%`);
+        query = query.ilike("title", `%${escapeLike(this.searchTerm)}%`);
       }
 
       query = query.order("created_at", { ascending: false }).range(from, to);

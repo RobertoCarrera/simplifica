@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { SimpleSupabaseService } from './simple-supabase.service';
+import { escapeLike } from '../shared/utils/escape-like';
 
 export interface ProductBrand {
   id: string;
@@ -70,7 +71,7 @@ export class ProductMetadataService {
         .from('product_brands')
         .select('*')
         .is('deleted_at', null)
-        .ilike('name', `%${searchTerm}%`)
+        .ilike('name', `%${escapeLike(searchTerm)}%`)
         .order('name', { ascending: true })
         .limit(20)
         .then(({ data, error }) => {
@@ -177,7 +178,7 @@ export class ProductMetadataService {
         .from('product_categories')
         .select('*')
         .is('deleted_at', null)
-        .ilike('name', `%${searchTerm}%`)
+        .ilike('name', `%${escapeLike(searchTerm)}%`)
         .order('name', { ascending: true })
         .limit(20)
         .then(({ data, error }) => {

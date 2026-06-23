@@ -28,6 +28,7 @@ import { SupabaseSettingsService } from "../../../services/supabase-settings.ser
 import { SupabaseCustomersService } from "../../../services/supabase-customers.service";
 import { SupabaseBookingsService, SourceKey } from "../../../services/supabase-bookings.service";
 import { buildCleanExtendedProperties } from "../../utils/booking-sync-helpers";
+import { escapeLike } from "../../utils/escape-like";
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
@@ -3641,7 +3642,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
                 .from('clients')
                 .select('id, name, surname, email, phone')
                 .eq('company_id', companyId)
-                .ilike('email', finalClient.email)
+                .ilike('email', escapeLike(finalClient.email))
                 .maybeSingle();
               resolved = data;
             }
@@ -3657,7 +3658,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
                   .from('clients')
                   .select('id, name, surname, email, phone')
                   .eq('company_id', companyId)
-                  .ilike('name', bareName)
+                  .ilike('name', escapeLike(bareName))
                   .maybeSingle();
                 resolved = data;
               }
@@ -3744,7 +3745,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
               .from('clients')
               .select('id, name, surname, email, phone')
               .eq('company_id', companyId)
-              .ilike('email', finalClient.email)
+              .ilike('email', escapeLike(finalClient.email))
               .maybeSingle();
             if (realByEmail?.id) {
               this.debugLastSaveResult.set(
