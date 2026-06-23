@@ -16,7 +16,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { decrypt as decryptGoogleToken, encrypt as encryptGoogleToken, isEncrypted as isGoogleTokenEncrypted } from '../_shared/crypto-utils.ts';
-import { withSecurityHeaders, escapeLike } from '../_shared/security.ts';
+import { withSecurityHeaders, escapeLike, getClientIP } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 /* ── Phone normalization ─────────────────────────── */
 function normalizePhone(phone: string | null | undefined): string | null {
@@ -955,6 +956,24 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limit by source IP — DocPlanner API itself enforces 30 req/min;
+  // this matches that ceiling so abuse cannot blacklist the integration.
+  const ip = getClientIP(req);
+  const rateCheck = await checkRateLimit(`docplanner-sync-cron:${ip}`, 30, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(JSON.stringify({
+      error: 'Too many requests'
+    }), {
+      status: 429,
+      headers: withSecurityHeaders({
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(rateCheck),
+      })
+    });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({
       error: 'Method not allowed'

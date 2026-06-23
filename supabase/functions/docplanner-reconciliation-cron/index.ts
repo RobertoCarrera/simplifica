@@ -24,7 +24,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from './cors.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { withSecurityHeaders, getClientIP } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 /* ── Env ──────────────────────────────────────────────────────── */
@@ -449,6 +450,21 @@ serve(async (req: Request) => {
   const corsHeaders     = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limit by source IP — tighter than sync-cron because reconciliation is
+  // a manual admin trigger that fans out across all active DocPlanner integrations.
+  const ip = getClientIP(req);
+  const rateCheck = await checkRateLimit(`docplanner-reconciliation-cron:${ip}`, 10, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(rateCheck),
+      }),
+    });
+  }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {

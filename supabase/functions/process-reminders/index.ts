@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -27,14 +29,14 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
-    try {
-        const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
+    const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-        // Kill switch: if super_admin has paused process-reminders, short-circuit.
-        // Single-row table; default is paused=false so behavior is unchanged.
+    // Kill switch: short-circuit BEFORE rate limit so a paused cron returns the
+    // paused message instead of 429. Rafter v0.22 + v0.44 harden pattern.
+    try {
         const { data: systemSettings, error: settingsError } = await supabaseClient
             .from('system_settings')
             .select('process_reminders_paused')
@@ -50,7 +52,30 @@ serve(async (req) => {
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
+    } catch (e: any) {
+        // Don't let a transient kill-switch read failure block reminders entirely
+        console.error('process-reminders: kill switch check failed (continuing):', e?.message);
+    }
 
+    // Rate limit by source IP — protects against authenticated apikey spam
+    // (any anon JWT holder can otherwise trigger emails for any company).
+    const ip = getClientIP(req);
+    const rateCheck = await checkRateLimit(`process-reminders:${ip}`, 60, 60_000);
+    if (!rateCheck.allowed) {
+        return new Response(
+            JSON.stringify({ error: 'Too many requests' }),
+            {
+                status: 429,
+                headers: {
+                    ...corsHeaders,
+                    'Content-Type': 'application/json',
+                    ...getRateLimitHeaders(rateCheck),
+                },
+            }
+        );
+    }
+
+    try {
         const now = new Date();
         const MAX_LOOKAHEAD_HOURS = 72; // Max booking lookahead
         const MAX_LOOKBACK_HOURS = 24;  // Max history lookback for reviews

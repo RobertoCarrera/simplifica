@@ -31,7 +31,8 @@ import {
 } from 'npm:@aws-sdk/client-route-53';
 
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { withSecurityHeaders, getClientIP } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -426,22 +427,54 @@ serve(async (req) => {
   const corsRes = handleCorsOptions(req);
   if (corsRes) return corsRes;
 
+  const url = new URL(req.url);
+  const method = req.method.toUpperCase();
+  const ip = getClientIP(req);
+
+  // Per-endpoint rate limit (Rafter v0.44 — HIGH severity hardening).
+  // /peek is enumeration-prone: stricter 5/min. /run is heavier work but still
+  // bounded: 60/min.
+  const isPeek = method === 'GET' && url.pathname.endsWith('/peek');
+  const isRun  = method === 'POST' && url.pathname.endsWith('/run');
+  if (isPeek) {
+    const rl = await checkRateLimit(`aws-jobs-processor:peek:${ip}`, 5, 60_000);
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: withSecurityHeaders({
+          ...getCorsHeaders(req),
+          'Content-Type': 'application/json',
+          ...getRateLimitHeaders(rl),
+        }),
+      });
+    }
+  } else if (isRun) {
+    const rl = await checkRateLimit(`aws-jobs-processor:run:${ip}`, 60, 60_000);
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: withSecurityHeaders({
+          ...getCorsHeaders(req),
+          'Content-Type': 'application/json',
+          ...getRateLimitHeaders(rl),
+        }),
+      });
+    }
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  const url = new URL(req.url);
-  const method = req.method.toUpperCase();
-
-  if (method === 'POST' && url.pathname.endsWith('/run')) {
+  if (isRun) {
     const auth = await requireAuthorizedCaller(req, supabaseAdmin);
     if (!auth.ok) return jsonError(401, 'Unauthorized', req);
     const result = await processPendingJobs(supabaseAdmin);
     return jsonSuccess(result, req);
   }
 
-  if (method === 'GET' && url.pathname.endsWith('/peek')) {
+  if (isPeek) {
     const auth = await requireAuthorizedCaller(req, supabaseAdmin);
     if (!auth.ok) return jsonError(401, 'Unauthorized', req);
     const { data } = await supabaseAdmin
