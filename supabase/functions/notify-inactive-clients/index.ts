@@ -11,6 +11,7 @@ import { withSecurityHeaders } from '../_shared/security.ts';
 // Rafter v0.27: replace the local escHtml (incomplete — missing ' and "
 // escape) with the shared safe-by-default escapeHtml from _shared/escape.ts.
 import { escapeHtml } from '../_shared/escape.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 // Helper: call send-branded-email Edge Function with fallback to direct SES
@@ -97,6 +98,18 @@ serve(async (req) => {
       status: 405,
       headers: withSecurityHeaders({ 'Content-Type': 'application/json' }),
     });
+  }
+
+  // Rate limit by IP (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || req.headers.get('x-real-ip')
+          || 'unknown';
+  const rateCheck = await checkRateLimit(`notify-inactive-clients:${ip}`, 600, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      { status: 429, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...getRateLimitHeaders(rateCheck) }) }
+    );
   }
 
   // v2 auth (internal cron/trigger): apikey header | legacy Bearer service_role.

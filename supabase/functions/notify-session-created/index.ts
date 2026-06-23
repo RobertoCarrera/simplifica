@@ -4,6 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -19,6 +20,18 @@ interface SessionCreatedPayload {
 }
 
 serve(async (req) => {
+  // Rate limit by IP (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP)
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+          || req.headers.get("x-real-ip")
+          || "unknown";
+  const rateCheck = await checkRateLimit(`notify-session-created:${ip}`, 600, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests" }),
+      { status: 429, headers: { "Content-Type": "application/json", ...getRateLimitHeaders(rateCheck) } }
+    );
+  }
+
   // ── v2 auth (internal trigger only): apikey header | legacy Bearer service_role ──
   // No user-JWT branch — this EF is only called by DB trigger via pg_net (trigger-only, dead code today per audit #2 but kept safe).
   const apikeyHdr = req.headers.get("apikey") ?? "";

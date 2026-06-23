@@ -19,6 +19,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!;
@@ -61,6 +62,18 @@ serve(async (req: Request) => {
 
   if (req.method !== 'POST' && req.method !== 'GET') {
     return jsonResponse(405, { error: 'Method not allowed' });
+  }
+
+  // Rate limit by IP (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || req.headers.get('x-real-ip')
+          || 'unknown';
+  const rateCheck = await checkRateLimit(`send-budget-reminders:${ip}`, 600, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      { status: 429, headers: withSecurityHeaders({ ...getCorsHeaders(new Request('http://x/')), 'Content-Type': 'application/json', ...getRateLimitHeaders(rateCheck) }) }
+    );
   }
 
   const authError = assertServiceRole(req);

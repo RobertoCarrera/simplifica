@@ -18,6 +18,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 /* ── Env ──────────────────────────────────────────────────────── */
@@ -52,6 +53,18 @@ serve(async (req: Request) => {
       status: 405,
       headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
+  }
+
+  // Rate limit by IP (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || req.headers.get('x-real-ip')
+          || 'unknown';
+  const rateCheck = await checkRateLimit(`generate-recurring-budgets:${ip}`, 600, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      { status: 429, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rateCheck) }) }
+    );
   }
 
   // ── Auth ──────────────────────────────────────────────────────

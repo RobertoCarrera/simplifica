@@ -13,6 +13,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 
 const FUNCTION_NAME = 'check-gdpr-deadlines';
@@ -34,6 +35,18 @@ function jsonError(status: number, error: string) {
 serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return jsonError(405, 'Method not allowed. Use POST.');
+  }
+
+  // Rate limit by IP (Rafter v0.45 — MEDIUM severity hardening, 600/min/IP)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || req.headers.get('x-real-ip')
+          || 'unknown';
+  const rateCheck = await checkRateLimit(`check-gdpr-deadlines:${ip}`, 600, 60_000);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      { status: 429, headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...getRateLimitHeaders(rateCheck) }) }
+    );
   }
 
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
