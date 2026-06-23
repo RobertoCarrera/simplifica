@@ -39,11 +39,18 @@ serve(async (req: Request) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-  // Internal auth: require service role key as Bearer token
-  const authHeader = req.headers.get('Authorization') || '';
-  const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
-  if (!token || token !== serviceRoleKey) {
-    return jsonError(401, 'Unauthorized: valid service role key required');
+  // Internal auth: accept apikey header (cron v2) OR Bearer service_role (legacy)
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  const authHeader   = req.headers.get('Authorization') ?? '';
+  const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
+
+  const VALID_KEYS = new Set<string>([serviceRoleKey]);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')     ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+
+  const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || bearerToken === serviceRoleKey;
+  if (!authed) {
+    return jsonError(401, 'Unauthorized: valid service role key or apikey required');
   }
 
   const supabase = createClient(SUPABASE_URL, serviceRoleKey, {

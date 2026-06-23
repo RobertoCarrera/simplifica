@@ -61,6 +61,20 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // ── Auth (v2: apikey | Bearer service_role; no user-JWT path — trigger-fired only) ──
+  const apikeyHeader = req.headers.get("apikey") ?? "";
+  const bearerToken  = (req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i) || [])[1] ?? "";
+  const VALID_KEYS = new Set<string>([SERVICE_KEY]);
+  try { for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}")))      if (typeof v === "string") VALID_KEYS.add(v); } catch {}
+  try { for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}"))) if (typeof v === "string") VALID_KEYS.add(v); } catch {}
+  const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || (bearerToken && bearerToken === SERVICE_KEY);
+  if (!authed) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: withSecurityHeaders({ "Content-Type": "application/json" }),
+    });
+  }
+
   let body: NotifyBody;
   try {
     body = await req.json();
