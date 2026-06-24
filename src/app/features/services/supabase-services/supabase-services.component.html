@@ -1435,15 +1435,6 @@
                       <span>{{ 'services.sections.visibility' | transloco }}</span>
                     </div>
                     <div class="accordion-controls">
-                      <label class="toggle-switch" (click)="$event.stopPropagation()">
-                        <input
-                          type="checkbox"
-                          [(ngModel)]="formData.is_public"
-                          name="is_public"
-                          [attr.aria-label]="'services.mostrarEnPortal' | transloco"
-                        />
-                        <span class="toggle-slider"></span>
-                      </label>
                       <i
                         class="fas"
                         [class.fa-chevron-down]="!accordionState.visibility"
