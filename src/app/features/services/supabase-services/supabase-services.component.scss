@@ -1469,3 +1469,394 @@
     }
   }
 }
+/* ============================================================
+   VISIBILIDAD Y PORTAL — channel cards + assignments
+   ============================================================ */
+
+/* Channel cards (Agenda + Portal) inside the visibility section */
+.channel-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 1rem;
+  background: var(--bg-primary, #ffffff);
+  transition: all 0.2s;
+}
+
+.channel-card:hover {
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.channel-card-off {
+  opacity: 0.65;
+}
+
+.channel-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.channel-card-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color, #3b82f6);
+}
+
+.channel-card-icon i {
+  font-size: 1.125rem;
+}
+
+.channel-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-card-content h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+.channel-card-content p {
+  margin: 0.125rem 0 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.4;
+}
+
+.channel-card-extras {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px dashed var(--border-color, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.extra-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.extra-option:hover {
+  background: var(--bg-secondary, #f9fafb);
+}
+
+.extra-option input[type="checkbox"] {
+  margin-top: 0.1875rem;
+  flex-shrink: 0;
+}
+
+.extra-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.extra-option strong {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+.extra-option small {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.4;
+}
+
+.channel-hint {
+  margin: 0.75rem 0 0 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #2563eb;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  line-height: 1.4;
+}
+
+.channel-hint i {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.channel-hint-success {
+  background: rgba(16, 185, 129, 0.08);
+  color: #047857;
+}
+
+/* Assignments card */
+.assignments-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 1rem;
+  background: var(--bg-secondary, #fafbfc);
+}
+
+.assignments-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary, #1f2937);
+}
+
+.assignments-card-header i {
+  color: var(--primary-color, #3b82f6);
+}
+
+.assignments-card-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.assignments-help {
+  margin: 0 0 0.875rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.4;
+}
+
+.assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.875rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.assignment-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.assignment-item > i.fa-user-circle {
+  color: var(--text-muted, #9ca3af);
+}
+
+.assignment-client-name {
+  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+}
+
+.assignment-variant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--primary-color, #3b82f6);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.assignment-variant-badge i {
+  font-size: 0.625rem;
+}
+
+.assignment-variant-all {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
+.add-assignment {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.add-assignment .form-control {
+  font-size: 0.8125rem;
+  padding: 0.4375rem 0.625rem;
+}
+
+.assignments-disabled-hint {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-secondary, #f3f4f6);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.btn-icon-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.btn-icon-remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Portal hidden state */
+.portal-hidden-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--bg-secondary, #f9fafb);
+  border: 2px dashed var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  color: var(--text-muted, #6b7280);
+}
+
+.portal-hidden-state i {
+  font-size: 2.5rem;
+  opacity: 0.4;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.portal-hidden-state p {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4b5563);
+}
+
+.portal-hidden-state small {
+  font-size: 0.75rem;
+}
+
+/* Dark mode (host-context) */
+:host-context(.dark) .channel-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+:host-context(.dark) .channel-card-content h4 {
+  color: #f9fafb;
+}
+
+:host-context(.dark) .channel-card-content p {
+  color: #94a3b8;
+}
+
+:host-context(.dark) .channel-card-icon {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+:host-context(.dark) .extra-option:hover {
+  background: #0f172a;
+}
+
+:host-context(.dark) .extra-option strong {
+  color: #f9fafb;
+}
+
+:host-context(.dark) .extra-option small {
+  color: #94a3b8;
+}
+
+:host-context(.dark) .assignments-card {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+:host-context(.dark) .assignments-card-header {
+  color: #f9fafb;
+}
+
+:host-context(.dark) .assignments-help {
+  color: #94a3b8;
+}
+
+:host-context(.dark) .assignment-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+:host-context(.dark) .assignment-client-name {
+  color: #f9fafb;
+}
+
+:host-context(.dark) .channel-hint {
+  background: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+}
+
+:host-context(.dark) .channel-hint-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+:host-context(.dark) .assignments-disabled-hint {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+:host-context(.dark) .portal-hidden-state {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+:host-context(.dark) .portal-hidden-state p {
+  color: #cbd5e1;
+}
+
+/* Dark mode (prefers-color-scheme) */
+@media (prefers-color-scheme: dark) {
+  .channel-card { background: #1e293b; border-color: #334155; }
+  .channel-card-content h4 { color: #f9fafb; }
+  .channel-card-content p { color: #94a3b8; }
+  .channel-card-icon { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+  .extra-option:hover { background: #0f172a; }
+  .extra-option strong { color: #f9fafb; }
+  .extra-option small { color: #94a3b8; }
+  .assignments-card { background: #0f172a; border-color: #334155; }
+  .assignments-card-header { color: #f9fafb; }
+  .assignments-help { color: #94a3b8; }
+  .assignment-item { background: #1e293b; border-color: #334155; }
+  .assignment-client-name { color: #f9fafb; }
+  .channel-hint { background: rgba(96, 165, 250, 0.15); color: #93c5fd; }
+  .channel-hint-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+  .assignments-disabled-hint { background: #1e293b; color: #94a3b8; }
+  .portal-hidden-state { background: #0f172a; border-color: #334155; }
+  .portal-hidden-state p { color: #cbd5e1; }
+}
+
+/* Responsive: stack add-assignment on small screens */
+@media (max-width: 640px) {
+  .add-assignment {
+    grid-template-columns: 1fr;
+  }
+  .channel-card-header {
+    flex-wrap: wrap;
+  }
+}
