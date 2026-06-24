@@ -295,9 +295,12 @@ export class RedsysConfigComponent implements OnInit, OnDestroy {
   }
 
   secretKeyPlaceholder(): string {
+    // Always show bullets + a hint. We never echo any real or test-format
+    // secret string — GitHub's secret scanner flags any Redsys-shaped
+    // string as a leak even if it's a published test vector.
     return this.redsys.config()?.secret_key_set
-      ? '•••••••••••••••• (deja vacío para mantener la actual)'
-      : 'REDACTED_RUNTIME_KEY';
+      ? '•••••••••••••••••••••••••••••••• (deja vacío para mantener la actual)'
+      : '•••••••••••••••••••••••••••••••• (24 caracteres base64 — pégala aquí)';
   }
 
   defaultNotifyUrl(): string {
