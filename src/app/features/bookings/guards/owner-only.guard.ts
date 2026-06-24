@@ -48,9 +48,14 @@ export const ownerOnlyGuard: CanActivateFn = (route, state) => {
       return router.parseUrl('/access-denied') as UrlTree;
     }),
     catchError((err) => {
-      console.error('[OwnerOnlyGuard] RPC error:', err);
-      // On error, fall back to role check (owner role was already verified above)
-      return of(true);
+      // Rafter v0.47: fail CLOSED on RPC error. Previous behavior was
+      // `return of(true)` which left a fail-open if the RPC was down
+      // or timed out — a network attacker could keep the RPC failing
+      // and bypass the ownership check entirely. RLS at the DB level
+      // still protects the data, but the route should not render
+      // owner-only UI to a non-owner in the meantime.
+      console.error('[OwnerOnlyGuard] RPC error — redirecting to /access-denied:', err);
+      return of(router.parseUrl('/access-denied') as UrlTree);
     })
   );
 };
