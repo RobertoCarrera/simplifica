@@ -210,6 +210,61 @@ async function buildAuthContext(portalAdmin, jwt) {
   };
 }
 
+// ─── Small helpers shared by the Redsys flow ──────────────────────────────
+function base64Encode(s) {
+  // Deno's btoa works on Latin-1; convert via TextEncoder + manual byte loop.
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function base64Decode(s) {
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+async function readJsonBody(req) {
+  try { return await req.json(); } catch { return {}; }
+}
+/**
+ * Redsys HMAC-SHA256_V1 signature.
+ * For "SHA-256 merchants" (32-char hex secret) the key is the secret
+ * itself. For legacy "full key" merchants the spec requires 3DES
+ * key derivation, which Deno's Web Crypto cannot do natively; those
+ * merchants need to upgrade their key to SHA-256 form (Redsys has
+ * provided the migration tool for years).
+ */
+async function redsysSignHmacSha256(paramsB64, secret, _order) {
+  const enc = new TextEncoder();
+  // Normalize the secret: strip whitespace; accept both hex and raw.
+  const cleanSecret = (secret || '').replace(/\s+/g, '');
+  const keyBytes = /^[0-9a-fA-F]+$/.test(cleanSecret) && cleanSecret.length % 2 === 0
+    ? hexToBytes(cleanSecret)
+    : enc.encode(cleanSecret);
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(paramsB64));
+  return base64EncodeFromBytes(new Uint8Array(sigBuf));
+}
+function base64EncodeFromBytes(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    out[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return out;
+}
+
 // ─── Default permission shape (used when no template row exists) ──────────
 const DEFAULT_PERMISSIONS = {
   client_can_create_tasks: false,
@@ -453,12 +508,16 @@ async function handleServicesList(ctx, req, corsHeaders) {
     id: c.id, name: c.name ?? null, color: c.color ?? null, icon: c.icon ?? null,
   }));
 
-  // 2. Services already contracted by this client (active only)
+  // 2. Services already contracted by this client.
+  // Only show contracts that have been *paid* (or otherwise confirmed)
+  // — pending_payment / pending_confirmation rows are hidden until the
+  // gateway notify / owner confirmation flips the status to 'active'.
   const contractedRes = await crmFetch(
     'contracted_services',
     `select=id,client_id,company_id,name,description,price,currency,start_date,status,recurrence_type,recurrence_day,recurrence_start,recurrence_end,created_at,updated_at` +
     `&client_id=eq.${encodeURIComponent(ctx.clientId)}` +
     `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&status=eq.active` +
     `&deleted_at=is.null` +
     `&order=created_at.desc`,
   );
@@ -576,6 +635,10 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   let contractedDescription = service.description ?? null;
   let price = body?.price ?? service.base_price ?? 0;
   const currency = body?.currency || 'EUR';
+  // The variant's billing_period, when present, is the source of truth
+  // for the contract's recurrence_type. Captured here so we can read it
+  // outside the `if (variantId)` block.
+  let variantBillingPeriod: string | null = null;
 
   if (variantId) {
     const vRes = await crmFetch(
@@ -611,18 +674,49 @@ async function handleServiceContract(ctx, req, corsHeaders) {
         : normalizedPricing[0];
       if (match && typeof match.price === 'number') {
         resolvedPrice = match.price;
+        // Capture the matched period so the recurrence_type is consistent
+        // with the price the user is paying.
+        variantBillingPeriod = match.period ?? null;
       } else if (normalizedPricing[0] && typeof normalizedPricing[0].price === 'number') {
         resolvedPrice = normalizedPricing[0].price;
+        variantBillingPeriod = normalizedPricing[0].period ?? null;
       }
     }
     if (resolvedPrice != null) price = resolvedPrice;
   }
 
   const startDate = body?.start_date || new Date().toISOString().slice(0, 10);
-  const recurrenceType = body?.recurrence_type || null;
+
+  // Map the variant's billing_period to the contracted_services.recurrence_type
+  // enum ('monthly' | 'weekly' | 'yearly' | null). The CRM uses 'one_time',
+  // 'monthly', 'annual' (not 'yearly'), 'weekly'. Anything unknown or one-off
+  // becomes null (a single-shot contract).
+  const mapBillingPeriod = (bp) => {
+    if (!bp || typeof bp !== 'string') return null;
+    const k = bp.toLowerCase();
+    if (k === 'monthly' || k === 'mensual' || k === 'mensualmente') return 'monthly';
+    if (k === 'yearly' || k === 'annual' || k === 'anual' || k === 'anualmente') return 'yearly';
+    if (k === 'weekly' || k === 'semanal' || k === 'semanalmente') return 'weekly';
+    return null;
+  };
+  // The portal client no longer picks recurrence directly (direct-pay flow),
+  // so recurrence_type is derived from the variant. We still honour an
+  // explicit body field for the API contract.
+  const recurrenceType = body?.recurrence_type
+    ? mapBillingPeriod(body.recurrence_type)
+    : mapBillingPeriod(variantBillingPeriod);
   const recurrenceDay = body?.recurrence_day ?? null;
   const recurrenceStart = body?.recurrence_start || (recurrenceType ? startDate : null);
   const recurrenceEnd = body?.recurrence_end || null;
+
+  // Initial status depends on the payment method. The contract starts as
+  // pending_payment (online gateways) or pending_confirmation (cash); the
+  // gateway notify or the owner flips it to 'active' later. Online payments
+  // are simulated in this BFF (the real Stripe/PayPal/RedSys flows hook in
+  // here), so today the contract is created with the appropriate pending
+  // status and the real-world payment is processed by the gateway.
+  const paymentMethod = String(body?.payment_method || '').toLowerCase();
+  const initialStatus = paymentMethod === 'cash' ? 'pending_confirmation' : 'pending_payment';
 
   const insRes = await crmSend('contracted_services', 'POST', {
     client_id: ctx.clientId,
@@ -632,7 +726,7 @@ async function handleServiceContract(ctx, req, corsHeaders) {
     price,
     currency,
     start_date: startDate,
-    status: 'active',
+    status: initialStatus,
     recurrence_type: recurrenceType,
     recurrence_day: recurrenceDay,
     recurrence_start: recurrenceStart,
@@ -640,6 +734,185 @@ async function handleServiceContract(ctx, req, corsHeaders) {
   });
   if (insRes.error) return jsonError(500, `Contract insert: ${insRes.error}`, corsHeaders);
   return jsonOk({ data: insRes.data?.[0] ?? null }, corsHeaders);
+}
+
+/**
+ * Redsys TPV Virtual — payment init.
+ *
+ * Builds the form payload the portal must auto-submit to Redsys to
+ * redirect the client to the payment page. The signature is computed
+ * server-side with the company's Redsys secret key (loaded from
+ * public.company_payment_config).
+ *
+ * POST /redsys-init  body: { contract_id: uuid }
+ *  → 200 { redirect_url, form: { Ds_MerchantParameters, Ds_Signature, Ds_SignatureVersion }, order, amount_cents }
+ *  → 404 if the contract doesn't belong to this client
+ *  → 402 if the company hasn't configured Redsys (or it's disabled)
+ */
+async function handleRedsysInit(ctx, req, corsHeaders) {
+  const body = await readJsonBody(req);
+  const contractId = body?.contract_id;
+  if (!contractId) return jsonError(400, 'contract_id is required', corsHeaders);
+
+  // 1. Look up the contract (ownership check via ctx.clientId / companyId).
+  const cRes = await crmFetch(
+    'contracted_services',
+    `select=id,company_id,client_id,price,currency,status,name` +
+    `&id=eq.${encodeURIComponent(contractId)}` +
+    `&client_id=eq.${encodeURIComponent(ctx.clientId)}` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&limit=1`,
+  );
+  if (cRes.error) return jsonError(500, `Contract lookup: ${cRes.error}`, corsHeaders);
+  const contract = cRes.data?.[0];
+  if (!contract) return jsonError(404, 'Contract not found', corsHeaders);
+  if (contract.status !== 'pending_payment') {
+    return jsonError(409, `Contract is not awaiting payment (status=${contract.status})`, corsHeaders);
+  }
+
+  // 2. Read the company's Redsys config.
+  const cfgRes = await crmFetch(
+    'company_payment_config',
+    `select=merchant_code,terminal,secret_key_encrypted,environment,currency,enabled,notify_url` +
+    `&company_id=eq.${encodeURIComponent(ctx.companyId)}` +
+    `&provider=eq.redsys` +
+    `&limit=1`,
+  );
+  if (cfgRes.error) return jsonError(500, `Redsys config lookup: ${cfgRes.error}`, corsHeaders);
+  const cfg = cfgRes.data?.[0];
+  if (!cfg || !cfg.enabled || !cfg.merchant_code || !cfg.secret_key_encrypted) {
+    return jsonError(402, 'Redsys is not configured for this company', corsHeaders);
+  }
+
+  // 3. Build the order number (4-12 chars, first 4 numeric per Redsys spec).
+  // Use the contract id's last 8 hex chars prefixed with the current year.
+  const yy = new Date().getFullYear().toString();
+  const tail = contractId.replace(/-/g, '').slice(-8).toUpperCase();
+  const order = (yy + tail).slice(0, 12);
+
+  // Amount in cents.
+  const amountCents = Math.round(Number(contract.price || 0) * 100);
+
+  // 4. Build the DS_MERCHANT_* form payload.
+  const isProduction = cfg.environment === 'production';
+  const baseUrl = isProduction ? 'https://sis.redsys.es' : 'https://sis-t.redsys.es';
+  const notifyUrl = cfg.notify_url || `${SUPABASE_URL}/functions/v1/client-portal-modules/redsys-notify`;
+
+  // Tag the contract with the order so the notify endpoint can find
+  // it again. We stash it in the description; the format is hidden
+  // from the user (the notify handler strips it back out).
+  const descTag = `[redsys:${order}]`;
+  const descClean = (contract.description || '').replace(/\s*\[redsys:[^\]]+\]\s*/g, '').trim() || null;
+  await crmSend(
+    'contracted_services',
+    'PATCH',
+    { description: descClean ? `${descClean} ${descTag}` : descTag },
+    `id=eq.${encodeURIComponent(contractId)}`,
+  );
+
+  const dsMerchant = {
+    Ds_Merchant_Amount: amountCents.toString(),
+    Ds_Merchant_Currency: cfg.currency || '978',
+    Ds_Merchant_MerchantCode: cfg.merchant_code,
+    Ds_Merchant_Terminal: cfg.terminal || '1',
+    Ds_Merchant_Order: order,
+    Ds_Merchant_TransactionType: '0', // 0 = authorization
+    Ds_Merchant_MerchantURL: notifyUrl,
+    Ds_Merchant_UrlOK: `${ctx.origin || ''}/portal/redsys-return?status=ok&contract=${contractId}`,
+    Ds_Merchant_UrlKO: `${ctx.origin || ''}/portal/redsys-return?status=ko&contract=${contractId}`,
+    Ds_Merchant_ProductDescription: (contract.name || 'Servicio').slice(0, 125),
+    Ds_Merchant_Titular: '', // optional, the user fills it in at Redsys
+  };
+
+  // 5. Encode + sign.
+  const paramsB64 = base64Encode(JSON.stringify(dsMerchant));
+  const signature = await redsysSignHmacSha256(paramsB64, cfg.secret_key_encrypted, order);
+
+  return jsonOk({
+    redirect_url: baseUrl + '/sis/realizarPago',
+    form: {
+      Ds_SignatureVersion: 'HMAC_SHA256_V1',
+      Ds_MerchantParameters: paramsB64,
+      Ds_Signature: signature,
+    },
+    order,
+    amount_cents: amountCents,
+  }, corsHeaders);
+}
+
+/**
+ * Redsys notify URL callback. Redsys calls this when the payment
+ * status changes (success, failure, error). We verify the signature
+ * and flip the contract's status to 'active' (or keep it
+ * 'pending_payment' / 'cancelled' on failure).
+ *
+ * POST /redsys-notify  body: { Ds_MerchantParameters, Ds_Signature }
+ *  → 200 with a 1-line body that Redsys logs
+ */
+async function handleRedsysNotify(req, corsHeaders) {
+  const body = await readJsonBody(req).catch(() => ({}));
+  const paramsB64 = body?.Ds_MerchantParameters || '';
+  const sig = body?.Ds_Signature || '';
+  if (!paramsB64 || !sig) return new Response('Missing fields', { status: 200, headers: corsHeaders });
+
+  let payload;
+  try { payload = JSON.parse(base64Decode(paramsB64)); }
+  catch { return new Response('Invalid params', { status: 200, headers: corsHeaders }); }
+
+  const order = payload?.Ds_Order ?? payload?.Ds_Merchant_Order;
+  const responseCode = payload?.Ds_Response;
+  if (!order) return new Response('Missing order', { status: 200, headers: corsHeaders });
+
+  // Find the contract across the recent contracts of the merchant
+  // (Redsys only gives us the merchant code, not a company id, so
+  // we scope to that company). We tag the contract at init time with
+  // `[redsys:ORDER]` in its description.
+  const merchantCode = payload?.Ds_Merchant_MerchantCode || '';
+  const searchRes = await crmFetch(
+    'contracted_services',
+    `select=id,company_id,status,description` +
+    `&order=updated_at.desc&limit=200`,
+  );
+  let contract = null;
+  if (!searchRes.error && Array.isArray(searchRes.data)) {
+    contract = searchRes.data.find((c) => typeof c.description === 'string' && c.description.includes(`[redsys:${order}]`)) || null;
+  }
+  if (!contract) {
+    // Accept the callback anyway so Redsys stops retrying; the contract
+    // is not in our window or has been moved.
+    console.warn('[redsys-notify] no contract found for order', order);
+    return new Response('OK', { status: 200, headers: corsHeaders });
+  }
+
+  // Verify signature with the company's Redsys secret.
+  const cfgRes = await crmFetch(
+    'company_payment_config',
+    `select=secret_key_encrypted` +
+    `&company_id=eq.${encodeURIComponent(contract.company_id)}` +
+    `&provider=eq.redsys&limit=1`,
+  );
+  const secret = cfgRes.data?.[0]?.secret_key_encrypted;
+  if (secret) {
+    const expected = await redsysSignHmacSha256(paramsB64, secret, order);
+    if (expected !== sig) {
+      console.error('[redsys-notify] signature mismatch for order', order, 'merchant', merchantCode);
+      return new Response('Signature mismatch', { status: 200, headers: corsHeaders });
+    }
+  }
+
+  const authorized = typeof responseCode === 'string' && /^0[0-9]{3}$/.test(responseCode) && responseCode !== '0099';
+  const newStatus = authorized ? 'active' : 'pending_payment';
+  const descClean = (contract.description || '').replace(/\s*\[redsys:[^\]]+\]\s*/g, '').trim() || null;
+  await crmSend(
+    'contracted_services',
+    'PATCH',
+    { status: newStatus, description: descClean },
+    `id=eq.${encodeURIComponent(contract.id)}`,
+  );
+  console.log('[redsys-notify] order', order, 'response', responseCode, '→', newStatus);
+
+  // Redsys expects a plain-text body with HTTP 200. Don't return JSON.
+  return new Response('OK', { status: 200, headers: corsHeaders });
 }
 
 async function handleProjectsList(ctx, req, corsHeaders) {
@@ -925,6 +1198,17 @@ serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization') ?? '';
   const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+  // The Redsys notify URL is called by the gateway, not by an
+  // authenticated portal client. It has its own signature check
+  // inside the handler, so we handle it before the JWT gate.
+  const earlyUrl = new URL(req.url);
+  if (earlyUrl.pathname.endsWith('/redsys-notify') && req.method === 'POST') {
+    return await handleRedsysNotify(req, corsHeaders);
+  }
+
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!jwt) return jsonError(401, 'Missing Bearer token', corsHeaders);
 
   let userIdFromJwt;
@@ -939,6 +1223,16 @@ serve(async (req) => {
   const authResult = await buildAuthContext(portalAdmin, jwt);
   if (authResult.error) return jsonError(401, authResult.error, corsHeaders);
   const ctx = authResult;
+  // Stash the caller's origin (used to build the success/cancel URLs the
+  // gateway redirects to). The Origin header is set by the browser; we
+  // fall back to Referer if the BFF is hit without CORS.
+  ctx.origin = req.headers.get('origin') || (() => {
+    try {
+      const r = req.headers.get('referer');
+      if (!r) return '';
+      return new URL(r).origin;
+    } catch { return ''; }
+  })();
 
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/$/, '');
@@ -988,6 +1282,8 @@ serve(async (req) => {
 
   // /services/contract → service-contract (POST)
   // /services/<id>/variants → service-variants (GET)
+  // /redsys-init → redsys-init (POST)
+  // /redsys-notify → handled earlier, no auth required
   const servicesIdx = segments.indexOf('services');
   if (servicesIdx >= 0) {
     const sTail = segments.slice(servicesIdx + 1);
@@ -999,6 +1295,9 @@ serve(async (req) => {
       route = 'services';
       serviceIdSegment = sTail[0];
     }
+  }
+  if (segments[segments.length - 1] === 'redsys-init' && req.method === 'POST') {
+    route = 'redsys-init';
   }
 
 
@@ -1034,6 +1333,7 @@ serve(async (req) => {
         case 'select-company': return await handleSelectCompany(portalAdmin, ctx, req, corsHeaders);
         case 'consents': return await handleConsents(portalAdmin, ctx, req, corsHeaders);
         case 'service-contract': return await handleServiceContract(ctx, req, corsHeaders);
+        case 'redsys-init': return await handleRedsysInit(ctx, req, corsHeaders);
         case 'projects': return await handleProjectCreate(ctx, req, corsHeaders);
         case 'project-tasks-create': return await handleTaskCreate(ctx, projectIdSegment, req, corsHeaders);
         case 'project-comments-create': return await handleCommentCreate(ctx, projectIdSegment, req, corsHeaders);
