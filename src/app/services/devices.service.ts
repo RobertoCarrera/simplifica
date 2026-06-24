@@ -3,6 +3,7 @@ import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 import { validateUploadFile } from '../core/utils/upload-validator';
+import { escapeOrFilterValue } from '../shared/utils/escape-like';
 
 export interface Device {
   id: string;
@@ -740,11 +741,15 @@ export class DevicesService {
 
       // Aplicar búsqueda de texto
       if (searchTerm.trim()) {
+        // Rafter v0.48: wrap searchTerm in escapeOrFilterValue to prevent
+        // LIKE wildcard injection (% and _ in user input bypass RLS scope)
+        // and PostgREST filter injection (`,` `.` break out of .or() syntax).
+        const safeTerm = `%${escapeOrFilterValue(searchTerm)}%`;
         query = query.or(`
-          brand.ilike.%${searchTerm}%,
-          model.ilike.%${searchTerm}%,
-          serial_number.ilike.%${searchTerm}%,
-          reported_issue.ilike.%${searchTerm}%
+          brand.ilike.${safeTerm},
+          model.ilike.${safeTerm},
+          serial_number.ilike.${safeTerm},
+          reported_issue.ilike.${safeTerm}
         `);
       }
 
