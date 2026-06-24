@@ -1,0 +1,53 @@
+name: Security Grep
+
+# Rafter v0.48 — CI grep guard for XSS + SQLi patterns.
+#
+# Would have caught v0.45 (XSS in process-reminders + process-automation)
+# and v0.46 (SQLi in 20 frontend .or()/.ilike() callsites) regressions.
+#
+# Detects:
+#   1. XSS: html: / html_body: template literals in Edge Functions that
+#      interpolate user-controlled fields (client.name, booking.service.name,
+#      etc.) without escapeHtml() wrapping.
+#   2. SQLi (.or()): PostgREST .or(`...${var}...`) calls that interpolate
+#      raw user input without escapeOrFilterValue/escapeLike/JSON.stringify.
+#   3. SQLi (.ilike()): PostgREST .ilike('col', `...${var}...`) calls that
+#      interpolate raw user input without escapeLike.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  security-grep:
+    name: XSS + SQLi pattern detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for XSS sinks in Edge Function email bodies
+        id: xss-efs
+        run: perl scripts/check-xss-efs.pl
+
+      - name: Check for .or() filter injection in frontend
+        id: sqli-or
+        run: perl scripts/check-or-sqli.pl
+
+      - name: Check for .ilike() LIKE wildcard injection in frontend
+        id: sqli-ilike
+        run: perl scripts/check-ilike-sqli.pl
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.xss-efs.outcome }}" == "success" ] && \
+             [ "${{ steps.sqli-or.outcome }}" == "success" ] && \
+             [ "${{ steps.sqli-ilike.outcome }}" == "success" ]; then
+            echo "All security grep checks passed."
+          else
+            echo "Security grep checks FAILED — see step output above."
+            exit 1
+          fi
