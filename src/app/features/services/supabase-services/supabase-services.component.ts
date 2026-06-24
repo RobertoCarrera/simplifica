@@ -142,6 +142,20 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // Planning: available hours per day for completion estimate
   availableHoursPerDay = 6;
 
+  // Service-level client assignments (visibility refactor)
+  serviceAssignments: Array<{
+    id: string;
+    client_id: string;
+    service_id: string;
+    variant_id: string | null;
+    created_at: string;
+  }> = [];
+  availableClients: Array<{ id: string; name: string; email?: string }> = [];
+  newAssignment: { clientId: string | null; variantId: string | null } = {
+    clientId: null,
+    variantId: null,
+  };
+
   // Form validation
   formErrors: Record<string, string> = {};
 
@@ -284,6 +298,127 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.units = [];
       this.unitsLoaded = true;
     }
+  }
+
+  // ============================================================
+  // SERVICE-LEVEL CLIENT ASSIGNMENTS (visibility refactor)
+  // ============================================================
+
+  /**
+   * Load all client assignments for a given service.
+   * Uses the new `client_service_assignments` table (renamed from
+   * `client_variant_assignments` in migration 20260624_centralize_visibility).
+   * variant_id is nullable: NULL = whole-service access, set = variant-only.
+   */
+  async loadServiceAssignments(serviceId: string): Promise<void> {
+    try {
+      const client = this.simpleSupabase.getClient();
+      const { data, error } = await client
+        .from('client_service_assignments')
+        .select('id, client_id, service_id, variant_id, created_at')
+        .eq('service_id', serviceId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      this.serviceAssignments = (data as any) || [];
+    } catch (error) {
+      console.error('Error loading service assignments:', error);
+      this.serviceAssignments = [];
+    }
+  }
+
+  /**
+   * Load clients from the active company to populate the assignments selector.
+   */
+  async loadAvailableClients(): Promise<void> {
+    const companyId = this.selectedCompanyId;
+    if (!companyId) {
+      this.availableClients = [];
+      return;
+    }
+    try {
+      const client = this.simpleSupabase.getClient();
+      const { data, error } = await client
+        .from('clients')
+        .select('id, name, email')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name')
+        .limit(500);
+      if (error) throw error;
+      this.availableClients = (data as any[]) || [];
+    } catch (error) {
+      console.error('Error loading available clients:', error);
+      this.availableClients = [];
+    }
+  }
+
+  /**
+   * Add a new service-level assignment.
+   * If variant_id is set, the client sees ONLY that variant.
+   * If variant_id is null, the client sees the whole service.
+   */
+  async addServiceAssignment(): Promise<void> {
+    if (!this.editingService?.id || !this.newAssignment.clientId) return;
+    try {
+      const client = this.simpleSupabase.getClient();
+      const { data, error } = await client
+        .from('client_service_assignments')
+        .insert({
+          client_id: this.newAssignment.clientId,
+          service_id: this.editingService.id,
+          variant_id: this.newAssignment.variantId || null,
+        })
+        .select('id, client_id, service_id, variant_id, created_at')
+        .single();
+      if (error) throw error;
+      this.serviceAssignments = [data as any, ...this.serviceAssignments];
+      this.newAssignment = { clientId: null, variantId: null };
+      this.toastService.success('Asignado', 'Cliente asignado al servicio');
+    } catch (error: any) {
+      console.error('Error adding service assignment:', error);
+      this.toastService.error('Error', error?.message || 'No se pudo asignar el cliente');
+    }
+  }
+
+  /**
+   * Remove a service-level assignment.
+   */
+  async removeServiceAssignment(assignmentId: string): Promise<void> {
+    try {
+      const client = this.simpleSupabase.getClient();
+      const { error } = await client
+        .from('client_service_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      if (error) throw error;
+      this.serviceAssignments = this.serviceAssignments.filter(a => a.id !== assignmentId);
+    } catch (error: any) {
+      console.error('Error removing service assignment:', error);
+      this.toastService.error('Error', error?.message || 'No se pudo quitar la asignación');
+    }
+  }
+
+  /**
+   * Resolve a client_id to a display name using the availableClients cache.
+   */
+  getClientName(clientId: string): string {
+    const c = this.availableClients.find(x => x.id === clientId);
+    return c?.name || 'Cliente';
+  }
+
+  /**
+   * Resolve a variant_id to a display name using the serviceVariants cache.
+   */
+  getVariantName(variantId: string): string {
+    const v = this.serviceVariants.find(x => x.id === variantId);
+    return v?.variant_name || 'Variante';
+  }
+
+  /**
+   * Whether the current service has variants loaded.
+   */
+  hasVariants(): boolean {
+    return Array.isArray(this.serviceVariants) && this.serviceVariants.length > 0;
   }
 
   updateCategoryFilter() {
@@ -562,6 +697,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         can_be_remote: true,
         priority_level: 3,
         has_variants: false,
+        is_public: false,
+        is_visible_in_portal: true,
         is_bookable: this.hasModuloReservas || this.authService.isAdmin(),
         duration_minutes: 60,
         booking_color: '#3b82f6',
@@ -602,6 +739,14 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.formErrors = {};
     this.loadServiceCategories();
     this.loadUnits();
+
+    // Reset service-level assignment state and load clients for the assignments card
+    this.serviceAssignments = [];
+    this.newAssignment = { clientId: null, variantId: null };
+    this.loadAvailableClients();
+    if (service?.id) {
+      this.loadServiceAssignments(service.id);
+    }
 
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'service-form' }, '');

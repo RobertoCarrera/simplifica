@@ -75,6 +75,7 @@ export interface Service {
 
   // Campos para Portal de Cliente
   is_public?: boolean;
+  is_visible_in_portal?: boolean;
   allow_direct_contracting?: boolean;
   features?: string; // JSON or text description of features
   min_quantity?: number;
@@ -446,6 +447,7 @@ export class SupabaseServicesService {
       passive_mode_enabled: service.passive_mode_enabled !== false,
       // Public fields
       is_public: !!service.is_public,
+      is_visible_in_portal: service.is_visible_in_portal !== false,
       allow_direct_contracting: !!service.allow_direct_contracting,
       features: service.features || undefined,
       // Preferir company_id almacenado en service cuando exista
@@ -695,6 +697,8 @@ export class SupabaseServicesService {
       serviceDataForDB.passive_mode_enabled = serviceData.passive_mode_enabled;
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
+    if (serviceData.is_visible_in_portal !== undefined)
+      serviceDataForDB.is_visible_in_portal = serviceData.is_visible_in_portal;
     if (serviceData.allow_direct_contracting !== undefined)
       serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
     if (serviceData.features !== undefined) serviceDataForDB.features = serviceData.features;
@@ -789,6 +793,8 @@ export class SupabaseServicesService {
       serviceData.passive_mode_enabled = updates.passive_mode_enabled;
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
+    if (updates.is_visible_in_portal !== undefined)
+      serviceData.is_visible_in_portal = updates.is_visible_in_portal;
     if (updates.allow_direct_contracting !== undefined)
       serviceData.allow_direct_contracting = updates.allow_direct_contracting;
     if (updates.features !== undefined) serviceData.features = updates.features;
@@ -1493,7 +1499,7 @@ export class SupabaseServicesService {
         .select(
           `
           *,
-          client_variant_assignments(
+          client_service_assignments(
             id, client_id, service_id, variant_id, created_at,
             client:clients(id, name, email)
           )
@@ -1509,7 +1515,7 @@ export class SupabaseServicesService {
       // Map joined assignments to the expected client_assignments field
       const variants = (data || []).map((variant: any) => ({
         ...variant,
-        client_assignments: (variant.client_variant_assignments || []).map((a: any) => ({
+        client_assignments: (variant.client_service_assignments || []).map((a: any) => ({
           id: a.id,
           client_id: a.client_id,
           service_id: a.service_id,
@@ -1517,7 +1523,7 @@ export class SupabaseServicesService {
           created_at: a.created_at,
           client: a.client,
         })),
-        client_variant_assignments: undefined,
+        client_service_assignments: undefined,
       }));
 
       return variants;
@@ -1611,7 +1617,7 @@ export class SupabaseServicesService {
         .from('service_variants')
         .select(`
           *,
-          client_variant_assignments(
+          client_service_assignments(
             id, client_id, service_id, variant_id, created_at,
             client:clients(id, name, email)
           )
@@ -1624,13 +1630,13 @@ export class SupabaseServicesService {
       if (variantsError) throw variantsError;
 
       // Group variants by service_id and map to the same shape as
-      // getServiceVariants (renaming client_variant_assignments ->
+      // getServiceVariants (renaming client_service_assignments ->
       // client_assignments).
       const variantsByService = new Map<string, ServiceVariant[]>();
       for (const v of (variants || []) as any[]) {
         const mapped = {
           ...v,
-          client_assignments: (v.client_variant_assignments || []).map((a: any) => ({
+          client_assignments: (v.client_service_assignments || []).map((a: any) => ({
             id: a.id,
             client_id: a.client_id,
             service_id: a.service_id,
@@ -1638,7 +1644,7 @@ export class SupabaseServicesService {
             created_at: a.created_at,
             client: a.client,
           })),
-          client_variant_assignments: undefined,
+          client_service_assignments: undefined,
         } as unknown as ServiceVariant;
 
         const list = variantsByService.get(v.service_id);

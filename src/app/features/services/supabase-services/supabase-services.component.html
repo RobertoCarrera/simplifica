@@ -1442,101 +1442,195 @@
                       ></i>
                     </div>
                   </div>
-                  <div class="accordion-content" [class.expanded]="accordionState.visibility">
+<div class="accordion-content" [class.expanded]="accordionState.visibility">
                     <div class="accordion-inner-content">
-                      @if (!formData.is_public) {
-                        <div class="empty-variants-message">
-                          <i class="fas fa-info-circle"></i>
-                          <p>
-                            {{ 'services.visibilidadInfo' | transloco }}
-                          </p>
-                          <small>{{ 'services.visibilidadInfoSmall' | transloco }}</small>
-                        </div>
-                      }
-                      @if (formData.is_public) {
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <!-- Controls -->
-                          <div class="space-y-4">
-                            <label
-                              class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-blue-300 transition-colors"
-                              [class.border-blue-400]="formData.is_bookable"
-                              [class.dark:border-blue-600]="formData.is_bookable"
-                            >
-                              <input
-                                type="checkbox"
-                                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-                                [(ngModel)]="formData.is_bookable"
-                                name="is_bookable"
-                              />
-                              <div>
-                                <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                  Permitir Reservas en este servicio
-                                </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  Los recursos (salas, equipos) podrán asociarse a este servicio para gestionar su disponibilidad.
-                                </p>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left column: channel controls + assignments -->
+                        <div class="space-y-4">
+                          <!-- AGENDA CHANNEL CARD -->
+                          <div class="channel-card" [class.channel-card-off]="!formData.is_public">
+                            <div class="channel-card-header">
+                              <div class="channel-card-icon"><i class="fas fa-calendar-check"></i></div>
+                              <div class="channel-card-content">
+                                <h4>{{ 'services.agendaPublica' | transloco }}</h4>
+                                <p>{{ 'services.agendaPublicaDesc' | transloco }}</p>
                               </div>
-                            </label>
-
-                            <label
-                              class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-emerald-300 transition-colors"
-                              [class.border-emerald-400]="formData.allow_direct_contracting"
-                              [class.dark:border-emerald-600]="formData.allow_direct_contracting"
-                            >
-                              <input
-                                type="checkbox"
-                                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
-                                [(ngModel)]="formData.allow_direct_contracting"
-                                name="allow_direct_contracting"
-                              />
-                              <div>
-                                <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                  {{ 'services.permitirContratacion' | transloco }}
-                                </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {{ 'services.permitirContratacionHint' | transloco }}
-                                </p>
-                              </div>
-                            </label>
-
-                            <!-- Agenda visibility info -->
-                            <div class="mt-2 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                              <div class="flex items-start gap-2">
-                                <i class="fas fa-calendar-alt text-blue-500 mt-0.5 text-xs"></i>
-                                <div>
-                                  <p class="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                    {{ 'services.agendaVisibleHint' | transloco }}
-                                  </p>
-                                  <p class="text-xs text-blue-600/70 dark:text-blue-400/70 mt-0.5">
-                                    {{ 'services.agendaVisibleHintDetail' | transloco }}
-                                  </p>
-                                </div>
-                              </div>
+                              <label class="toggle-switch" (click)="$event.stopPropagation()">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.is_public"
+                                  name="is_public"
+                                  [attr.aria-label]="'services.mostrarEnAgenda' | transloco"
+                                />
+                                <span class="toggle-slider"></span>
+                              </label>
                             </div>
-
-                            @if (formData.is_public) {
-                            <div class="form-group lang-dropdown-container">
-                                <label
-                                  for="features"
-                                  class="text-gray-700 dark:text-white font-medium text-sm"
-                                  >{{ 'services.fields.caracteristicasDestacadas' | transloco }}</label
-                                >
-                                <textarea
-                                  id="features"
-                                  rows="3"
-                                  class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none mt-1"
-                                  [(ngModel)]="formData.features"
-                                  name="features"
-                                  [placeholder]="'services.placeholders.caracteristicas' | transloco"
-                                ></textarea>
-                                <p class="text-xs text-gray-400 mt-1">
-                                  {{ 'services.fields.caracteristicasHint' | transloco }}
-                                </p>
+                            <div class="channel-card-extras">
+                              <label class="extra-option">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.is_bookable"
+                                  name="is_bookable"
+                                />
+                                <span>
+                                  <strong>{{ 'services.servicioReservable' | transloco }}</strong>
+                                  <small>{{ 'services.servicioReservableHint' | transloco }}</small>
+                                </span>
+                              </label>
+                              <label class="extra-option">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.allow_direct_contracting"
+                                  name="allow_direct_contracting"
+                                />
+                                <span>
+                                  <strong>{{ 'services.permitirContratacion' | transloco }}</strong>
+                                  <small>{{ 'services.permitirContratacionHint' | transloco }}</small>
+                                </span>
+                              </label>
+                            </div>
+                            @if (!formData.is_public) {
+                              <div class="channel-hint">
+                                <i class="fas fa-info-circle"></i>
+                                <span>
+                                  <strong>{{ 'services.agendaVisibleHint' | transloco }}</strong><br />
+                                  {{ 'services.agendaVisibleHintDetail' | transloco }}
+                                </span>
                               </div>
                             }
                           </div>
-                          <!-- Portal Card Preview -->
+
+                          <!-- PORTAL CHANNEL CARD -->
+                          <div class="channel-card" [class.channel-card-off]="!formData.is_visible_in_portal">
+                            <div class="channel-card-header">
+                              <div class="channel-card-icon"><i class="fas fa-store"></i></div>
+                              <div class="channel-card-content">
+                                <h4>{{ 'services.portalPublico' | transloco }}</h4>
+                                <p>{{ 'services.portalPublicoDesc' | transloco }}</p>
+                              </div>
+                              <label class="toggle-switch" (click)="$event.stopPropagation()">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.is_visible_in_portal"
+                                  name="is_visible_in_portal"
+                                  [attr.aria-label]="'services.mostrarEnPortal' | transloco"
+                                />
+                                <span class="toggle-slider"></span>
+                              </label>
+                            </div>
+                            @if (!formData.is_visible_in_portal) {
+                              <div class="channel-hint">
+                                <i class="fas fa-info-circle"></i>
+                                <span>{{ 'services.portalOcultoHint' | transloco }}</span>
+                              </div>
+                            } @else {
+                              <div class="channel-hint channel-hint-success">
+                                <i class="fas fa-check-circle"></i>
+                                <span>{{ 'services.portalHint' | transloco }}</span>
+                              </div>
+                            }
+                          </div>
+
+                          <!-- ASSIGNMENTS CARD -->
+                          <div class="assignments-card">
+                            <div class="assignments-card-header">
+                              <i class="fas fa-user-friends"></i>
+                              <h4>{{ 'services.asignacionesClientes' | transloco }}</h4>
+                            </div>
+                            <p class="assignments-help">{{ 'services.asignacionesHelp' | transloco }}</p>
+                            @if (serviceAssignments.length > 0) {
+                              <ul class="assignment-list">
+                                @for (a of serviceAssignments; track a.id) {
+                                  <li class="assignment-item">
+                                    <i class="fas fa-user-circle"></i>
+                                    <span class="assignment-client-name">{{ getClientName(a.client_id) }}</span>
+                                    @if (a.variant_id) {
+                                      <span class="assignment-variant-badge">
+                                        <i class="fas fa-puzzle-piece"></i> {{ getVariantName(a.variant_id) }}
+                                      </span>
+                                    } @else {
+                                      <span class="assignment-variant-badge assignment-variant-all">
+                                        <i class="fas fa-globe"></i> {{ 'services.servicioCompleto' | transloco }}
+                                      </span>
+                                    }
+                                    <button
+                                      type="button"
+                                      class="btn-icon-remove"
+                                      (click)="removeServiceAssignment(a.id)"
+                                      [attr.aria-label]="'services.quitarAsignacion' | transloco"
+                                      [title]="'services.quitarAsignacion' | transloco"
+                                    >
+                                      <i class="fas fa-times"></i>
+                                    </button>
+                                  </li>
+                                }
+                              </ul>
+                            }
+                            @if (editingService) {
+                              <div class="add-assignment">
+                                <select
+                                  [(ngModel)]="newAssignment.clientId"
+                                  name="newAssignmentClient"
+                                  class="form-control"
+                                >
+                                  <option [ngValue]="null">{{ 'services.seleccionarCliente' | transloco }}</option>
+                                  @for (client of availableClients; track client.id) {
+                                    <option [ngValue]="client.id">{{ client.name }}</option>
+                                  }
+                                </select>
+                                <select
+                                  [(ngModel)]="newAssignment.variantId"
+                                  name="newAssignmentVariant"
+                                  class="form-control"
+                                  [disabled]="!hasVariants()"
+                                >
+                                  <option [ngValue]="null">{{ 'services.servicioCompleto' | transloco }}</option>
+                                  @for (variant of serviceVariants; track variant.id) {
+                                    <option [ngValue]="variant.id">{{ variant.variant_name }}</option>
+                                  }
+                                </select>
+                                <button
+                                  type="button"
+                                  class="btn btn-primary btn-sm"
+                                  (click)="addServiceAssignment()"
+                                  [disabled]="!newAssignment.clientId"
+                                >
+                                  <i class="fas fa-plus"></i> {{ 'services.asignar' | transloco }}
+                                </button>
+                              </div>
+                            } @else {
+                              <p class="assignments-disabled-hint">
+                                <i class="fas fa-info-circle"></i> {{ 'services.guardarParaAsignar' | transloco }}
+                              </p>
+                            }
+                          </div>
+
+                          <!-- FEATURES TEXTAREA (only when agenda is public) -->
                           @if (formData.is_public) {
+                            <div class="form-group lang-dropdown-container">
+                              <label
+                                for="features"
+                                class="text-gray-700 dark:text-white font-medium text-sm"
+                                >{{ 'services.fields.caracteristicasDestacadas' | transloco }}</label
+                              >
+                              <textarea
+                                id="features"
+                                rows="3"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none mt-1"
+                                [(ngModel)]="formData.features"
+                                name="features"
+                                [placeholder]="'services.placeholders.caracteristicas' | transloco"
+                              ></textarea>
+                              <p class="text-xs text-gray-400 mt-1">
+                                {{ 'services.fields.caracteristicasHint' | transloco }}
+                              </p>
+                            </div>
+                          }
+                        </div>
+
+                        <!-- Right column: portal preview -->
+                        <div>
+                          @if (formData.is_public && formData.is_visible_in_portal) {
                             <div class="portal-preview">
                               <div
                                 class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2 flex items-center gap-1"
@@ -1546,7 +1640,6 @@
                               <div
                                 class="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm transition-all"
                               >
-                                <!-- Card Header accent -->
                                 <div
                                   class="h-1 w-full"
                                   [style.background]="formData.booking_color || '#3b82f6'"
@@ -1591,7 +1684,6 @@
                                     <div class="text-lg font-bold text-gray-900 dark:text-white">
                                       {{ formatCurrency(formData.base_price || 0) }}
                                     </div>
-                                    <!-- Booking badge (shown when the service is bookable) -->
                                     <div class="flex items-center gap-1.5">
                                       @if (formData.is_bookable) {
                                         <span
@@ -1600,7 +1692,6 @@
                                           <i class="fas fa-calendar-check mr-1"></i>{{ 'services.reservar' | transloco }}
                                         </span>
                                       }
-                                      <!-- Contratar (when allow_direct_contracting = TRUE) -->
                                       @if (formData.allow_direct_contracting) {
                                         <button
                                           type="button"
@@ -1609,7 +1700,6 @@
                                           {{ 'services.contratar' | transloco }}
                                         </button>
                                       }
-                                      <!-- Solicitar presupuesto (when allow_direct_contracting = FALSE) -->
                                       @if (!formData.allow_direct_contracting) {
                                         <button
                                           type="button"
@@ -1623,9 +1713,15 @@
                                 </div>
                               </div>
                             </div>
+                          } @else {
+                            <div class="portal-hidden-state">
+                              <i class="fas fa-eye-slash"></i>
+                              <p>{{ 'services.portalOculto' | transloco }}</p>
+                              <small>{{ 'services.portalOcultoHint' | transloco }}</small>
+                            </div>
                           }
                         </div>
-                      }
+                      </div>
                     </div>
                   </div>
                 </div>
