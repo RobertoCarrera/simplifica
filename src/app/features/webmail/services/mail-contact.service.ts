@@ -6,6 +6,7 @@ import { map, catchError, switchMap, take } from 'rxjs/operators';
 import { ChipItem } from '../../../shared/ui/chip-autocomplete/chip-autocomplete.component';
 import { AuthService } from '../../../services/auth.service';
 import { Customer } from '../../../models/customer';
+import { escapeOrFilterValue } from '../../../shared/utils/escape-like';
 
 @Injectable({
     providedIn: 'root'
@@ -82,7 +83,7 @@ export class MailContactService {
                 const userId = user?.id;
                 if (!userId) return of([]);
 
-                const safeTerm = term.replace(/[\\%_().,"]/g, '');
+                const safeTerm = escapeOrFilterValue(term);
                 if (!safeTerm.trim()) return of([]);
                 const query = this.supabase
                     .from('mail_contacts')
