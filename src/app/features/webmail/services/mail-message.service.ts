@@ -3,6 +3,7 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { RuntimeConfigService } from '../../../services/runtime-config.service';
 import { MailMessage, MailFolder } from '../../../core/interfaces/webmail.interface';
 import { MailFolderService } from './mail-folder.service';
+import { escapeOrFilterValue } from '../../../shared/utils/escape-like';
 
 @Injectable({ providedIn: 'root' })
 export class MailMessageService {
@@ -77,7 +78,7 @@ export class MailMessageService {
   async searchMessages(query: string, accountId: string): Promise<MailMessage[]> {
     if (!query.trim()) return [];
 
-    const safeQuery = query.replace(/[\\%_().,"]/g, '');
+    const safeQuery = escapeOrFilterValue(query);
     if (!safeQuery.trim()) return [];
 
     const { data, error } = await this.supabase
