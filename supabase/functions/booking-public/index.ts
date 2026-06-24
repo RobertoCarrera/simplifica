@@ -91,6 +91,7 @@ function getCorsHeaders(req: Request) {
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
       'authorization, x-client-info, apikey, content-type, x-api-key, x-client-id',
@@ -201,10 +202,10 @@ serve(async (req) => {
         });
       }
 
-      // 2. Fetch bookable services with their professionals AND ALL their variants.
-      //    We do NOT filter variants at the query level because Supabase JS would
-      //    turn the filter into an INNER JOIN, dropping every service without
-      //    variants. We filter (is_active, is_hidden) in the sanitization step
+      // 2. Fetch bookable services with their professionals AND ALL their active variants.
+      //    Service-level visibility (is_public=true, is_visible_in_portal=true,
+      //    is_bookable=true, is_active=true) is filtered at the query level above.
+      //    Per-variant filtering (is_active) happens in the sanitization step
       //    below so services with no variants still come through.
       const { data: services, error: servicesError } = await privateSupabase
         .from('services')
@@ -224,8 +225,7 @@ serve(async (req) => {
                         pricing,
                         display_config,
                         sort_order,
-                        is_active,
-                        is_hidden
+                        is_active
                     )
                 `,
         )
@@ -298,7 +298,9 @@ serve(async (req) => {
           .filter((p: any) => p && p.is_active !== false)
           .map((p: any) => ({ id: p.id, display_name: p.display_name, slug: p.slug || null })),
         variants: (s.service_variants || [])
-          .filter((v: any) => v.is_active !== false && v.is_hidden !== true)
+          // Visibility now inherits from parent service (is_public + is_visible_in_portal).
+          // Per-variant filtering only checks is_active.
+          .filter((v: any) => v.is_active !== false)
           .map((v: any) => ({
             id: v.id,
             name: v.variant_name,
