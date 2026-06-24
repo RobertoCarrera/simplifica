@@ -11,14 +11,38 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 import { validateJWTHook } from '../_shared/jwt-hook-validator.ts';
-import { withSecurityHeaders } from '../_shared/security.ts';
 
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 serve(async (req) => {
+  // Rate limiting FIRST (before HMAC validation) — Rafter v0.47 LOW batch.
+  // 300/min/IP — Supabase Auth Hook. The hook is shared infra: many users
+  // hit it on every JWT refresh from the same Supabase egress IP, so we key
+  // by IP instead of user_id. We run this BEFORE validateJWTHook so
+  // unauthenticated bursts also get capped.
+  //
+  // Auth Hook contract: always return HTTP 200 — never 4xx/5xx, or we break
+  // auth for ALL users. On rate limit we return 200 with empty claims (the
+  // same response shape as a failed HMAC validation); users still get a
+  // valid (but un-customized) JWT and rate-limit headers alert monitoring.
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`custom-access-token:${ip}`, 300, 60_000);
+  if (!rl.allowed) {
+    console.warn('[custom-access-token] Rate limit hit — returning empty claims to preserve auth contract');
+    return new Response(JSON.stringify({ claims: {} }), {
+      status: 200,
+      headers: withSecurityHeaders({
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(rl),
+      }),
+    });
+  }
+
   // SEC-JWT-03: Validation order — signature check BEFORE any payload processing or RLS.
   // SEC-JWT-04: On failure, return HTTP 200 with empty claims (Supabase hook requirement).
   //             NEVER expose secret details in the response body.

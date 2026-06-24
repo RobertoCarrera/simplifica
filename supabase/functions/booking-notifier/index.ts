@@ -3,7 +3,8 @@
 // Purpose: Listen to Database Webhooks on 'bookings' table and send email notifications via AWS SES.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP, withSecurityHeaders } from '../_shared/security.ts';
 
 // --- AWS SES Signing Logic (Reused) ---
 const te = new TextEncoder();
@@ -57,6 +58,19 @@ async function signAwsRequest({ method, url, region, service, accessKeyId, secre
 }
 // --- Main Handler ---
 serve(async (req)=>{
+  // Rate limiting FIRST — Rafter v0.47 LOW batch.
+  // 600/min/IP — Postgres DB webhook (no user JWT). DB webhooks come from
+  // Supabase infra so the source IP is stable; this cap protects against a
+  // runaway trigger loop or a misconfigured webhook hammering the function.
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`booking-notifier:${ip}`, 600, 60_000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: withSecurityHeaders({ 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }),
+    });
+  }
+
   try {
     const { type, record, old_record } = await req.json();
     // Supabase Client

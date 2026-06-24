@@ -38,7 +38,34 @@ import {
 } from 'npm:@aws-sdk/client-route-53';
 
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP, isValidUUID, withSecurityHeaders } from '../_shared/security.ts';
+
+
+// ── Rate-limit helper ────────────────────────────────────────────────────────
+
+/**
+ * Extract the `sub` claim from a Supabase JWT WITHOUT verifying the signature.
+ * Used ONLY for rate-limit keying — the gateway already validates the JWT
+ * (`verify_jwt = true` in config.toml). If the JWT is missing or malformed
+ * (e.g. service_role key passed in `Authorization`), we return null and
+ * fall back to IP-based keying in the caller.
+ */
+function getUserIdFromJwt(req: Request): string | null {
+  const auth = req.headers.get('Authorization');
+  if (!auth?.startsWith('Bearer ')) return null;
+  const token = auth.replace('Bearer ', '');
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return (decoded.sub as string) || null;
+  } catch {
+    return null;
+  }
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -554,6 +581,25 @@ async function runHealthcheck(
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 serve(async (req) => {
+  // Rate limiting FIRST (before CORS preflight) — Rafter v0.47 LOW batch.
+  // 30/min/user_id — SES inbound provision creates Receipt Rules + DNS
+  // records. Service-role calls (from ses-domain-verification) get IP
+  // keying because the service_role key is not a parseable JWT.
+  const rlUserId = getUserIdFromJwt(req);
+  const rlIp = getClientIP(req);
+  const rateKey = rlUserId ? `ses-inbound-provision:${rlUserId}` : `ses-inbound-provision:ip:${rlIp}`;
+  const rl = await checkRateLimit(rateKey, 30, 60_000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: {
+        ...getCorsHeaders(req),
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(rl),
+      },
+    });
+  }
+
   const corsRes = handleCorsOptions(req);
   if (corsRes) return corsRes;
 
