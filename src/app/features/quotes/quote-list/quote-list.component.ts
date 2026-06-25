@@ -7,6 +7,7 @@ import { SupabaseQuotesService } from '../../../services/supabase-quotes.service
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { TenantService } from '../../../services/tenant.service';
 import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
@@ -772,6 +773,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private supabaseClient = inject(SupabaseClientService);
   private settingsService = inject(SupabaseSettingsService);
   private authService = inject(AuthService);
+  private tenantService = inject(TenantService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private customersService = inject(SupabaseCustomersService);
@@ -1130,12 +1132,25 @@ export class QuoteListComponent implements OnInit, OnDestroy {
 
   private async loadQuotes(): Promise<void> {
     try {
-      const result = await firstValueFrom(this.quotesService.getQuotes());
-      // DEBUG visible (no console.log — no funciona en este proyecto)
-      this.debugInfo.set(`OK · ${result.data?.length ?? 0} quotes cargados (count=${result.count ?? 0}) · company=${this.authService.companyId() || 'VACÍO'}`);
+      // Para Super Admin: usar el tenant del subdominio, no la company de la sesión.
+      // Para usuarios normales: usar authService.companyId() (que es su propia company).
+      const tenantId = this.tenantService.getCurrentTenant()?.id;
+      const isSuperAdmin = this.authService.isSuperAdmin();
+      const effectiveCompanyId = isSuperAdmin && tenantId && tenantId !== 'simplifica-crm'
+        ? tenantId
+        : this.authService.companyId();
+
+      this.debugInfo.set(
+        `effective=${effectiveCompanyId || 'VACÍO'} (auth=${this.authService.companyId() || 'VACÍO'}, tenant=${tenantId || 'null'}, super=${isSuperAdmin})`
+      );
+
+      const result = await firstValueFrom(this.quotesService.getQuotes(undefined, undefined, 1, 1000, effectiveCompanyId || undefined));
+      this.debugInfo.set(
+        `OK · ${result.data?.length ?? 0} quotes cargados (count=${result.count ?? 0}) · effective=${effectiveCompanyId || 'VACÍO'} (auth=${this.authService.companyId() || 'VACÍO'})`
+      );
       this.quotes.set(result.data || []);
     } catch (err: any) {
-      this.debugInfo.set(`ERROR: ${err?.message || String(err)} · code=${err?.code || '?'} · company=${this.authService.companyId() || 'VACÍO'}`);
+      this.debugInfo.set(`ERROR: ${err?.message || String(err)} · code=${err?.code || '?'}`);
     }
   }
 

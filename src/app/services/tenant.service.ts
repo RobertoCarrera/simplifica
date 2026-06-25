@@ -193,6 +193,19 @@ export class TenantService {
           servicios: true,
           material: true
         }
+      },
+      'caibs.es': {
+        id: '69ec9c24-1808-43d2-9e80-9cced1fc0019',
+        name: 'CAIBS',
+        subdomain: 'caibs',
+        domain: 'caibs.es',
+        theme: 'default',
+        allowedModules: {
+          facturas: true,
+          presupuestos: true,
+          servicios: true,
+          material: true
+        }
       }
     };
 

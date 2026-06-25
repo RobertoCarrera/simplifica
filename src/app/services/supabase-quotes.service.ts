@@ -52,18 +52,20 @@ export class SupabaseQuotesService {
     filters?: QuoteFilters,
     sort?: QuoteSortOptions,
     page: number = 1,
-    pageSize: number = 1000
+    pageSize: number = 1000,
+    companyIdOverride?: string
   ): Observable<{ data: Quote[]; count: number }> {
-    return from(this.executeGetQuotes(filters, sort, page, pageSize));
+    return from(this.executeGetQuotes(filters, sort, page, pageSize, companyIdOverride));
   }
 
   private async executeGetQuotes(
     filters?: QuoteFilters,
     sort?: QuoteSortOptions,
     page: number = 1,
-    pageSize: number = 1000
+    pageSize: number = 1000,
+    companyIdOverride?: string
   ): Promise<{ data: Quote[]; count: number }> {
-    const companyId = this.authService.companyId();
+    const companyId = companyIdOverride || this.authService.companyId();
     if (!companyId) throw new Error('No company ID available');
 
     const client = this.supabaseClient.instance;
