@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+// Version: 2026-06-25-quote-list-v6 — restore i18n + columnVencimiento
 import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
