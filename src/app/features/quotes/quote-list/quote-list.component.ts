@@ -164,27 +164,27 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        {{ 'quotes.numero' | transloco }}
+{{ 'quotes.list.columnNumero' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        {{ 'quotes.contacto' | transloco }}
+                        {{ 'quotes.list.columnCliente' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        {{ 'quotes.fecha' | transloco }}
+                        {{ 'quotes.list.columnFecha' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        {{ 'quotes.estado' | transloco }}
+{{ 'quotes.list.columnEstado' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        {{ 'quotes.total' | transloco }}
+{{ 'quotes.list.columnTotal' | transloco }}
                       </th>
                       <th class="px-4 py-2"></th>
                     </tr>
@@ -374,32 +374,32 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.numero' | transloco }}
+                  {{ 'quotes.list.columnNumero' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.cliente' | transloco }}
+                  {{ 'quotes.list.columnCliente' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.fechaEmision' | transloco }}
+{{ 'quotes.list.columnFecha' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.fechaAccion' | transloco }}
+{{ 'quotes.list.columnVencimiento' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.estado' | transloco }}
+                  {{ 'quotes.list.columnEstado' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {{ 'quotes.total' | transloco }}
+                  {{ 'quotes.list.columnTotal' | transloco }}
                 </th>
                 <th class="px-6 py-3"></th>
               </tr>
@@ -566,7 +566,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                   {{ formatQuoteNumber(quote) }}
                 </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ 'quotes.fechaEmision' | transloco }}: {{ quote.quote_date | date: 'dd MMM yyyy' }}
+                  {{ 'quotes.list.columnFecha' | transloco }}: {{ quote.quote_date | date: 'dd MMM yyyy' }}
                 </div>
                 @if (getActionDate(quote); as actionDate) {
                   <div
@@ -577,7 +577,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                     [class.text-gray-500]="!isOverdue(quote)"
                     [class.dark:text-gray-400]="!isOverdue(quote)"
                   >
-                    {{ 'quotes.fechaAccion' | transloco }}: {{ actionDate | date: 'dd MMM yyyy' }}
+                    {{ 'quotes.list.columnVencimiento' | transloco }}: {{ actionDate | date: 'dd MMM yyyy' }}
                   </div>
                 }
               </div>
@@ -1116,9 +1116,10 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private async loadQuotes(): Promise<void> {
     try {
       const result = await firstValueFrom(this.quotesService.getQuotes());
+      console.warn('[DEBUG quote-list] loadQuotes retornó', result.data?.length, 'quotes, count:', result.count);
       this.quotes.set(result.data || []);
     } catch (err) {
-      console.error('Error loading quotes', err);
+      console.error('[DEBUG quote-list] Error loading quotes', err);
     }
   }
 
