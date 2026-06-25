@@ -603,6 +603,34 @@ export class ServiceVariantsComponent implements OnInit {
     return result;
   }
 
+  // ============= VISIBILITY (per-variant hidden flag) =============
+  // Variant-level hiding is independent from service-level visibility:
+  // a hidden variant stays in the DB (referenced by old quotes/invoices)
+  // but does not appear in the catalog or portal. Useful when prices
+  // change yearly and you need to keep the previous year's variant for
+  // historical record without showing it as a current option.
+
+  async toggleHidden(variant: ServiceVariant) {
+    try {
+      const newValue = !variant.is_hidden;
+      const supabase = this.supabaseService.getClient();
+
+      const { error } = await supabase
+        .from('service_variants')
+        .update({ is_hidden: newValue })
+        .eq('id', variant.id);
+
+      if (error) throw error;
+
+      variant.is_hidden = newValue;
+      this.onVisibilityChange.emit({ variantId: variant.id, isHidden: newValue });
+      this.toastService.success('Visibilidad', newValue ? 'Variante oculta del catálogo' : 'Variante visible en catálogo');
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      this.toastService.error('Error', 'Error al cambiar visibilidad');
+    }
+  }
+
   // No longer load all clients on init to avoid hitting limits
   // Instead, we search on demand.
 

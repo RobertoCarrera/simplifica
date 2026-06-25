@@ -823,9 +823,18 @@
 
 /* ============= FIN ESTILOS MÚLTIPLES PRECIOS ============= */
 
-/* ============= ASSIGNMENT STYLES ============= */
+/* ============= VISIBILITY & ASSIGNMENT STYLES ============= */
 
-.assigned-badge {
+.variant-hidden {
+  opacity: 0.6;
+  border-left-color: #9ca3af !important;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.hidden-badge, .assigned-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -834,6 +843,19 @@
   font-size: 0.75rem;
   font-weight: 500;
   margin-left: 0.5rem;
+}
+
+.hidden-badge {
+  background: #fef3c7;
+  color: #92400e;
+
+  @media (prefers-color-scheme: dark) {
+    background: #78350f;
+    color: #fde68a;
+  }
+}
+
+.assigned-badge {
   background: #dbeafe;
   color: #1e40af;
   
