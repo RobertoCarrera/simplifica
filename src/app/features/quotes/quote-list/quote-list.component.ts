@@ -1131,30 +1131,29 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   }
 
   private async loadQuotes(): Promise<void> {
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'no-window';
+    const tenantObj = this.tenantService.getCurrentTenant();
+    const tenantId = tenantObj?.id;
+    const tenantName = tenantObj?.name;
+    const isSuperAdmin = this.authService.isSuperAdmin();
+    const authCompanyId = this.authService.companyId();
     try {
-      const hostname = typeof window !== 'undefined' ? window.location.hostname : 'no-window';
-      const tenantObj = this.tenantService.getCurrentTenant();
-      const tenantId = tenantObj?.id;
-      const isSuperAdmin = this.authService.isSuperAdmin();
-      const authCompanyId = this.authService.companyId();
-      // tenantId es válido si parece un UUID (36 chars con guiones).
-      // "dev-mode", "simplifica-crm" y otros placeholders NO lo son.
       const tenantIsUuid = !!tenantId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
       const effectiveCompanyId = (isSuperAdmin && tenantIsUuid)
         ? tenantId
         : authCompanyId;
 
       this.debugInfo.set(
-        `host=${hostname} · tenant=${tenantId || 'null'} (uuid=${tenantIsUuid}) · effective=${effectiveCompanyId || 'VACÍO'} (auth=${authCompanyId || 'VACÍO'})`
+        `host=${hostname} | super=${isSuperAdmin} | tenant.id=${tenantId || 'null'} | tenant.name=${tenantName || 'null'} | tenantIsUuid=${tenantIsUuid} | auth.company=${authCompanyId || 'VACIO'} | effective=${effectiveCompanyId || 'VACIO'}`
       );
 
       const result = await firstValueFrom(this.quotesService.getQuotes(undefined, undefined, 1, 1000, effectiveCompanyId || undefined));
       this.debugInfo.set(
-        `OK · ${result.data?.length ?? 0} quotes (count=${result.count ?? 0}) · effective=${effectiveCompanyId || 'VACÍO'}`
+        `OK: ${result.data?.length ?? 0} quotes (count=${result.count ?? 0}) | effective=${effectiveCompanyId || 'VACIO'} | host=${hostname} | tenant=${tenantId || 'null'}`
       );
       this.quotes.set(result.data || []);
     } catch (err: any) {
-      this.debugInfo.set(`ERROR: ${err?.message || String(err)} · code=${err?.code || '?'} · host=${typeof window !== 'undefined' ? window.location.hostname : '?'}`);
+      this.debugInfo.set(`ERROR: ${err?.message || String(err)} | code=${err?.code || '?'} | host=${hostname} | tenant=${tenantId || 'null'} | auth=${authCompanyId || 'VACIO'}`);
     }
   }
 
