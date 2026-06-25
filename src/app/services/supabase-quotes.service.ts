@@ -1001,8 +1001,15 @@ export class SupabaseQuotesService {
    * Suscribirse a cambios en tiempo real de la tabla quotes.
    * Ver SUPABASE_REALTIME_GUIDE.md para documentación completa.
    */
-  subscribeToQuoteChanges(callback: (payload: any) => void): RealtimeChannel | null {
-    const companyId = this.authService.companyId();
+  subscribeToQuoteChanges(
+    callback: (payload: any) => void,
+    companyIdOverride?: string,
+  ): RealtimeChannel | null {
+    // Use the override when the caller (e.g. quote-list on behalf of a Super
+    // Admin viewing a specific tenant) has already resolved the effective
+    // company id. Falling back to authService.companyId() preserves backward
+    // compatibility for every other caller in the app.
+    const companyId = companyIdOverride || this.authService.companyId();
     if (!companyId) return null;
 
     const channelName = `quotes-realtime-${companyId}-${Date.now()}`;

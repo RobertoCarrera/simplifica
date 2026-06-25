@@ -244,10 +244,10 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
           <!-- DEBUG visible (no console.log en este proyecto) -->
           <span
             class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono font-bold text-[11px]"
-            [class.bg-yellow-300]="debugInfo().startsWith('ERROR')"
-            [class.text-yellow-900]="debugInfo().startsWith('ERROR')"
-            [class.bg-green-200]="debugInfo().startsWith('OK')"
-            [class.text-green-900]="debugInfo().startsWith('OK')"
+            [class.bg-yellow-300]="debugInfo().includes('status=error')"
+            [class.text-yellow-900]="debugInfo().includes('status=error')"
+            [class.bg-green-200]="debugInfo().includes('status=ok')"
+            [class.text-green-900]="debugInfo().includes('status=ok')"
             [class.bg-gray-200]="!debugInfo()"
           >
             <i class="fas fa-bug text-[10px]"></i>
@@ -1032,9 +1032,33 @@ export class QuoteListComponent implements OnInit, OnDestroy {
    * Time-bucketed snapshot: "sessions not yet performed".
    * Also returns with_quote/without_quote split for reconciliation.
    * Non-fatal: counters stay at 0 if the query fails.
+   *
+   * E2E INVARIANT — quote / booking reconciliation 1:1
+   * -------------------------------------------------
+   * Every Supabase query in this component MUST be filtered by
+   * `getEffectiveCompanyId()`, NOT by `this.authService.companyId()`
+   * directly. Mixing the two is exactly how the "0 quotes / 295 reservas /
+   * 138 canceladas" bug shipped: `loadQuotes()` correctly used the tenant
+   * override for Super Admin viewing a specific tenant, but the raw
+   * `.from('bookings')` / `.from('quotes')` calls below relied on RLS
+   * which is wired to `authService.companyId()` (the favorite company),
+   * so the counters drifted out of sync with the quote list.
+   *
+   * From now on: every query — raw `.from()` calls here, `getQuotes()`,
+   * `subscribeToQuoteChanges()` — passes the SAME `effectiveCompanyId`.
+   * That guarantees `futureBookings + futureWithQuote + futureWithoutQuote`
+   * reconcile against `quotes().length` on the quote list.
    */
   private async loadFutureBookingsCount(): Promise<void> {
     try {
+      const effectiveCompanyId = this.getEffectiveCompanyId();
+      if (!effectiveCompanyId) {
+        // No resolved company → no query is meaningful. Counters stay at
+        // their signal defaults (0). Bail early so we don't hit Supabase
+        // with `company_id IS NULL` filters that would always return 0
+        // and waste a round-trip.
+        return;
+      }
       const now = new Date().toISOString();
       // Cancelled bookings don't need a quote — exclude them so the badge
       // doesn't show a non-issue (e.g. a Docplanner-cancelled booking whose
@@ -1043,6 +1067,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const { count: total, error: e1 } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .gt('start_time', now)
         .neq('status', 'cancelled');
       if (e1) throw e1;
@@ -1052,6 +1077,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const { count: withQ, error: e2 } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .gt('start_time', now)
         .neq('status', 'cancelled')
         .not('quote_id', 'is', null);
@@ -1065,7 +1091,8 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       // "X activas + Y canceladas = Z totales".
       const { count: nTotal, error: eTotal } = await this.supabaseClient.instance
         .from('bookings')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId);
       if (eTotal) throw eTotal;
       this.totalBookings.set(nTotal ?? 0);
 
@@ -1075,6 +1102,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const { count: cancelled, error: eCancelled } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .in('status', ['cancelled', 'no_show', 'no-show', 'canceled', 'anulada', 'anulado']);
       if (eCancelled) throw eCancelled;
       this.cancelledBookings.set(cancelled ?? 0);
@@ -1085,6 +1113,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const { count: active, error: eActive } = await this.supabaseClient.instance
         .from('bookings')
         .select('id', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .not('status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)');
       if (eActive) throw eActive;
       this.activeBookings.set(active ?? 0);
@@ -1093,10 +1122,10 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       // counter — these quotes no longer represent an open business
       // conversation. Surfaced so the user can see how much of the
       // "Total" quote count is historical baggage.
-      // RLS scopes to the current company automatically.
       const { count: qCancelled, error: eQCancelled } = await this.supabaseClient.instance
         .from('quotes')
         .select('id, bookings!inner(status)', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .in('bookings.status', ['cancelled', 'no_show', 'no-show', 'canceled', 'anulada', 'anulado']);
       if (eQCancelled) throw eQCancelled;
       this.quotesForCancelledBookings.set(qCancelled ?? 0);
@@ -1107,6 +1136,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const { count: qPast, error: eQPast } = await this.supabaseClient.instance
         .from('quotes')
         .select('id, bookings!inner(status, start_time)', { count: 'exact', head: true })
+        .eq('company_id', effectiveCompanyId)
         .not('bookings.status', 'in', '(cancelled,no_show,no-show,canceled,anulada,anulado)')
         .lt('bookings.start_time', now);
       if (eQPast) throw eQPast;
@@ -1114,6 +1144,33 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('Could not load future bookings count', e);
     }
+  }
+
+  /**
+   * Returns the company_id that EVERY Supabase query in this component
+   * MUST use, so the quote list and the reconciliation counters agree.
+   *
+   *   - Super Admin viewing a specific tenant   → tenant UUID
+   *   - Everyone else (dev, normal users)      → auth.company_id
+   *
+   * The tenant override only kicks in when the resolved tenant id is a
+   * well-formed UUID — placeholder strings like `'dev-mode'` or
+   * `'simplifica-crm'` are ignored so we never filter by literal text.
+   * On localhost the tenant service returns null, so this method falls
+   * back to `authService.companyId()` (which is Simplifica for Roberto).
+   *
+   * INVARIANT: never call `this.authService.companyId()` from a query in
+   * this component — always go through this method (or the equivalent
+   * override it computes). See the E2E block in `loadFutureBookingsCount`.
+   */
+  private getEffectiveCompanyId(): string | null {
+    const isSuperAdmin = this.authService.isSuperAdmin();
+    const tenantId = this.tenantService.getCurrentTenant()?.id;
+    const tenantIsUuid =
+      !!tenantId &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
+    if (isSuperAdmin && tenantIsUuid) return tenantId;
+    return this.authService.companyId() || null;
   }
 
   private async loadTaxSettings(): Promise<void> {
@@ -1131,29 +1188,28 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   }
 
   private async loadQuotes(): Promise<void> {
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'no-window';
-    const tenantObj = this.tenantService.getCurrentTenant();
-    const tenantId = tenantObj?.id;
-    const tenantName = tenantObj?.name;
-    const isSuperAdmin = this.authService.isSuperAdmin();
-    const authCompanyId = this.authService.companyId();
+    // Resolve the company id ONCE and reuse it for the list query, the
+    // reconciliation counters, and the realtime subscription. See
+    // getEffectiveCompanyId() / the E2E invariant in loadFutureBookingsCount.
+    const effectiveCompanyId = this.getEffectiveCompanyId();
     try {
-      const tenantIsUuid = !!tenantId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
-      const effectiveCompanyId = (isSuperAdmin && tenantIsUuid)
-        ? tenantId
-        : authCompanyId;
-
-      this.debugInfo.set(
-        `host=${hostname} | super=${isSuperAdmin} | tenant.id=${tenantId || 'null'} | tenant.name=${tenantName || 'null'} | tenantIsUuid=${tenantIsUuid} | auth.company=${authCompanyId || 'VACIO'} | effective=${effectiveCompanyId || 'VACIO'}`
+      const result = await firstValueFrom(
+        this.quotesService.getQuotes(
+          undefined,
+          undefined,
+          1,
+          1000,
+          effectiveCompanyId || undefined,
+        ),
       );
-
-      const result = await firstValueFrom(this.quotesService.getQuotes(undefined, undefined, 1, 1000, effectiveCompanyId || undefined));
       this.debugInfo.set(
-        `OK: ${result.data?.length ?? 0} quotes (count=${result.count ?? 0}) | effective=${effectiveCompanyId || 'VACIO'} | host=${hostname} | tenant=${tenantId || 'null'}`
+        `DEBUG: effective=${effectiveCompanyId || 'VACIO'} · ${result.data?.length ?? 0} quotes cargados · status=ok`,
       );
       this.quotes.set(result.data || []);
     } catch (err: any) {
-      this.debugInfo.set(`ERROR: ${err?.message || String(err)} | code=${err?.code || '?'} | host=${hostname} | tenant=${tenantId || 'null'} | auth=${authCompanyId || 'VACIO'}`);
+      this.debugInfo.set(
+        `DEBUG: effective=${effectiveCompanyId || 'VACIO'} · status=error · ${err?.message || String(err)}`,
+      );
     }
   }
 
@@ -1294,17 +1350,25 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   setupRealtimeSubscription() {
     if (this.subscription) return;
 
-    this.subscription = this.quotesService.subscribeToQuoteChanges((payload) => {
-      if (payload.eventType === 'UPDATE') {
-        this.quotes.update((quotes) =>
-          quotes.map((q) => (q.id === payload.new.id ? { ...q, ...payload.new } : q)),
-        );
-      } else if (payload.eventType === 'INSERT') {
-        this.quotes.update((quotes) => [payload.new, ...quotes]);
-      } else if (payload.eventType === 'DELETE') {
-        this.quotes.update((quotes) => quotes.filter((q) => q.id !== payload.old.id));
-      }
-    });
+    // Pass the SAME effectiveCompanyId used by loadQuotes() and the
+    // reconciliation counters so the realtime channel filters by the
+    // same company — otherwise we'd receive UPDATE events for a
+    // different tenant's quotes and the in-memory list would drift.
+    const effectiveCompanyId = this.getEffectiveCompanyId();
+    this.subscription = this.quotesService.subscribeToQuoteChanges(
+      (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          this.quotes.update((quotes) =>
+            quotes.map((q) => (q.id === payload.new.id ? { ...q, ...payload.new } : q)),
+          );
+        } else if (payload.eventType === 'INSERT') {
+          this.quotes.update((quotes) => [payload.new, ...quotes]);
+        } else if (payload.eventType === 'DELETE') {
+          this.quotes.update((quotes) => quotes.filter((q) => q.id !== payload.old.id));
+        }
+      },
+      effectiveCompanyId || undefined,
+    );
   }
 
   async loadProjects() {
