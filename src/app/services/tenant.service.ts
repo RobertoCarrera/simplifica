@@ -37,10 +37,13 @@ export class TenantService {
 
   private setDefaultTenant(): void {
     // Configuración por defecto para SSR
+    // En localhost (desarrollo), usamos CAIBS por default porque es la
+    // company con datos de prueba. Roberto (Super Admin) puede usar el
+    // company switcher del sidebar para cambiar.
     const defaultTenant: TenantConfig = {
-      id: 'dev-mode',
-      name: 'Desarrollo',
-      subdomain: 'dev',
+      id: '69ec9c24-1808-43d2-9e80-9cced1fc0019', // CAIBS
+      name: 'CAIBS (dev default)',
+      subdomain: 'caibs',
       domain: 'localhost',
       theme: 'default',
       allowedModules: {
@@ -209,7 +212,7 @@ export class TenantService {
       }
     };
 
-    const tenant = tenantMappings[hostname] || tenantMappings['localhost'];
+    const tenant = tenantMappings[hostname] || tenantMappings['localhost'] || tenantMappings['caibs.es'];
     this.tenantSubject.next(tenant);
     
     // Configurar sesión de Supabase para este tenant
