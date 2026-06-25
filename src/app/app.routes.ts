@@ -570,6 +570,52 @@ export const routes: Routes = [
       ),
   },
 
+  // ==========================================================================
+  // Client portal — quotes (aceptar / rechazar / firmar online)
+  // ==========================================================================
+  // Rutas en /portal/quotes/* para que los clientes autenticados puedan
+  // ver, aceptar (con firma digital), rechazar y descargar sus presupuestos.
+  // Authorization se delega al RLS de `public.quotes` y a las RPCs
+  // SECURITY DEFINER (accept_quote_by_client, reject_quote_by_client,
+  // mark_quote_as_viewed). El guard AuthGuard sólo asegura que hay
+  // sesión activa — la lógica de "este cliente es el dueño del quote"
+  // vive en la capa de datos.
+  {
+    path: "portal/quotes",
+    canActivate: [AuthGuard],
+    children: [
+      {
+        path: "",
+        pathMatch: "full",
+        loadComponent: () =>
+          import(
+            "./features/client-portal/quotes/portal-quotes-list.component"
+          ).then((m) => m.PortalQuotesListComponent),
+      },
+      {
+        path: ":id",
+        loadComponent: () =>
+          import(
+            "./features/client-portal/quotes/portal-quote-detail.component"
+          ).then((m) => m.PortalQuoteDetailComponent),
+      },
+      {
+        path: ":id/accept",
+        loadComponent: () =>
+          import(
+            "./features/client-portal/quotes/portal-quote-accept.component"
+          ).then((m) => m.PortalQuoteAcceptComponent),
+      },
+      {
+        path: ":id/reject",
+        loadComponent: () =>
+          import(
+            "./features/client-portal/quotes/portal-quote-reject.component"
+          ).then((m) => m.PortalQuoteRejectComponent),
+      },
+    ],
+  },
+
   // Fallback
   { path: "**", redirectTo: "/inicio" },
 ];
