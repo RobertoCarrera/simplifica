@@ -1132,27 +1132,29 @@ export class QuoteListComponent implements OnInit, OnDestroy {
 
   private async loadQuotes(): Promise<void> {
     try {
-      // Para Super Admin: usar el tenant del subdominio, no la company de la sesión.
-      // Para usuarios normales: usar authService.companyId() (que es su propia company).
       const hostname = typeof window !== 'undefined' ? window.location.hostname : 'no-window';
       const tenantObj = this.tenantService.getCurrentTenant();
       const tenantId = tenantObj?.id;
       const isSuperAdmin = this.authService.isSuperAdmin();
-      const effectiveCompanyId = isSuperAdmin && tenantId && tenantId !== 'simplifica-crm' && tenantId !== 'dev-mode'
+      const authCompanyId = this.authService.companyId();
+      // tenantId es válido si parece un UUID (36 chars con guiones).
+      // "dev-mode", "simplifica-crm" y otros placeholders NO lo son.
+      const tenantIsUuid = !!tenantId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
+      const effectiveCompanyId = (isSuperAdmin && tenantIsUuid)
         ? tenantId
-        : this.authService.companyId();
+        : authCompanyId;
 
       this.debugInfo.set(
-        `hostname=${hostname} · tenant=${tenantId || 'null'} (name=${tenantObj?.name || 'null'}) · effective=${effectiveCompanyId || 'VACÍO'} (auth=${this.authService.companyId() || 'VACÍO'})`
+        `host=${hostname} · tenant=${tenantId || 'null'} (uuid=${tenantIsUuid}) · effective=${effectiveCompanyId || 'VACÍO'} (auth=${authCompanyId || 'VACÍO'})`
       );
 
       const result = await firstValueFrom(this.quotesService.getQuotes(undefined, undefined, 1, 1000, effectiveCompanyId || undefined));
       this.debugInfo.set(
-        `OK · ${result.data?.length ?? 0} quotes cargados (count=${result.count ?? 0}) · effective=${effectiveCompanyId || 'VACÍO'} · auth=${this.authService.companyId() || 'VACÍO'}`
+        `OK · ${result.data?.length ?? 0} quotes (count=${result.count ?? 0}) · effective=${effectiveCompanyId || 'VACÍO'}`
       );
       this.quotes.set(result.data || []);
     } catch (err: any) {
-      this.debugInfo.set(`ERROR: ${err?.message || String(err)} · code=${err?.code || '?'} · tenant=${this.tenantService.getCurrentTenant()?.id || 'null'} · auth=${this.authService.companyId() || 'VACÍO'}`);
+      this.debugInfo.set(`ERROR: ${err?.message || String(err)} · code=${err?.code || '?'} · host=${typeof window !== 'undefined' ? window.location.hostname : '?'}`);
     }
   }
 
