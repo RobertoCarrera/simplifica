@@ -291,6 +291,15 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
               {{ 'quotes.list.quotesForCancelledBookings' | transloco }}: {{ quotesForCancelledBookings() }}
             </span>
           }
+          @if (quotesExpiredCount() > 0) {
+            <span
+              class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium"
+              [title]="'quotes.list.expiredHint' | transloco"
+            >
+              <i class="fas fa-hourglass-end text-[10px]"></i>
+              {{ 'quotes.list.expired' | transloco }}: {{ quotesExpiredCount() }}
+            </span>
+          }
 
           <!-- Visual divider between universes -->
           <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
@@ -438,7 +447,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                       <button
                         class="text-gray-400 hover:text-blue-600 transition-colors"
                         [routerLink]="['/presupuestos', quote.id]"
-                        title="Ver"
+                        [title]="'quotes.verDetalle' | transloco"
                       >
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path
@@ -458,7 +467,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                       <button
                         class="text-gray-400 hover:text-red-600 transition-colors"
                         (click)="downloadPdf(quote.id)"
-                        title="Descargar PDF"
+                        [title]="'quotes.common.descargarPdf' | transloco"
                       >
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path
@@ -469,6 +478,48 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                           />
                         </svg>
                       </button>
+                      <!-- "Enviar al cliente" — only for draft quotes -->
+                      @if ((quote.status || '').toLowerCase() === 'draft') {
+                        <button
+                          class="text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          [disabled]="sendingQuoteIds().has(quote.id)"
+                          (click)="sendToClient(quote)"
+                          [title]="'quotes.list.sendToClient' | transloco"
+                        >
+                          @if (sendingQuoteIds().has(quote.id)) {
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                          } @else {
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                              />
+                            </svg>
+                          }
+                        </button>
+                      }
+                      <!-- "Cancelar" — for draft and sent quotes (admin/owner/supervisor) -->
+                      @if (canCancel(quote)) {
+                        <button
+                          class="text-gray-400 hover:text-red-600 transition-colors"
+                          (click)="confirmCancel(quote)"
+                          [title]="'quotes.common.cancelar' | transloco"
+                        >
+                          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                            />
+                          </svg>
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -548,7 +599,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
             </div>
 
             <div
-              class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3 mt-3"
+              class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3 mt-3 gap-2 flex-wrap"
             >
               <button
                 class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 flex items-center gap-1"
@@ -564,20 +615,63 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
                 </svg>
                 PDF
               </button>
-              <a
-                [routerLink]="['/presupuestos', quote.id]"
-                class="inline-flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                {{ 'quotes.verDetalle' | transloco }}
-                <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </a>
+              <div class="flex items-center gap-2">
+                @if ((quote.status || '').toLowerCase() === 'draft') {
+                  <button
+                    class="inline-flex items-center justify-center px-3 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    [disabled]="sendingQuoteIds().has(quote.id)"
+                    (click)="sendToClient(quote)"
+                  >
+                    @if (sendingQuoteIds().has(quote.id)) {
+                      <svg class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                      {{ 'quotes.list.sendingToClient' | transloco }}
+                    } @else {
+                      <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                      </svg>
+                      {{ 'quotes.list.sendToClient' | transloco }}
+                    }
+                  </button>
+                }
+                @if (canCancel(quote)) {
+                  <button
+                    class="inline-flex items-center justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors"
+                    (click)="confirmCancel(quote)"
+                  >
+                    <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                      />
+                    </svg>
+                    {{ 'quotes.common.cancelar' | transloco }}
+                  </button>
+                }
+                <a
+                  [routerLink]="['/presupuestos', quote.id]"
+                  class="inline-flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  {{ 'quotes.verDetalle' | transloco }}
+                  <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         } @empty {
@@ -603,6 +697,53 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
           </div>
         }
       </div>
+
+      <!-- Cancellation confirmation modal -->
+      @if (quoteToCancel(); as q) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          (click)="cancelDismiss()"
+        >
+          <div
+            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-w-md w-full p-6"
+            (click)="$event.stopPropagation()"
+          >
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {{ 'quotes.list.confirmCancelTitle' | transloco }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              {{ 'quotes.list.confirmCancelQuote' | transloco }}
+            </p>
+            <p class="text-sm font-mono text-gray-500 dark:text-gray-400 mb-6">
+              {{ formatQuoteNumber(q) }}
+            </p>
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                (click)="cancelDismiss()"
+                [disabled]="cancellingQuoteId() === q.id"
+              >
+                {{ 'quotes.list.confirmCancelNo' | transloco }}
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                (click)="cancelConfirm()"
+                [disabled]="cancellingQuoteId() === q.id"
+              >
+                @if (cancellingQuoteId() === q.id) {
+                  <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                }
+                {{ 'quotes.list.confirmCancelYes' | transloco }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- Floating Action Button -->
       <button (click)="createQuote()" class="fab-button" [title]="'quotes.nuevo' | transloco">
@@ -653,6 +794,16 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   audioChunks: any[] = [];
 
   subscription: RealtimeChannel | null = null;
+
+  // Track which quotes currently have an in-flight "send to client" call.
+  // We use a Set signal so the per-row buttons can show a spinner independently.
+  sendingQuoteIds = signal<Set<string>>(new Set<string>());
+
+  // Quote pending cancellation confirmation (null when modal is closed).
+  quoteToCancel = signal<Quote | null>(null);
+
+  // Set of quote ids currently in-flight through the cancel API.
+  cancellingQuoteId = signal<string | null>(null);
 
   // Filtered and sorted quotes
   filteredQuotes = computed(() => {
@@ -713,6 +864,16 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   /** Count of quotes with status='draft'. */
   quotesDraftCount = computed(() =>
     this.quotes().filter(q => (q.status || '').toLowerCase() === 'draft').length
+  );
+
+  /**
+   * Count of quotes with status='expired'. Surfaced as a pill in the toolbar
+   * so the user can see at a glance how many quotes have aged out without
+   * being accepted. The cron (quote-expiration-cron, hourly) is the source of
+   * truth — this count is a UI mirror of the database status.
+   */
+  quotesExpiredCount = computed(() =>
+    this.quotes().filter(q => (q.status || '').toLowerCase() === 'expired').length
   );
 
   /**
@@ -1133,6 +1294,139 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     } catch (err) {
       console.error('Error loading project document IDs:', err);
       this.projectDocumentIds.set(null);
+    }
+  }
+
+  /**
+   * Whether the current user is allowed to cancel a quote in the given
+   * status. Mirrors the matrix in `can_transition_quote_status` on the DB
+   * side (defense in depth — the DB will still reject any illegal
+   * transition even if the UI is wrong).
+   *
+   * Cancelling is allowed from any non-terminal state by admin / owner /
+   * supervisor / member / agent. Invoiced quotes are intentionally excluded
+   * here — they require the dedicated `invoiced → cancelled` path (admin
+   * / owner only) and we don't want a casual click to nuke a billed quote.
+   */
+  canCancel(quote: Quote): boolean {
+    const status = (quote.status || '').toLowerCase();
+    if (status === 'invoiced' || status === 'cancelled' || status === 'expired') return false;
+    const role = (
+      this.authService.userRole?.() ??
+      (this.authService as any).role?.() ??
+      ''
+    ).toLowerCase();
+    // If we can't read the role we still show the button — the DB will
+    // reject the transition if the user isn't allowed. Better UX than
+    // hiding a button for users we haven't mapped.
+    if (!role) return true;
+    return ['admin', 'owner', 'supervisor', 'member', 'agent', 'super_admin'].includes(role);
+  }
+
+  /**
+   * Send a draft quote to the client. Calls the SECURITY DEFINER RPC
+   * `send_quote_to_client(p_quote_id)` which:
+   *   - validates caller role (admin / owner / supervisor / member / agent)
+   *   - verifies the client has an email
+   *   - sets status='sent', quote_date=now(), valid_until=now()+30 days
+   *   - async-fires the booking-notifier Edge Function with
+   *     `{type: 'quote_sent', quote_id, client_email, ...}`
+   *
+   * On success the local signal is updated optimistically and the toast
+   * confirms. The realtime subscription will refresh the row shortly.
+   */
+  async sendToClient(quote: Quote): Promise<void> {
+    if (!quote?.id) return;
+    if (this.sendingQuoteIds().has(quote.id)) return;
+
+    this.sendingQuoteIds.update((s) => new Set(s).add(quote.id));
+    try {
+      const updated = await firstValueFrom(
+        this.quotesService.sendQuoteToClient(quote.id),
+      );
+      const merged = (updated ?? quote) as Quote;
+      this.quotes.update((list) =>
+        list.map((q) => (q.id === quote.id ? { ...q, ...merged } : q)),
+      );
+      this.toastService.success(
+        this.translocoService.translate('quotes.list.sendToClientSuccess'),
+        formatQuoteNumber(merged),
+      );
+    } catch (err: any) {
+      console.error('[sendToClient] exception', err);
+      this.toastService.error(
+        this.translocoService.translate('quotes.list.sendToClientError'),
+        err?.message ?? String(err),
+      );
+    } finally {
+      this.sendingQuoteIds.update((s) => {
+        const next = new Set(s);
+        next.delete(quote.id);
+        return next;
+      });
+    }
+  }
+
+  /**
+   * Open the cancellation confirmation modal. Stores the candidate quote
+   * in the `quoteToCancel` signal — the modal template reads it.
+   */
+  confirmCancel(quote: Quote): void {
+    this.quoteToCancel.set(quote);
+  }
+
+  /** Dismiss the modal without taking action. */
+  cancelDismiss(): void {
+    if (this.cancellingQuoteId()) return; // ignore while a request is in flight
+    this.quoteToCancel.set(null);
+  }
+
+  /**
+   * Confirm the cancellation. Issues an UPDATE to set the status to
+   * 'cancelled'. The DB-side trigger (`trg_enforce_quote_status_transition`)
+   * validates that the user is allowed to do this transition and writes
+   * a row to `quote_status_transitions`. If the transition is invalid
+   * (e.g. invoiced → cancelled by a non-admin) the toast shows the
+   * Postgres exception message.
+   */
+  async cancelConfirm(): Promise<void> {
+    const q = this.quoteToCancel();
+    if (!q?.id) return;
+    if (this.cancellingQuoteId()) return;
+
+    this.cancellingQuoteId.set(q.id);
+    try {
+      const { data, error } = await this.supabaseClient.instance
+        .from('quotes')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', q.id)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('[cancelConfirm] rpc error', error);
+        this.toastService.error(
+          this.translocoService.translate('quotes.list.sendToClientError'),
+          error.message ?? '',
+        );
+        return;
+      }
+
+      if (data) {
+        this.quotes.update((list) =>
+          list.map((row) => (row.id === q.id ? { ...row, ...data } : row)),
+        );
+      }
+
+      this.quoteToCancel.set(null);
+    } catch (err: any) {
+      console.error('[cancelConfirm] exception', err);
+      this.toastService.error(
+        this.translocoService.translate('quotes.list.sendToClientError'),
+        err?.message ?? String(err),
+      );
+    } finally {
+      this.cancellingQuoteId.set(null);
     }
   }
 }

@@ -895,7 +895,17 @@
       "columnTotal": "Gesamt",
       "columnAcciones": "Aktionen",
       "antiguos": "Ältere",
-      "holdedErrorLoading": "Fehler beim Laden der Kostenvoranschläge von Holded"
+      "holdedErrorLoading": "Fehler beim Laden der Kostenvoranschläge von Holded",
+      "expired": "abgelaufen",
+      "expiredHint": "Angebote, deren Gültigkeitsdatum überschritten wurde, ohne akzeptiert zu werden. Der stündliche Cron markiert sie als abgelaufen und benachrichtigt den Kunden.",
+      "sendToClient": "An Kunden senden",
+      "sendingToClient": "Wird gesendet...",
+      "sendToClientSuccess": "Angebot an den Kunden gesendet",
+      "sendToClientError": "Das Angebot konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+      "confirmCancelQuote": "Dieses Angebot stornieren? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirmCancelTitle": "Angebot stornieren",
+      "confirmCancelYes": "Ja, stornieren",
+      "confirmCancelNo": "Nein, zurück"
     },
     "common": {
       "presupuesto": "Angebot",

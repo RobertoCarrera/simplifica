@@ -987,7 +987,17 @@
       "holdedLoading": "Cargando presupuestos de Holded...",
       "holdedNoResults": "No se encontraron presupuestos en Holded.",
       "holdedVerEnHolded": "Ver en Holded",
-      "holdedErrorLoading": "Error al cargar presupuestos de Holded"
+      "holdedErrorLoading": "Error al cargar presupuestos de Holded",
+      "expired": "expirados",
+      "expiredHint": "Presupuestos que superaron su fecha de validez sin ser aceptados. El cron horario los marca como expirados y notifica al cliente.",
+      "sendToClient": "Enviar al cliente",
+      "sendingToClient": "Enviando...",
+      "sendToClientSuccess": "Presupuesto enviado al cliente",
+      "sendToClientError": "No se pudo enviar el presupuesto. Inténtalo de nuevo.",
+      "confirmCancelQuote": "¿Cancelar este presupuesto? Esta acción no se puede deshacer.",
+      "confirmCancelTitle": "Cancelar presupuesto",
+      "confirmCancelYes": "Sí, cancelar",
+      "confirmCancelNo": "No, volver"
     },
     "detail": {
       "cargandoPresupuesto": "Cargando presupuesto...",

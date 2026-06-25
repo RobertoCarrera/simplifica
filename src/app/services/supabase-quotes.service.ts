@@ -495,9 +495,38 @@ export class SupabaseQuotesService {
 
   /**
    * Enviar presupuesto al cliente (cambiar estado a 'sent')
+   *
+   * @deprecated Prefer {@link sendQuoteToClient} (the RPC). The legacy
+   * direct UPDATE bypasses the role validation and the email dispatch,
+   * so it is kept only for backward-compatibility with the existing
+   * `finalizeQuote` / `acceptRequest` flows.
    */
   sendQuote(id: string): Observable<Quote> {
     return this.updateQuote(id, { status: QuoteStatus.SENT });
+  }
+
+  /**
+   * Send a draft quote to the client via the SECURITY DEFINER RPC
+   * `send_quote_to_client(p_quote_id)`. This is the preferred path:
+   *   - Validates caller role (admin / owner / supervisor / member / agent).
+   *   - Verifies the client has an email.
+   *   - Sets status='sent', quote_date=now(), valid_until=now()+30 days.
+   *   - Async-fires the booking-notifier Edge Function (quote_sent event).
+   *
+   * Returns the refreshed quote row on success.
+   */
+  sendQuoteToClient(id: string): Observable<Quote> {
+    return from(this.executeSendQuoteToClient(id));
+  }
+
+  private async executeSendQuoteToClient(id: string): Promise<Quote> {
+    const client = this.supabaseClient.instance;
+    const { data, error } = await client.rpc('send_quote_to_client', {
+      p_quote_id: id,
+    });
+    if (error) throw error;
+    // The RPC returns the full quotes row.
+    return data as Quote;
   }
 
   /**

@@ -978,7 +978,17 @@
       "holdedLoading": "Carregant pressupostos de Holded...",
       "holdedNoResults": "No s'han trobat pressupostos a Holded.",
       "holdedVerEnHolded": "Veure a Holded",
-      "holdedErrorLoading": "Error en carregar pressupostos de Holded"
+      "holdedErrorLoading": "Error en carregar pressupostos de Holded",
+      "expired": "expirats",
+      "expiredHint": "Pressupostos que van superar la seva data de validesa sense ser acceptats. El cron horari els marca com a expirats i notifica el client.",
+      "sendToClient": "Enviar al client",
+      "sendingToClient": "Enviant...",
+      "sendToClientSuccess": "Pressupost enviat al client",
+      "sendToClientError": "No s'ha pogut enviar el pressupost. Torna-ho a provar.",
+      "confirmCancelQuote": "Cancel·lar aquest pressupost? Aquesta acció no es pot desfer.",
+      "confirmCancelTitle": "Cancel·lar pressupost",
+      "confirmCancelYes": "Sí, cancel·lar",
+      "confirmCancelNo": "No, tornar"
     },
     "detail": {
       "cargandoPresupuesto": "Carregant pressupost...",
