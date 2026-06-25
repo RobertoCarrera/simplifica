@@ -603,33 +603,6 @@ export class ServiceVariantsComponent implements OnInit {
     return result;
   }
 
-  // ============= VISIBILITY & CLIENT ASSIGNMENT MANAGEMENT =============
-
-
-
-  async toggleHidden(variant: ServiceVariant) {
-    try {
-      const newValue = !variant.is_hidden;
-      const supabase = this.supabaseService.getClient();
-
-      const { error } = await supabase
-        .from('service_variants')
-        .update({ is_hidden: newValue })
-        .eq('id', variant.id);
-
-      if (error) throw error;
-
-      variant.is_hidden = newValue;
-      this.onVisibilityChange.emit({ variantId: variant.id, isHidden: newValue });
-      this.toastService.success('Visibilidad', newValue ? 'Variante oculta del catálogo' : 'Variante visible en catálogo');
-    } catch (error) {
-      console.error('Error toggling visibility:', error);
-      this.toastService.error('Error', 'Error al cambiar visibilidad');
-    }
-  }
-
-
-
   // No longer load all clients on init to avoid hitting limits
   // Instead, we search on demand.
 
@@ -706,14 +679,14 @@ export class ServiceVariantsComponent implements OnInit {
 
       // First, remove any existing assignment for this client+service (only one variant per service)
       await supabase
-        .from('client_variant_assignments')
+        .from('client_service_assignments')
         .delete()
         .eq('client_id', client.id)
         .eq('service_id', this.serviceId);
 
       // Insert new assignment
       const { data, error } = await supabase
-        .from('client_variant_assignments')
+        .from('client_service_assignments')
         .insert({
           client_id: client.id,
           service_id: this.serviceId,
@@ -746,7 +719,7 @@ export class ServiceVariantsComponent implements OnInit {
       const supabase = this.supabaseService.getClient();
 
       const { error } = await supabase
-        .from('client_variant_assignments')
+        .from('client_service_assignments')
         .delete()
         .eq('id', assignmentId);
 

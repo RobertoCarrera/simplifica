@@ -16,17 +16,11 @@
         <div
           class="variant-card"
           [style.border-left-color]="getVariantBadgeColor(variant)"
-          [class.variant-hidden]="variant.is_hidden"
         >
           <div class="variant-header">
             <div class="variant-title">
               <h4>
                 {{ variant.variant_name }}
-                @if (variant.is_hidden) {
-                  <span class="hidden-badge" [title]="'services.variants.varianteOculta' | transloco">
-                    <i class="fas fa-eye-slash"></i>
-                  </span>
-                }
                 @if (variant.client_assignments && variant.client_assignments.length > 0) {
                   <span class="assigned-badge" [title]="'services.variants.asignadaClientes' | transloco">
                     <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
@@ -65,20 +59,6 @@
               }
             </div>
             <div class="variant-actions">
-              <!-- Toggle Hidden -->
-              <button
-                type="button"
-                class="btn-icon"
-                (click)="toggleHidden(variant)"
-                [title]="variant.is_hidden ? ('services.variants.mostrarCatalogo' | transloco) : ('services.variants.ocultarCatalogo' | transloco)"
-                [class.active]="variant.is_hidden"
-              >
-                <i
-                  class="fas"
-                  [class.fa-eye]="!variant.is_hidden"
-                  [class.fa-eye-slash]="variant.is_hidden"
-                ></i>
-              </button>
               <!-- Assign to Client -->
               <button
                 type="button"
