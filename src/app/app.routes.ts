@@ -40,6 +40,14 @@ export const routes: Routes = [
     canActivate: [StaffGuard],
   },
   {
+    path: "clientes/desconocidos",
+    loadComponent: () =>
+      import("./features/customers/unknown-clients/unknown-clients-list.component").then(
+        (m) => m.UnknownClientsListComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+  {
     path: "clientes/:id",
     loadComponent: () =>
       import("./features/customers/profile/client-profile.component").then(

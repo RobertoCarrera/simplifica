@@ -1723,6 +1723,10 @@
       "high": "Alto",
       "normal": "Normal",
       "low": "Bajo"
+    },
+    "unknownClients": {
+      "title": "Clientes pendientes de reclamación: {{ count }}",
+      "subtitle": "Tienes clientes Desconocido sin reclamar. Haz clic para revisarlos."
     }
   },
   "agenda": {
@@ -3350,6 +3354,86 @@
       "downloadFailures": "Descargar reporte",
       "close": "Cerrar",
       "securityNote": "Esta importación fue silenciosa: no se enviaron notificaciones, presupuestos ni facturas a los clientes."
+    }
+  },
+  "unknownClients": {
+    "title": "Clientes Desconocido",
+    "subtitle": "Clientes auto-creados por triggers defensivos que aún no han sido reclamados por un usuario real.",
+    "pills": {
+      "pending": "Pendientes",
+      "merged": "Fusionados",
+      "converted": "Convertidos",
+      "archived": "Archivados",
+      "all": "Todos"
+    },
+    "table": {
+      "client": "Cliente",
+      "contact": "Contacto",
+      "professional": "Profesional",
+      "booking": "Reserva",
+      "days": "Días sin reclamar",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "merged": "Fusionado",
+      "converted": "Convertido",
+      "archived": "Archivado"
+    },
+    "field": {
+      "name": "Nombre",
+      "email": "Email",
+      "phone": "Teléfono",
+      "source": "Origen",
+      "relatedBooking": "Reserva relacionada"
+    },
+    "originalClient": "Cliente Desconocido original",
+    "chooseMode": "¿Cómo quieres reclamarlo?",
+    "mode": {
+      "merge": "Fusionar con cliente existente",
+      "mergeDesc": "Re-apunta todas sus reservas y presupuestos al cliente real seleccionado.",
+      "convert": "Convertir en cliente nuevo",
+      "convertDesc": "Rellena los datos del cliente y mantenlo como registro canónico."
+    },
+    "merge": {
+      "searchLabel": "Buscar cliente existente",
+      "searchPlaceholder": "Escribe nombre, email o teléfono…",
+      "searching": "Buscando coincidencias…",
+      "noMatches": "No hay coincidencias. Prueba con otro término o usa el modo Convertir.",
+      "selectedHint": "Seleccionado:"
+    },
+    "convert": {
+      "intro": "Rellena los datos que faltan. Los campos vacíos se mantienen como están."
+    },
+    "notes": {
+      "label": "Notas",
+      "placeholder": "Motivo de la reclamación, contexto adicional…"
+    },
+    "actions": {
+      "claim": "Reclamar",
+      "markLost": "Marcar perdido",
+      "done": "Completado",
+      "confirmMerge": "Fusionar",
+      "confirmConvert": "Convertir"
+    },
+    "claimTitle": "Reclamar Cliente Desconocido",
+    "claimSubtitle": "Asigna este cliente Desconocido a un cliente real existente o conviértelo en uno nuevo.",
+    "markLost": {
+      "title": "Marcar como perdido",
+      "message": "Este cliente Desconocido se marcará como perdido y dejará de aparecer en la lista de pendientes. Las reservas asociadas no se eliminarán. ¿Continuar?",
+      "confirm": "Marcar como perdido"
+    },
+    "toast": {
+      "merged": "Cliente fusionado correctamente.",
+      "converted": "Cliente convertido correctamente.",
+      "markedLost": "Cliente marcado como perdido.",
+      "loadError": "Error al cargar la lista de clientes Desconocido.",
+      "error": "Ha ocurrido un error al reclamar el cliente."
+    },
+    "empty": {
+      "title": "No hay clientes Desconocido pendientes",
+      "subtitle": "Todos los clientes auto-creados por triggers defensivos han sido reclamados o archivados."
     }
   }
 }

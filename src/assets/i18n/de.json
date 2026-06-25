@@ -3227,5 +3227,85 @@
         "load": "Abstimmung konnte nicht geladen werden. Bitte erneut versuchen."
       }
     }
+  },
+  "unknownClients": {
+    "title": "Unbekannte Kunden",
+    "subtitle": "Kunden, die automatisch durch defensive Trigger angelegt wurden und noch nicht von einem echten Benutzer beansprucht wurden.",
+    "pills": {
+      "pending": "Ausstehend",
+      "merged": "Zusammengeführt",
+      "converted": "Umgewandelt",
+      "archived": "Archiviert",
+      "all": "Alle"
+    },
+    "table": {
+      "client": "Kunde",
+      "contact": "Kontakt",
+      "professional": "Fachkraft",
+      "booking": "Termin",
+      "days": "Tage ohne Beanspruchung",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "merged": "Zusammengeführt",
+      "converted": "Umgewandelt",
+      "archived": "Archiviert"
+    },
+    "field": {
+      "name": "Name",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "source": "Quelle",
+      "relatedBooking": "Zugehöriger Termin"
+    },
+    "originalClient": "Ursprünglicher unbekannter Kunde",
+    "chooseMode": "Wie möchtest du ihn beanspruchen?",
+    "mode": {
+      "merge": "Mit bestehendem Kunden zusammenführen",
+      "mergeDesc": "Alle Termine und Angebote werden dem ausgewählten echten Kunden zugeordnet.",
+      "convert": "In neuen Kunden umwandeln",
+      "convertDesc": "Die fehlenden Daten ergänzen und als kanonischen Datensatz behalten."
+    },
+    "merge": {
+      "searchLabel": "Bestehenden Kunden suchen",
+      "searchPlaceholder": "Name, E-Mail oder Telefon eingeben…",
+      "searching": "Suche läuft…",
+      "noMatches": "Keine Treffer. Versuche einen anderen Begriff oder wechsle in den Umwandeln-Modus.",
+      "selectedHint": "Ausgewählt:"
+    },
+    "convert": {
+      "intro": "Ergänze die fehlenden Daten. Leere Felder bleiben unverändert."
+    },
+    "notes": {
+      "label": "Notizen",
+      "placeholder": "Grund der Beanspruchung, zusätzlicher Kontext…"
+    },
+    "actions": {
+      "claim": "Beanspruchen",
+      "markLost": "Als verloren markieren",
+      "done": "Erledigt",
+      "confirmMerge": "Zusammenführen",
+      "confirmConvert": "Umwandeln"
+    },
+    "claimTitle": "Unbekannten Kunden beanspruchen",
+    "claimSubtitle": "Weise diesen unbekannten Kunden einem bestehenden echten Kunden zu oder wandle ihn in einen neuen um.",
+    "markLost": {
+      "title": "Als verloren markieren",
+      "message": "Dieser unbekannte Kunde wird als verloren markiert und erscheint nicht mehr in der Ausstehenden-Liste. Zugehörige Termine werden nicht gelöscht. Fortfahren?",
+      "confirm": "Als verloren markieren"
+    },
+    "toast": {
+      "merged": "Kunde erfolgreich zusammengeführt.",
+      "converted": "Kunde erfolgreich umgewandelt.",
+      "markedLost": "Kunde als verloren markiert.",
+      "loadError": "Fehler beim Laden der Liste unbekannter Kunden.",
+      "error": "Beim Beanspruchen des Kunden ist ein Fehler aufgetreten."
+    },
+    "empty": {
+      "title": "Keine ausstehenden unbekannten Kunden",
+      "subtitle": "Alle automatisch durch defensive Trigger angelegten Kunden wurden beansprucht oder archiviert."
+    }
   }
 }

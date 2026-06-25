@@ -3074,5 +3074,85 @@
         "load": "No s'ha pogut carregar la conciliació. Torna-ho a provar."
       }
     }
+  },
+  "unknownClients": {
+    "title": "Clients Desconeguts",
+    "subtitle": "Clients auto-creats per triggers defensius que encara no han estat reclamats per un usuari real.",
+    "pills": {
+      "pending": "Pendents",
+      "merged": "Fusionats",
+      "converted": "Convertits",
+      "archived": "Arxivats",
+      "all": "Tots"
+    },
+    "table": {
+      "client": "Client",
+      "contact": "Contacte",
+      "professional": "Professional",
+      "booking": "Reserva",
+      "days": "Dies sense reclamar",
+      "status": "Estat",
+      "actions": "Accions"
+    },
+    "status": {
+      "pending": "Pendent",
+      "merged": "Fusionat",
+      "converted": "Convertit",
+      "archived": "Arxivat"
+    },
+    "field": {
+      "name": "Nom",
+      "email": "Correu",
+      "phone": "Telèfon",
+      "source": "Origen",
+      "relatedBooking": "Reserva relacionada"
+    },
+    "originalClient": "Client Desconegut original",
+    "chooseMode": "Com vols reclamar-lo?",
+    "mode": {
+      "merge": "Fusionar amb client existent",
+      "mergeDesc": "Re-assenyala totes les seves reserves i pressupostos al client real seleccionat.",
+      "convert": "Convertir en client nou",
+      "convertDesc": "Omple les dades del client i mantén-lo com a registre canònic."
+    },
+    "merge": {
+      "searchLabel": "Cercar client existent",
+      "searchPlaceholder": "Escriu nom, correu o telèfon…",
+      "searching": "Cercant coincidències…",
+      "noMatches": "No hi ha coincidències. Prova amb un altre terme o usa el mode Convertir.",
+      "selectedHint": "Seleccionat:"
+    },
+    "convert": {
+      "intro": "Omple les dades que falten. Els camps buits es mantenen com estan."
+    },
+    "notes": {
+      "label": "Notes",
+      "placeholder": "Motiu de la reclamació, context addicional…"
+    },
+    "actions": {
+      "claim": "Reclamar",
+      "markLost": "Marcar perdut",
+      "done": "Completat",
+      "confirmMerge": "Fusionar",
+      "confirmConvert": "Convertir"
+    },
+    "claimTitle": "Reclamar Client Desconegut",
+    "claimSubtitle": "Assigna aquest client Desconegut a un client real existent o converteix-lo en un de nou.",
+    "markLost": {
+      "title": "Marcar com a perdut",
+      "message": "Aquest client Desconegut es marcarà com a perdut i deixarà d'aparèixer a la llista de pendents. Les reserves associades no s'eliminaran. Continuar?",
+      "confirm": "Marcar com a perdut"
+    },
+    "toast": {
+      "merged": "Client fusionat correctament.",
+      "converted": "Client convertit correctament.",
+      "markedLost": "Client marcat com a perdut.",
+      "loadError": "Error en carregar la llista de clients Desconeguts.",
+      "error": "S'ha produït un error en reclamar el client."
+    },
+    "empty": {
+      "title": "No hi ha clients Desconeguts pendents",
+      "subtitle": "Tots els clients auto-creats per triggers defensius han estat reclamats o arxivats."
+    }
   }
 }

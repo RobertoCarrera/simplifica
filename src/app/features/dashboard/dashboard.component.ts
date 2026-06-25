@@ -7,6 +7,7 @@ import { SupabaseTicketsService, Ticket } from '../../services/supabase-tickets.
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { SupabaseBookingsService, Booking } from '../../services/supabase-bookings.service';
+import { UnknownClientsService } from '../../services/unknown-clients.service';
 import { Customer } from '../../models/customer';
 
 import { AuthService } from '../../services/auth.service';
@@ -38,6 +39,7 @@ export class DashboardComponent implements OnInit {
     private customersService = inject(SupabaseCustomersService);
     private modulesService = inject(SupabaseModulesService);
     private bookingsService = inject(SupabaseBookingsService);
+    private unknownClientsService = inject(UnknownClientsService);
     public authService = inject(AuthService);
 
     // Raw KPI data from AnalyticsService
@@ -53,6 +55,10 @@ export class DashboardComponent implements OnInit {
     recentCustomers = signal<Customer[]>([]);
     todayBookings = signal<Booking[]>([]);
     loadingRecents = signal(true);
+
+    // Unknown-clients KPI (only loaded for admin/owner/supervisor)
+    unknownClientsCount = signal<number>(0);
+    canSeeUnknownClients = computed(() => this.authService.isAdmin());
 
     // Modal State
     showTicketForm = signal(false);
@@ -185,6 +191,15 @@ export class DashboardComponent implements OnInit {
             if (customers) this.recentCustomers.set(customers);
             if (ticketResponse?.data) this.recentTickets.set(ticketResponse.data);
             if (bookingsResponse?.data) this.todayBookings.set(bookingsResponse.data);
+
+            // Unknown-clients KPI (admin only). Fire-and-forget so it doesn't
+            // slow the dashboard if the count RPC is slow.
+            if (this.canSeeUnknownClients()) {
+                this.unknownClientsService
+                    .countPending(companyId)
+                    .then((n) => this.unknownClientsCount.set(n))
+                    .catch(() => this.unknownClientsCount.set(0));
+            }
         } catch (err) {
             console.error('Error loading dashboard', err);
         } finally {

@@ -40,6 +40,26 @@
   <!-- ═══════════════════════════════════════════════════════════════
        KPI CARDS ROW
        ═══════════════════════════════════════════════════════════════ -->
+  <!-- Banner: Clientes Desconocido pendientes (admin/owner/supervisor) -->
+  @if (canSeeUnknownClients() && unknownClientsCount() > 0) {
+    <a routerLink="/clientes/desconocidos"
+      class="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 dark:border-amber-800
+             bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group">
+      <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-user-tag"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">
+          {{ 'dashboard.unknownClients.title' | transloco:{ count: unknownClientsCount() } }}
+        </p>
+        <p class="text-xs text-amber-700 dark:text-amber-300">
+          {{ 'dashboard.unknownClients.subtitle' | transloco }}
+        </p>
+      </div>
+      <i class="fas fa-chevron-right text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform"></i>
+    </a>
+  }
+
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Revenue KPI -->
     @if (hasInvoicesModule()) {
