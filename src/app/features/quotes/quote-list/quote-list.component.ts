@@ -241,19 +241,8 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
         <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-3">
-          <!-- DEBUG visible (no console.log en este proyecto) -->
-          <span
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono font-bold text-[11px]"
-            [class.bg-yellow-300]="debugInfo().includes('status=error')"
-            [class.text-yellow-900]="debugInfo().includes('status=error')"
-            [class.bg-green-200]="debugInfo().includes('status=ok')"
-            [class.text-green-900]="debugInfo().includes('status=ok')"
-            [class.bg-gray-200]="!debugInfo()"
-          >
-            <i class="fas fa-bug text-[10px]"></i>
-            DEBUG: {{ debugInfo() || 'cargando...' }}
-          </span>
-          <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
+<!-- DEBUG visible (no console.log en este proyecto) -->
+          <!-- DEBUG banner removed for production -->
           <!-- Group 1: Quote universe (indigo / amber / emerald) -->
           <span
             class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
@@ -790,7 +779,6 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   holdedError = signal<string | null>(null);
 
   quotes = signal<Quote[]>([]);
-  debugInfo = signal<string>(''); // DEBUG visible HTML — no console.log
   searchTerm = signal<string>('');
   statusFilter = signal<string>('');
   sortBy = signal<string>('date-desc');
@@ -1202,14 +1190,9 @@ export class QuoteListComponent implements OnInit, OnDestroy {
           effectiveCompanyId || undefined,
         ),
       );
-      this.debugInfo.set(
-        `DEBUG: effective=${effectiveCompanyId || 'VACIO'} · ${result.data?.length ?? 0} quotes cargados · status=ok`,
-      );
       this.quotes.set(result.data || []);
-    } catch (err: any) {
-      this.debugInfo.set(
-        `DEBUG: effective=${effectiveCompanyId || 'VACIO'} · status=error · ${err?.message || String(err)}`,
-      );
+    } catch (err) {
+      console.warn('[quote-list] Error cargando quotes', err);
     }
   }
 
