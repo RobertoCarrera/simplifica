@@ -1311,14 +1311,20 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   canCancel(quote: Quote): boolean {
     const status = (quote.status || '').toLowerCase();
     if (status === 'invoiced' || status === 'cancelled' || status === 'expired') return false;
-    const role = (
-      this.authService.userRole?.() ??
-      (this.authService as any).role?.() ??
-      ''
-    ).toLowerCase();
-    // If we can't read the role we still show the button — the DB will
-    // reject the transition if the user isn't allowed. Better UX than
-    // hiding a button for users we haven't mapped.
+    // Resolve the current user's role. AuthService exposes a public signal
+    // `userRole` (string). The profile object also has a `role` field —
+    // either source works; if both are empty we still show the button and
+    // let the DB reject the transition if the user isn't allowed.
+    let role = '';
+    try {
+      role = (this.authService.userRole?.() || '').toLowerCase();
+      if (!role) {
+        const profile = (this.authService as any).userProfile?.();
+        role = (profile?.role || '').toLowerCase();
+      }
+    } catch {
+      role = '';
+    }
     if (!role) return true;
     return ['admin', 'owner', 'supervisor', 'member', 'agent', 'super_admin'].includes(role);
   }
