@@ -3169,5 +3169,12 @@
       "title": "No hi ha clients Desconeguts pendents",
       "subtitle": "Tots els clients auto-creats per triggers defensius han estat reclamats o arxivats."
     }
+  },
+  "billingConfigPage": {
+    "title": "Configuració de facturació",
+    "subtitle": "Dades fiscals, integracions de pagament i sèries de facturació.",
+    "fiscalData": "Dades fiscals",
+    "paymentIntegrations": "Integracions de pagament",
+    "series": "Sèries de facturació"
   }
 }

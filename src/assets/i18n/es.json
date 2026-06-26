@@ -3450,5 +3450,12 @@
       "title": "No hay clientes Desconocido pendientes",
       "subtitle": "Todos los clientes auto-creados por triggers defensivos han sido reclamados o archivados."
     }
+  },
+  "billingConfigPage": {
+    "title": "Configuración de facturación",
+    "subtitle": "Datos fiscales, integraciones de pago y series de facturación.",
+    "fiscalData": "Datos fiscales",
+    "paymentIntegrations": "Integraciones de pago",
+    "series": "Series de facturación"
   }
 }

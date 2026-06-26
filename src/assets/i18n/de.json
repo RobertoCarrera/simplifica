@@ -3314,5 +3314,12 @@
       "title": "Keine ausstehenden unbekannten Kunden",
       "subtitle": "Alle automatisch durch defensive Trigger angelegten Kunden wurden beansprucht oder archiviert."
     }
+  },
+  "billingConfigPage": {
+    "title": "Rechnungskonfiguration",
+    "subtitle": "Steuerdaten, Zahlungsintegrationen und Rechnungsserien.",
+    "fiscalData": "Steuerdaten",
+    "paymentIntegrations": "Zahlungsintegrationen",
+    "series": "Rechnungsserien"
   }
 }
