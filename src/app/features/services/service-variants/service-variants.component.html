@@ -238,27 +238,23 @@
               @if (formData.pricing && formData.pricing.length > 0) {
                 <div class="pricing-entries">
                   @for (price of formData.pricing; track price; let idx = $index) {
-                    <div
-                      class="pricing-entry bg-white rounded-lg shadow-sm border border-gray-200 mb-3 shadow-sm border"
-                    >
-                      <div
-                        class="px-4 py-3 border-b border-gray-200 font-semibold bg-gray-50 flex justify-between items-center border-b border-gray-200 py-2 px-3"
-                      >
-                        <h5 class="mb-0 font-bold" style="font-size: 0.95rem">
-                          <i class="fas fa-tag mr-2 text-blue-600"></i> {{ 'services.variants.opcionPrecio' | transloco }}{{
+                    <div class="pricing-entry">
+                      <div class="pricing-entry-header">
+                        <h5>
+                          <i class="fas fa-tag"></i> {{ 'services.variants.opcionPrecio' | transloco }}{{
                             idx + 1
                           }}
                         </h5>
                         <button
                           type="button"
-                          class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 text-red-600"
+                          class="btn-remove-pricing"
                           (click)="removePricingEntry(idx)"
                           [title]="'services.variants.eliminarPrecio' | transloco"
                         >
                           <i class="fas fa-trash"></i>
                         </button>
                       </div>
-                      <div class="p-4 p-3">
+                      <div class="pricing-entry-body">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div class="mb-4">
                             <label class="small font-bold">{{ 'services.variants.periodicidad' | transloco }}</label>
