@@ -1,76 +1,156 @@
 <div class="h-full bg-slate-50 dark:bg-slate-900/40 p-6">
-  <div class="max-w-5xl mx-auto">
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-    >
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2
-          class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
-        >
-          <i class="fas fa-list-check mr-3 text-emerald-600"></i>
-          Política global de onboarding
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Define qué datos se piden por defecto en el onboarding cuando una empresa no haya personalizado su propia política.
-        </p>
-      </div>
-      <div class="p-4 sm:p-6 space-y-6">
-        @for (section of onboardingSections; track section.scope) {
-          <section class="space-y-4">
-            <div>
-              <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ section.title }}</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ section.description }}</p>
-            </div>
+  <div class="max-w-5xl mx-auto space-y-6">
 
-            <div class="space-y-3">
-              @for (field of getOnboardingFields(section.scope); track field.key) {
-                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-slate-50 dark:bg-slate-900/30">
-                  <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">{{ field.label }}</p>
-                      @if (field.description) {
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ field.description }}</p>
-                      }
-                    </div>
+    <!-- Política global de onboarding (solo super-admin) -->
+    @if (isSuperAdmin) {
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-list-check mr-3 text-emerald-600"></i>
+            Política global de onboarding
+          </h2>
+          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Define qué datos se piden por defecto en el onboarding cuando una empresa no haya personalizado su propia política.
+          </p>
+        </div>
+        <div class="p-4 sm:p-6 space-y-6">
+          @for (section of onboardingSections; track section.scope) {
+            <section class="space-y-4">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ section.title }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ section.description }}</p>
+              </div>
 
-                    <div class="w-full lg:w-56">
-                      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Comportamiento
-                      </label>
-                      <select
-                        [ngModel]="getOnboardingFieldMode(section.scope, $any(field.key))"
-                        (ngModelChange)="setOnboardingFieldMode(section.scope, $any(field.key), $event)"
-                        [ngModelOptions]="{ standalone: true }"
-                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
-                      >
-                        @for (mode of onboardingModeOptions; track mode.value) {
-                          <option [ngValue]="mode.value">{{ mode.label }}</option>
+              <div class="space-y-3">
+                @for (field of getOnboardingFields(section.scope); track field.key) {
+                  <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-slate-50 dark:bg-slate-900/30">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p class="font-medium text-gray-900 dark:text-white">{{ field.label }}</p>
+                        @if (field.description) {
+                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ field.description }}</p>
                         }
-                      </select>
+                      </div>
+
+                      <div class="w-full lg:w-56">
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          Comportamiento
+                        </label>
+                        <select
+                          [ngModel]="getOnboardingFieldMode('app', section.scope, $any(field.key))"
+                          (ngModelChange)="setOnboardingFieldMode('app', section.scope, $any(field.key), $event)"
+                          [ngModelOptions]="{ standalone: true }"
+                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                        >
+                          @for (mode of onboardingModeOptions; track mode.value) {
+                            <option [ngValue]="mode.value">{{ mode.label }}</option>
+                          }
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
+                }
+              </div>
+            </section>
+          }
 
-        <div class="flex justify-end">
-          <button
-            type="button"
-            (click)="saveAppOnboardingPolicy()"
-            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-            [disabled]="savingAppOnboardingPolicy"
-          >
-            @if (savingAppOnboardingPolicy) {
-              <i class="fas fa-spinner fa-spin"></i>
-            } @else {
-              <i class="fas fa-save"></i>
-            }
-            Guardar política global
-          </button>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              (click)="saveAppOnboardingPolicy()"
+              class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+              [disabled]="savingAppOnboardingPolicy"
+            >
+              @if (savingAppOnboardingPolicy) {
+                <i class="fas fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fas fa-save"></i>
+              }
+              Guardar política global
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    }
+
+    <!-- Política de empresa (owner o super-admin con contexto de empresa) -->
+    @if (canConfigureCompanyOnboarding) {
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-user-gear mr-3 text-blue-600"></i>
+            Onboarding de esta empresa
+          </h2>
+          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Decide qué campos deben pedirse al incorporarse a esta empresa. Lo que definas aquí sobrescribe la política global.
+          </p>
+        </div>
+        <div class="p-4 sm:p-6 space-y-6">
+          @for (section of onboardingSections; track section.scope) {
+            <section class="space-y-4">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ section.title }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ section.description }}</p>
+              </div>
+
+              <div class="space-y-3">
+                @for (field of getOnboardingFields(section.scope); track field.key) {
+                  <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-slate-50 dark:bg-slate-900/30">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p class="font-medium text-gray-900 dark:text-white">{{ field.label }}</p>
+                        @if (field.description) {
+                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ field.description }}</p>
+                        }
+                      </div>
+
+                      <div class="w-full lg:w-56">
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          Comportamiento
+                        </label>
+                        <select
+                          [ngModel]="getOnboardingFieldMode('company', section.scope, $any(field.key))"
+                          (ngModelChange)="setOnboardingFieldMode('company', section.scope, $any(field.key), $event)"
+                          [ngModelOptions]="{ standalone: true }"
+                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                        >
+                          @for (mode of onboardingModeOptions; track mode.value) {
+                            <option [ngValue]="mode.value">{{ mode.label }}</option>
+                          }
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          <div class="flex justify-end">
+            <button
+              type="button"
+              (click)="saveCompanyOnboardingPolicy()"
+              class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              [disabled]="savingCompanyOnboardingPolicy"
+            >
+              @if (savingCompanyOnboardingPolicy) {
+                <i class="fas fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fas fa-save"></i>
+              }
+              Guardar política de empresa
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 </div>

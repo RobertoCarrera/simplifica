@@ -37,22 +37,6 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguagePreferencesComponent } from './tabs/language-preferences/language-preferences.component';
 import { BillingDataFormComponent } from '../billing-data-form/billing-data-form.component';
-import {
-    getDefaultOnboardingPolicy,
-    mergeOnboardingPolicies,
-    normalizeOnboardingPolicy,
-    onboardingFieldDefinitions,
-    type ClientOnboardingFieldKey,
-    type CompanyOnboardingFieldKey,
-    type OnboardingFieldDefinition,
-    type OnboardingFieldMode,
-    type OnboardingPolicy,
-    type OnboardingScope,
-    type UserOnboardingFieldKey,
-} from '../../../services/onboarding-policy';
-
-type OnboardingPolicyTarget = 'app' | 'company';
-type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | CompanyOnboardingFieldKey;
 
 @Component({
     selector: 'app-configuracion',
@@ -105,37 +89,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     modulesDiagnosticsLoading = false;
     // Settings forms
     appSettingsForm: FormGroup;
-    companySettingsForm: FormGroup;
+companySettingsForm: FormGroup;
     settingsLoading = false;
-    onboardingFieldDefinitions = onboardingFieldDefinitions;
-    onboardingSections: Array<{ scope: OnboardingScope; title: string; description: string }> = [
-        {
-            scope: 'user',
-            title: 'Datos de usuario',
-            description: 'Campos básicos de identidad que se guardan en el perfil interno del usuario.',
-        },
-        {
-            scope: 'client',
-            title: 'Datos de cliente',
-            description: 'Información comercial y de contacto que se guardará en el perfil cliente cuando exista.',
-        },
-        {
-            scope: 'company',
-            title: 'Datos de empresa',
-            description: 'Información de la organización que se pide al crear o completar el contexto de empresa.',
-        },
-    ];
-    onboardingModeOptions: Array<{ value: OnboardingFieldMode; label: string }> = [
-        { value: 'hidden', label: 'No pedir' },
-        { value: 'optional', label: 'Opcional' },
-        { value: 'required', label: 'Obligatorio' },
-    ];
-    companyOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
-    // Cached app policy, used internally to merge with company policy.
-    // The UI for editing the app policy lives in OnboardingSettingsComponent
-    // (its own route /configuracion/onboarding).
-    private appOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
-savingCompanyOnboardingPolicy = false;
+    // Onboarding policy lives in OnboardingSettingsComponent (own route).
 
     // Company default language
     companyDefaultLang: string = 'es';
@@ -263,10 +219,6 @@ get isOwnerOrSuperAdmin(): boolean {
 
     get hasCompanyContext(): boolean {
         return !!(this.authService.companyId() || this.userProfile?.company_id);
-    }
-
-    get canConfigureCompanyOnboarding(): boolean {
-        return this.isOwnerOrSuperAdmin && this.hasCompanyContext;
     }
 
     isModuleActive(moduleKey: string): boolean {
@@ -1294,9 +1246,6 @@ async updateProfile() {
                     default_irpf_enabled: app.default_irpf_enabled ?? false,
                     default_irpf_rate: app.default_irpf_rate ?? 15
                 });
-                this.appOnboardingPolicy = normalizeOnboardingPolicy(app.onboarding_policy);
-            } else {
-                this.appOnboardingPolicy = getDefaultOnboardingPolicy();
             }
             if (company) {
                 this.companySettingsForm.patchValue({
@@ -1312,13 +1261,7 @@ async updateProfile() {
                     irpf_enabled: company.irpf_enabled ?? null,
                     irpf_rate: company.irpf_rate ?? null
                 });
-                this.companyOnboardingPolicy = mergeOnboardingPolicies(
-                    this.appOnboardingPolicy,
-                    company.onboarding_policy,
-                );
-            } else {
-                this.companyOnboardingPolicy = normalizeOnboardingPolicy(this.appOnboardingPolicy);
-            }
+                }
         } catch (e) {
             console.error('Error loading settings', e);
             this.showMessage('Error cargando ajustes', 'error');
@@ -1344,62 +1287,6 @@ async updateProfile() {
             this.showMessage('Ajustes de empresa guardados', 'success');
         } catch (e) {
             this.showMessage('Error guardando ajustes de empresa', 'error');
-        }
-    }
-
-    getOnboardingFields(scope: OnboardingScope): OnboardingFieldDefinition[] {
-        return this.onboardingFieldDefinitions.filter((field) => field.scope === scope);
-    }
-
-    getOnboardingFieldMode(
-        target: OnboardingPolicyTarget,
-        scope: OnboardingScope,
-        fieldKey: OnboardingFieldKey,
-    ): OnboardingFieldMode {
-        const policy = target === 'app' ? this.appOnboardingPolicy : this.companyOnboardingPolicy;
-        return policy[scope][fieldKey as keyof typeof policy[typeof scope]] as OnboardingFieldMode;
-    }
-
-    setOnboardingFieldMode(
-        target: OnboardingPolicyTarget,
-        scope: OnboardingScope,
-        fieldKey: OnboardingFieldKey,
-        mode: OnboardingFieldMode,
-    ) {
-        const currentPolicy = target === 'app' ? this.appOnboardingPolicy : this.companyOnboardingPolicy;
-        const nextPolicy = {
-            ...currentPolicy,
-            [scope]: {
-                ...currentPolicy[scope],
-                [fieldKey]: mode,
-            },
-        } as OnboardingPolicy;
-
-        if (target === 'app') {
-            this.appOnboardingPolicy = nextPolicy;
-            return;
-        }
-
-        this.companyOnboardingPolicy = nextPolicy;
-    }
-
-    async saveCompanyOnboardingPolicy() {
-        if (!this.hasCompanyContext) {
-            this.showMessage('No hay una empresa activa para guardar esta política', 'error');
-            return;
-        }
-
-        this.savingCompanyOnboardingPolicy = true;
-        try {
-            await firstValueFrom(this.settingsService.upsertCompanySettings({
-                onboarding_policy: this.companyOnboardingPolicy,
-            }));
-            this.showMessage('Política de onboarding de empresa guardada', 'success');
-        } catch (error) {
-            console.error('Error saving company onboarding policy', error);
-            this.showMessage('Error guardando la política de onboarding de empresa', 'error');
-        } finally {
-            this.savingCompanyOnboardingPolicy = false;
         }
     }
 
