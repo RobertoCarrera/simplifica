@@ -865,6 +865,7 @@
       "futureWithoutQuoteHint": "Von den zukünftigen Buchungen, wie viele haben noch kein Angebot",
       "descuadre": "Abweichung",
       "descuadreHint": "Differenz zwischen der Gesamtzahl der zukünftigen Buchungen und der Summe aus (mit Angebot + ohne Angebot). Wenn größer als 0, liegt eine Datenabweichung vor, die überprüft werden muss.",
+      "settingsTooltip": "Angebots-Einstellungen",
       "holdedTitle": "Kostenvoranschläge in Holded",
       "holdedLoading": "Kostenvoranschläge von Holded werden geladen...",
       "holdedNoResults": "Keine Kostenvoranschläge in Holded gefunden.",

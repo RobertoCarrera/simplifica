@@ -241,8 +241,6 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
         <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-3">
-<!-- DEBUG visible (no console.log en este proyecto) -->
-          <!-- DEBUG banner removed for production -->
           <!-- Group 1: Quote universe (indigo / amber / emerald) -->
           <span
             class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium"
@@ -370,6 +368,15 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
               {{ 'quotes.list.descuadre' | transloco }}: {{ quoteBookingDescuadre() }}
             </span>
           }
+
+          <!-- Settings gear (top-right): go to /configuracion/presupuestos -->
+          <a
+            [routerLink]="'/configuracion/presupuestos'"
+            class="ml-auto inline-flex items-center justify-center w-7 h-7 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+            [title]="'quotes.list.settingsTooltip' | transloco"
+          >
+            <i class="fas fa-cog text-sm"></i>
+          </a>
         </div>
         <div class="overflow-x-auto max-h-[calc(100vh-300px)] overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

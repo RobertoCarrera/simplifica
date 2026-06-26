@@ -951,6 +951,7 @@
       "futureWithoutQuoteHint": "De les reserves futures, quantes no tenen un pressupost encara",
       "descuadre": "Desquadrament",
       "descuadreHint": "Diferència entre el total de reserves futures i la suma de (amb pressupost + sense pressupost). Si és més gran que 0, hi ha deriva de dades que requereix revisió.",
+      "settingsTooltip": "Configuració de pressupostos",
       "filtrarEstado": "Filtrar per estat",
       "filtrarFecha": "Filtrar per data",
       "todosEstados": "Tots els estats",

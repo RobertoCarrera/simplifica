@@ -960,6 +960,7 @@
       "futureWithoutQuoteHint": "De las reservas futuras, cuántas no tienen un presupuesto todavía",
       "descuadre": "Descuadre",
       "descuadreHint": "Diferencia entre el total de reservas futuras y la suma de (con presupuesto + sin presupuesto). Si es mayor que 0, hay drift de datos que requiere revisión.",
+      "settingsTooltip": "Configuración de presupuestos",
       "filtrarEstado": "Filtrar por estado",
       "filtrarFecha": "Filtrar por fecha",
       "todosEstados": "Todos los estados",
