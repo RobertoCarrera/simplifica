@@ -102,6 +102,15 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
             <option value="amount-asc">{{ 'invoices.menorImporte' | transloco }}</option>
             <option value="client-asc">{{ 'invoices.clienteAZ' | transloco }}</option>
           </select>
+
+          <!-- Settings gear (top-right): go to /configuracion/presupuestos -->
+          <a
+            [routerLink]="'/configuracion/presupuestos'"
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500 dark:hover:border-blue-400 transition-colors flex-shrink-0"
+            [title]="'quotes.list.settingsTooltip' | transloco"
+          >
+            <i class="fas fa-cog text-base"></i>
+          </a>
         </div>
       </div>
 
@@ -368,15 +377,6 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
               {{ 'quotes.list.descuadre' | transloco }}: {{ quoteBookingDescuadre() }}
             </span>
           }
-
-          <!-- Settings gear (top-right): go to /configuracion/presupuestos -->
-          <a
-            [routerLink]="'/configuracion/presupuestos'"
-            class="ml-auto inline-flex items-center justify-center w-7 h-7 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-            [title]="'quotes.list.settingsTooltip' | transloco"
-          >
-            <i class="fas fa-cog text-sm"></i>
-          </a>
         </div>
         <div class="overflow-x-auto max-h-[calc(100vh-300px)] overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
