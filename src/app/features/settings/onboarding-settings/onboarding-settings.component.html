@@ -1,12 +1,12 @@
-<div class="h-full bg-slate-50 dark:bg-slate-900/40 p-6">
-  <div class="max-w-5xl mx-auto space-y-6">
+<div class="h-full bg-slate-50 dark:bg-slate-900/40 p-6 overflow-hidden">
+  <div class="max-w-7xl mx-auto h-full grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     <!-- Política global de onboarding (solo super-admin) -->
     @if (isSuperAdmin) {
       <div
-        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
       >
-        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
@@ -17,7 +17,7 @@
             Define qué datos se piden por defecto en el onboarding cuando una empresa no haya personalizado su propia política.
           </p>
         </div>
-        <div class="p-4 sm:p-6 space-y-6">
+        <div class="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           @for (section of onboardingSections; track section.scope) {
             <section class="space-y-4">
               <div>
@@ -58,7 +58,7 @@
             </section>
           }
 
-          <div class="flex justify-end">
+          <div class="flex justify-end pt-2">
             <button
               type="button"
               (click)="saveAppOnboardingPolicy()"
@@ -80,9 +80,9 @@
     <!-- Política de empresa (owner o super-admin con contexto de empresa) -->
     @if (canConfigureCompanyOnboarding) {
       <div
-        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
       >
-        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
@@ -93,7 +93,7 @@
             Decide qué campos deben pedirse al incorporarse a esta empresa. Lo que definas aquí sobrescribe la política global.
           </p>
         </div>
-        <div class="p-4 sm:p-6 space-y-6">
+        <div class="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           @for (section of onboardingSections; track section.scope) {
             <section class="space-y-4">
               <div>
@@ -134,7 +134,7 @@
             </section>
           }
 
-          <div class="flex justify-end">
+          <div class="flex justify-end pt-2">
             <button
               type="button"
               (click)="saveCompanyOnboardingPolicy()"
