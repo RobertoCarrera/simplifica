@@ -808,35 +808,6 @@
           </a>
         </div>
       </div>
-      <!-- Tipos de Reserva -->
-      @if (isModuleActive('moduloReservas')) {
-        <div
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-        >
-          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2
-              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
-            >
-              <i class="fas fa-calendar-check mr-3 text-blue-600"></i>
-              {{ 'settings.ajustes.agendaReservas' | transloco }}
-            </h2>
-          </div>
-          <div class="p-4 sm:p-6">
-            <p class="text-gray-600 dark:text-gray-300 mb-4">
-              {{ 'settings.ajustes.agendaDescripcion' | transloco }}
-            </p>
-            <a
-              [routerLink]="'/reservas'"
-              [queryParams]="{ tab: 'booking-types' }"
-              class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <i class="fas fa-cog mr-2"></i>
-              {{ 'settings.ajustes.gestionarServicios' | transloco }}
-            </a>
-          </div>
-        </div>
-      }
-      
       <!-- Estados de Tickets -->
       @if (isModuleActive('moduloSAT')) {
         <div
