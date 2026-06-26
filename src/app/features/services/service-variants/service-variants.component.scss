@@ -831,36 +831,37 @@
   .pricing-entry-body {
     padding-top: 0.25rem;
 
-    // Inputs and selects in the pricing entry use a light surface even
-    // in dark mode (browser default white-ish). Without an explicit
-    // text color they inherit the body color (white in dark mode) and
-    // become invisible against the light background.
+    // Inputs/selects follow the design tokens (--bg-primary / --text-primary
+    // / --border-color) so they adapt automatically to light + dark mode.
+    // No hardcoded colors here — token swap via :root vs .dark in styles.scss.
     input[type='number'],
     input[type='text'],
     select,
     textarea {
-      color: #1f2937; // gray-900
-      background-color: #ffffff;
+      color: var(--text-primary, #1f2937);
+      background-color: var(--bg-primary, #ffffff);
+      border-color: var(--border-color, #e5e7eb);
 
       &::placeholder {
-        color: #9ca3af; // gray-400
+        color: var(--text-muted, #9ca3af);
+        opacity: 1; // Firefox lowers opacity by default
       }
 
-      // For select, the rendered text is in the <select>, but the
-      // dropdown options also need a light bg + dark text in dark mode.
+      // <select> dropdown options need explicit color too — the OS-level
+      // popup ignores CSS variables on most browsers.
       option {
-        color: #1f2937;
-        background-color: #ffffff;
+        color: var(--text-primary, #1f2937);
+        background-color: var(--bg-primary, #ffffff);
       }
 
       &:focus {
-        background-color: #ffffff;
+        background-color: var(--bg-primary, #ffffff);
       }
     }
 
     // Feedback text under inputs (Calculado, Final).
     small.text-gray-500 {
-      color: #6b7280; // gray-500, always readable on light bg
+      color: var(--text-muted, #6b7280);
     }
 
     small.text-green-600 {
@@ -899,6 +900,51 @@
 }
 
 /* ============= FIN ESTILOS MÚLTIPLES PRECIOS ============= */
+
+/* ============= FORM INPUTS — light/dark adaptive ============= */
+/* Apply the design-token contract to ALL form inputs/selects/textareas
+   inside the variant edit modal so they follow the app theme automatically.
+   Same pattern as .pricing-entry-body above, but scoped to the whole
+   .form-container so variant_name, sort_order, badge label, global
+   features, and client search also adapt.
+   No hardcoded white/black anywhere — relies on --bg-primary, --text-primary,
+   --border-color which swap in .dark mode (see styles.scss). */
+.form-container {
+  input[type='text'],
+  input[type='number'],
+  input[type='email'],
+  input[type='tel'],
+  input[type='url'],
+  select,
+  textarea {
+    color: var(--text-primary, #1f2937);
+    background-color: var(--bg-primary, #ffffff);
+    border-color: var(--border-color, #e5e7eb);
+
+    &::placeholder {
+      color: var(--text-muted, #9ca3af);
+      opacity: 1;
+    }
+
+    option {
+      color: var(--text-primary, #1f2937);
+      background-color: var(--bg-primary, #ffffff);
+    }
+  }
+
+  // Native <input type="color">: the browser renders a dark swatch in dark
+  // mode which looks broken. Force the surrounding bg to match the form
+  // surface and keep the swatch visible.
+  input[type='color'].color-input {
+    background-color: var(--bg-secondary, #f8fafc);
+    border: 1px solid var(--border-color, #e5e7eb);
+    padding: 4px;
+    // Override the height set above so the swatch is comfortably visible.
+    height: 42px;
+    width: 100%;
+    cursor: pointer;
+  }
+}
 
 /* ============= VISIBILITY & ASSIGNMENT STYLES ============= */
 
