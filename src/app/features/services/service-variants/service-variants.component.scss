@@ -830,6 +830,42 @@
 
   .pricing-entry-body {
     padding-top: 0.25rem;
+
+    // Inputs and selects in the pricing entry use a light surface even
+    // in dark mode (browser default white-ish). Without an explicit
+    // text color they inherit the body color (white in dark mode) and
+    // become invisible against the light background.
+    input[type='number'],
+    input[type='text'],
+    select,
+    textarea {
+      color: #1f2937; // gray-900
+      background-color: #ffffff;
+
+      &::placeholder {
+        color: #9ca3af; // gray-400
+      }
+
+      // For select, the rendered text is in the <select>, but the
+      // dropdown options also need a light bg + dark text in dark mode.
+      option {
+        color: #1f2937;
+        background-color: #ffffff;
+      }
+
+      &:focus {
+        background-color: #ffffff;
+      }
+    }
+
+    // Feedback text under inputs (Calculado, Final).
+    small.text-gray-500 {
+      color: #6b7280; // gray-500, always readable on light bg
+    }
+
+    small.text-green-600 {
+      color: #059669;
+    }
   }
 }
 
