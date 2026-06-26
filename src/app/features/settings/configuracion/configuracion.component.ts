@@ -130,9 +130,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         { value: 'optional', label: 'Opcional' },
         { value: 'required', label: 'Obligatorio' },
     ];
-    appOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
     companyOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
-    savingAppOnboardingPolicy = false;
+    // Cached app policy, used internally to merge with company policy.
+    // The UI for editing the app policy lives in OnboardingSettingsComponent
+    // (its own route /configuracion/onboarding).
+    private appOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
 savingCompanyOnboardingPolicy = false;
 
     // Company default language
@@ -1379,21 +1381,6 @@ async updateProfile() {
         }
 
         this.companyOnboardingPolicy = nextPolicy;
-    }
-
-    async saveAppOnboardingPolicy() {
-        this.savingAppOnboardingPolicy = true;
-        try {
-            await firstValueFrom(this.settingsService.upsertAppSettings({
-                onboarding_policy: this.appOnboardingPolicy,
-            }));
-            this.showMessage('Política global de onboarding guardada', 'success');
-        } catch (error) {
-            console.error('Error saving global onboarding policy', error);
-            this.showMessage('Error guardando la política global de onboarding', 'error');
-        } finally {
-            this.savingAppOnboardingPolicy = false;
-        }
     }
 
     async saveCompanyOnboardingPolicy() {

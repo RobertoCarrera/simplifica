@@ -309,6 +309,14 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
   {
+    path: "configuracion/onboarding",
+    loadComponent: () =>
+      import(
+        "./features/settings/onboarding-settings/onboarding-settings.component"
+      ).then((m) => m.OnboardingSettingsComponent),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+  {
     path: "configuracion/facturacion",
     loadComponent: () =>
       import("./features/settings/billing-settings/billing-settings.component").then(
