@@ -797,23 +797,61 @@ export class InvoiceListComponent {
       this.pastBookingsWithInvoice.set(withInv ?? 0);
       this.pastBookingsWithoutInvoice.set(withoutInv ?? 0);
 
-      // Orphan invoices: count of invoices whose linked booking is not
-      // in the past-facturable set. Includes:
+      // Orphan invoices: client-side count of invoices whose linked
+      // booking is not in the past-facturable set. Includes:
       //   - invoices with no source_quote_id (manual)
       //   - invoices whose quote has no booking
       //   - invoices whose booking is future or cancelled/no_show
       //
-      // Computed by a SECURITY DEFINER RPC that joins the three tables
-      // server-side. Resolves the company from auth.uid() so no client
-      // parameter is needed.
-      const { data: orphans, error: eOrphans } = await supabase.rpc(
-        'count_orphan_invoices'
-      );
-      if (eOrphans) {
-        console.warn('Could not load orphan invoices count', eOrphans);
-        this.orphanInvoices.set(0);
+      // We compute this client-side because the SECURITY DEFINER RPC
+      // count_orphan_invoices relies on get_my_user_id() (revoked by the
+      // RLS hardening pass) and now returns 403. Filtering by company_id
+      // here keeps the data scoped without depending on that function.
+      const companyIdForOrphans = this.auth.companyId();
+      if (companyIdForOrphans) {
+        // Fetch active invoice ids and source_quote_ids; the booking-existence
+        // check happens after (the joins are simpler in SQL than in the
+        // .or() URL-encoded filter).
+        const { data: invRows, error: eOrphans } = await supabase
+          .from('invoices')
+          .select('id, source_quote_id')
+          .eq('company_id', companyIdForOrphans)
+          .is('deleted_at', null)
+          .in('status', ['draft', 'approved', 'sent', 'overdue', 'partial']);
+        if (eOrphans || !invRows) {
+          console.warn('Could not load orphan invoices count', eOrphans);
+          this.orphanInvoices.set(0);
+        } else {
+          // For each invoice with a source_quote_id, check if there is a
+          // past, non-cancelled booking. If not -> orphan.
+          const ids = invRows.map((r: any) => r.id);
+          const quoteIds = invRows.map((r: any) => r.source_quote_id).filter((x: any) => !!x);
+          let orphanCount = invRows.filter((r: any) => !r.source_quote_id).length;
+          if (quoteIds.length > 0) {
+            const { data: bookings, error: eBk } = await supabase
+              .from('bookings')
+              .select('quote_id, start_time, status')
+              .in('quote_id', quoteIds);
+            if (!eBk && bookings) {
+              const validByQuote = new Set<string>();
+              for (const b of bookings) {
+                if (
+                  new Date(b.start_time) < new Date() &&
+                  !['cancelled', 'canceled', 'no_show', 'no-show', 'anulada', 'anulado']
+                    .includes(String(b.status || '').toLowerCase())
+                ) {
+                  validByQuote.add(b.quote_id);
+                }
+              }
+              orphanCount += invRows.filter(
+                (r: any) => r.source_quote_id && !validByQuote.has(r.source_quote_id),
+              ).length;
+            }
+          }
+          this.orphanInvoices.set(orphanCount);
+        }
       } else {
-        this.orphanInvoices.set(orphans ?? 0);
+        this.orphanInvoices.set(0);
       }
     } catch (e) {
       console.warn('Could not load past bookings count', e);

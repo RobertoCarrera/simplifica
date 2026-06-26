@@ -33,7 +33,7 @@ interface HealthPayload {
  */
 interface KillSwitch {
   /** Stable id used in templates and persistence. */
-  key: 'process_reminders' | 'notify_inactive_clients' | 'marketing_automation';
+  key: 'process_reminders' | 'notify_inactive_clients' | 'marketing_automation' | 'budget_reminders';
   /** Column name on public.system_settings holding the paused flag. */
   flag: string;
   /** Column name holding the paused_at timestamp. */
@@ -305,6 +305,23 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
         '\n' +
         'Cuándo corre: cada día a las 09:30 (cron: 30 9 * * *)\n' +
         'A quién: leads y clientes según las reglas de marketing configuradas por empresa',
+      paused: false,
+      pausedAt: null,
+      pausedBy: null,
+      loading: true,
+      saving: false,
+    },
+    {
+      key: 'budget_reminders',
+      flag: 'budget_reminders_paused',
+      pausedAtCol: 'budget_reminders_paused_at',
+      pausedByCol: 'budget_reminders_paused_by',
+      label: 'Recordatorios de presupuestos a clientes',
+      description:
+        'Pausa los emails de presupuestos recurrentes próximos a vencer y los emails directos al crear o vencer un presupuesto.\n' +
+        '\n' +
+        'Cuándo corre: send-budget-reminders diario 09:00; send-budget-notification en trigger\n' +
+        'A quién: clientes con presupuesto recurrente (recurring_budgets)',
       paused: false,
       pausedAt: null,
       pausedBy: null,

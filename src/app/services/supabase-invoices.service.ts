@@ -575,6 +575,17 @@ export class SupabaseInvoicesService {
    * Obtener todas las facturas con filtros
    */
   getInvoices(filters?: InvoiceFilters): Observable<Invoice[]> {
+    // Multi-tenant: filter by the authenticated user's company. This is
+    // defense in depth — RLS should also enforce it, but if RLS is loosened
+    // (e.g. Rafter hardening) the service layer still keeps data scoped.
+    const companyId = this.authService.companyId();
+    if (!companyId) {
+      // Without a companyId we cannot scope safely — return an empty list
+      // rather than risk cross-tenant leakage.
+      return from(Promise.resolve({ data: [], error: null })).pipe(
+        map((response: any) => (response.data ?? []) as Invoice[]),
+      );
+    }
     let query = this.supabase
       .from('invoices')
       .select(`
@@ -584,6 +595,7 @@ export class SupabaseInvoicesService {
         items:invoice_items(*),
         payments:invoice_payments(*)
       `)
+      .eq('company_id', companyId)
       .is('deleted_at', null)
       .order('invoice_date', { ascending: false })
       .limit(1000);
