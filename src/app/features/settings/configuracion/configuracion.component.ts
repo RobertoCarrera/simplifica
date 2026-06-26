@@ -69,7 +69,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' | 'notificaciones' | 'proyectos' | 'idioma' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'seguridad' | 'clientes-datos' | 'emails' | 'notificaciones' | 'proyectos' | 'idioma' = 'perfil';
     clientesDatosSubTab: 'duplicados' | 'doctoralia' = 'duplicados';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
@@ -267,12 +267,6 @@ get isOwnerOrSuperAdmin(): boolean {
         return this.isOwnerOrSuperAdmin && this.hasCompanyContext;
     }
 
-    get hasBillingTab(): boolean {
-        // Show for client AND owner (if they have client_id linked)
-        const role = this.authService.userRole();
-        return role === 'client' || (role === 'owner' && !!this.userProfile?.client_id);
-    }
-
     isModuleActive(moduleKey: string): boolean {
         if (!this.allowedModuleKeysSet) return true; // Default to visible while loading
         return this.allowedModuleKeysSet.has(moduleKey);
@@ -394,7 +388,7 @@ get isOwnerOrSuperAdmin(): boolean {
         const params = this.route.snapshot.queryParams;
         if (params && params['code']) {
             this.activeTab = 'integrations';
-        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad', 'emails', 'notificaciones', 'proyectos', 'idioma'].includes(params['tab'])) {
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'seguridad', 'emails', 'notificaciones', 'proyectos', 'idioma'].includes(params['tab'])) {
             const requestedTab = params['tab'];
             if (['ajustes', 'emails', 'seguridad'].includes(requestedTab) && !this.canAccessSecuritySettings) {
                 this.activeTab = 'perfil';
