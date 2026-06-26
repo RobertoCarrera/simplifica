@@ -938,7 +938,6 @@ serve(async (req) => {
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
-      .eq('active', true)
       .maybeSingle();
 
     const settings: TaxSettings = {

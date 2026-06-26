@@ -811,7 +811,6 @@ serve(async (req) => {
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
-      .eq('active', true)
       .maybeSingle();
 
     const settings: TaxSettings = {
@@ -820,7 +819,9 @@ serve(async (req) => {
         companySettings?.prices_include_tax ??
         appSettings?.pricesIncludeTax ??
         appSettings?.prices_include_tax ??
-        false,
+        appSettings?.default_prices_include_tax ??
+        // Default to true (most common in Spain B2C: prices include IVA)
+        true,
       ),
       iva_enabled: Boolean(companySettings?.iva_enabled ?? appSettings?.iva_enabled ?? true),
       iva_rate: Number(companySettings?.iva_rate ?? appSettings?.iva_rate ?? 21),
