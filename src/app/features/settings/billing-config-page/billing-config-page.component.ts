@@ -10,7 +10,7 @@ import { InvoiceSeriesSettingsComponent } from '../../invoices/invoice-series-se
   standalone: true,
   imports: [CommonModule, TranslocoPipe, BillingDataFormComponent, BillingSettingsComponent, InvoiceSeriesSettingsComponent],
   template: `
-    <div class="p-6 max-w-5xl mx-auto space-y-8">
+    <div class="h-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-8">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ 'billingConfigPage.title' | transloco }}</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ 'billingConfigPage.subtitle' | transloco }}</p>
