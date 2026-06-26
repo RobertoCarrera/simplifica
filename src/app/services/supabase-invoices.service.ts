@@ -579,7 +579,6 @@ export class SupabaseInvoicesService {
       .from('invoices')
       .select(`
         *,
-        verifactu_status,
         client:clients(*),
         series:invoice_series(*),
         items:invoice_items(*),
@@ -635,7 +634,6 @@ export class SupabaseInvoicesService {
         .from('invoices')
         .select(`
           *,
-          verifactu_status,
           client:clients(*),
           series:invoice_series(*),
           items:invoice_items(*),
