@@ -87,6 +87,25 @@ serve(async (req: Request) => {
     auth: { persistSession: false },
   });
 
+  // Kill switch: super_admin can pause budget reminder emails to clients
+  const { data: killSwitch } = await serviceClient
+    .from('system_settings')
+    .select('budget_reminders_paused')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (killSwitch?.budget_reminders_paused === true) {
+    return jsonResponse(200, {
+      paused: true,
+      processed: 0,
+      message: 'budget-reminders is paused by admin',
+    });
+  }
+
+  const url = new URL(req.url);
+  const targetDate = url.searchParams.get('date') || null;
+  const dryRun     = url.searchParams.get('dry_run') === 'true';
+
   // ── 1. Scan for due notifications ───────────────────────────
   const { data: dueRows, error: scanErr } = await serviceClient.rpc(
     'scan_due_budget_notifications',

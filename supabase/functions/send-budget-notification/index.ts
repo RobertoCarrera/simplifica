@@ -249,6 +249,20 @@ serve(async (req: Request) => {
     auth: { persistSession: false },
   });
 
+  // Kill switch: super_admin can pause budget reminder emails to clients
+  const { data: killSwitch } = await serviceClient
+    .from('system_settings')
+    .select('budget_reminders_paused')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (killSwitch?.budget_reminders_paused === true) {
+    return jsonResponse(200, {
+      paused: true,
+      message: 'budget-notification is paused by admin',
+    });
+  }
+
   // ── Load the budget + client + company ─────────────────────
   const { data: budget, error: budgetErr } = await serviceClient
     .from('recurring_budgets')

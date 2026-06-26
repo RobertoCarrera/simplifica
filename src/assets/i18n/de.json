@@ -3323,6 +3323,8 @@
     "series": "Rechnungsserien",
     "tabFiscal": "Steuerdaten",
     "tabIntegrations": "Zahlungsintegrationen",
-    "tabSeries": "Rechnungsserien"
+    "tabSeries": "Rechnungsserien",
+    "tabVerifactu": "Verifactu / AEAT",
+    "verifactuCertificados": "Verifactu - Zertifikate und Versand an die AEAT"
   }
 }

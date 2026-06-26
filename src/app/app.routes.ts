@@ -293,14 +293,6 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
   {
-    path: "configuracion/verifactu",
-    loadComponent: () =>
-      import("./features/invoices/verifactu-settings/verifactu-settings.component").then(
-        (m) => m.VerifactuSettingsComponent,
-      ),
-    canActivate: [AuthGuard, OwnerAdminGuard],
-  },
-  {
     path: "configuracion/presupuestos",
     loadComponent: () =>
       import("./features/settings/quotes-settings/quotes-settings.component").then(

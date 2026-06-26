@@ -792,36 +792,9 @@
           >
             <i class="fas fa-cog mr-2"></i>
             {{ 'settings.ajustes.gestionarEtiquetas' | transloco }}
-          </a>
-        </div>
-      </div>
-      <!-- Presupuestos -->
-      @if (isModuleActive('moduloPresupuestos')) {
-        <div
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-        >
-          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2
-              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
-            >
-              <i class="fas fa-file-invoice mr-3 text-green-600"></i>
-              {{ 'settings.ajustes.presupuestos' | transloco }}
-            </h2>
-          </div>
-          <div class="p-4 sm:p-6">
-            <p class="text-gray-600 dark:text-gray-300 mb-4">
-              {{ 'settings.ajustes.presupuestosDescripcion' | transloco }}
-            </p>
-            <a
-              routerLink="/configuracion/presupuestos"
-              class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-            >
-              <i class="fas fa-cog mr-2"></i>
-              {{ 'settings.ajustes.gestionarPresupuestos' | transloco }}
-            </a>
-          </div>
-        </div>
-      }
+           </a>
+         </div>
+       </div>
       <!-- Facturacion e Integraciones de Pago -->
       @if (isModuleActive('moduloFacturas')) {
         <div
@@ -1009,33 +982,6 @@
           </a>
         </div>
       </div>
-      <!-- Verifactu Config Card -->
-      @if (isModuleActive('moduloFacturas')) {
-        <div
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-        >
-          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2
-              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
-            >
-              <i class="fas fa-shield-alt mr-3 text-blue-600"></i>
-              {{ 'settings.ajustes.verifactuCertificados' | transloco }}
-            </h2>
-          </div>
-          <div class="p-4 sm:p-6">
-            <p class="text-gray-600 dark:text-gray-300 mb-4">
-              {{ 'settings.ajustes.verifactuDescripcion' | transloco }}
-            </p>
-            <a
-              routerLink="/configuracion/verifactu"
-              class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <i class="fas fa-cog mr-2"></i>
-              {{ 'settings.ajustes.gestionarVerifactu' | transloco }}
-            </a>
-          </div>
-        </div>
-      }
       <!-- Series de Facturacion -->
       @if (isModuleActive('moduloFacturas')) {
         <div

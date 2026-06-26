@@ -497,6 +497,9 @@ export class SystemHealthComponent implements OnInit, OnDestroy {
             'marketing_automation_paused',
             'marketing_automation_paused_at',
             'marketing_automation_paused_by',
+            'budget_reminders_paused',
+            'budget_reminders_paused_at',
+            'budget_reminders_paused_by',
           ].join(', '),
         )
         .eq('id', 1)

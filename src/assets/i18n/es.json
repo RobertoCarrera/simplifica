@@ -3459,6 +3459,8 @@
     "series": "Series de facturación",
     "tabFiscal": "Datos fiscales",
     "tabIntegrations": "Integraciones de pago",
-    "tabSeries": "Series de facturación"
+    "tabSeries": "Series de facturación",
+    "tabVerifactu": "Verifactu / AEAT",
+    "verifactuCertificados": "Verifactu - Certificados y envío a la AEAT"
   }
 }

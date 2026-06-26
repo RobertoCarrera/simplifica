@@ -641,6 +641,12 @@ export class SupabaseInvoicesService {
    * Obtener una factura por ID
    */
   getInvoice(id: string): Observable<Invoice> {
+    // Defense in depth: scope the lookup by the current user's company. RLS
+    // should also enforce this, but the service layer must not assume so.
+    const companyId = this.authService.companyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company ID available'));
+    }
     return from(
       this.supabase
         .from('invoices')
@@ -652,6 +658,7 @@ export class SupabaseInvoicesService {
           payments:invoice_payments(*)
         `)
         .eq('id', id)
+        .eq('company_id', companyId)
         .single()
     ).pipe(
       map(response => {
