@@ -3456,6 +3456,9 @@
     "subtitle": "Datos fiscales, integraciones de pago y series de facturación.",
     "fiscalData": "Datos fiscales",
     "paymentIntegrations": "Integraciones de pago",
-    "series": "Series de facturación"
+    "series": "Series de facturación",
+    "tabFiscal": "Datos fiscales",
+    "tabIntegrations": "Integraciones de pago",
+    "tabSeries": "Series de facturación"
   }
 }

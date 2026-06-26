@@ -3320,6 +3320,9 @@
     "subtitle": "Steuerdaten, Zahlungsintegrationen und Rechnungsserien.",
     "fiscalData": "Steuerdaten",
     "paymentIntegrations": "Zahlungsintegrationen",
-    "series": "Rechnungsserien"
+    "series": "Rechnungsserien",
+    "tabFiscal": "Steuerdaten",
+    "tabIntegrations": "Zahlungsintegrationen",
+    "tabSeries": "Rechnungsserien"
   }
 }

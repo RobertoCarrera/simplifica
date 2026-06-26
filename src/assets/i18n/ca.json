@@ -3175,6 +3175,9 @@
     "subtitle": "Dades fiscals, integracions de pagament i sèries de facturació.",
     "fiscalData": "Dades fiscals",
     "paymentIntegrations": "Integracions de pagament",
-    "series": "Sèries de facturació"
+    "series": "Sèries de facturació",
+    "tabFiscal": "Dades fiscals",
+    "tabIntegrations": "Integracions de pagament",
+    "tabSeries": "Sèries de facturació"
   }
 }
