@@ -549,7 +549,7 @@ export class InvoiceListComponent {
   markingAsPaid = signal<string | null>(null);
 
   goToSeries(): void {
-    this.router.navigate(['/facturacion/series']);
+    this.router.navigate(['/facturacion/configuracion']);
   }
 
   canMarkAsPaid(inv: Invoice): boolean {
@@ -946,7 +946,7 @@ export class InvoiceListComponent {
         undefined, 
         false, 
         isNoSeriesError ? 'serie-error' : undefined,
-        isNoSeriesError ? { label: 'Configurar serie', link: '/facturacion/series' } : undefined
+        isNoSeriesError ? { label: 'Configurar serie', link: '/facturacion/configuracion' } : undefined
       );
     }
   }

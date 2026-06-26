@@ -36,6 +36,7 @@ import { ProjectPermissionsTemplateComponent } from '../project-permissions-temp
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LanguagePreferencesComponent } from './tabs/language-preferences/language-preferences.component';
+import { BillingDataFormComponent } from '../billing-data-form/billing-data-form.component';
 import {
     getDefaultOnboardingPolicy,
     mergeOnboardingPolicies,
@@ -56,7 +57,7 @@ type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | Co
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent, EmailAccountsComponent, EmailPreferencesComponent, DoctoraliaPendingComponent, ProjectPermissionsTemplateComponent, LanguagePreferencesComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent, EmailAccountsComponent, EmailPreferencesComponent, DoctoraliaPendingComponent, ProjectPermissionsTemplateComponent, LanguagePreferencesComponent, BillingDataFormComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
