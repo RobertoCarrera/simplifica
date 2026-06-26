@@ -347,9 +347,9 @@
           "desconocido": "Desconegut",
           "auditoria": {
             "titulo": "Registre d'Auditoria",
-    "fecha": "Data",
-    "fechaEmision": "Emissió",
-    "fechaAccion": "Caduca / Tancat",
+            "fecha": "Data",
+            "fechaEmision": "Emissió",
+            "fechaAccion": "Caduca / Tancat",
             "accion": "Acció",
             "sujeto": "Subjecte",
             "razon": "Raó",
@@ -1592,19 +1592,19 @@
       "pastBookingsWithoutInvoiceHint": "Sessions realitzades que NO tenen factura: drift que requereix atenció (el client va venir, no es va facturar)",
       "invoiceDescuadre": "Desquadre",
       "invoiceDescuadreHint": "Suma de sessions sense factura + factures orfes. Si és més gran que 0, hi ha drift entre l'univers de reserves passades i el de factures",
-    "status": {
-      "draft": "Esborrany",
-      "approved": "Aprovada",
-      "issued": "Emesa",
-      "sent": "Enviada",
-      "paid": "Pagada",
-      "partial": "Parcial",
-      "overdue": "Vençuda",
-      "cancelled": "Cancel·lada",
-      "void": "Anul·lada",
-      "rectified": "Rectificada",
-      "rectificative": "Rectificativa"
-    },
+      "status": {
+        "draft": "Esborrany",
+        "approved": "Aprovada",
+        "issued": "Emesa",
+        "sent": "Enviada",
+        "paid": "Pagada",
+        "partial": "Parcial",
+        "overdue": "Vençuda",
+        "cancelled": "Cancel·lada",
+        "void": "Anul·lada",
+        "rectified": "Rectificada",
+        "rectificative": "Rectificativa"
+      },
       "pastBookingsHint": "Reserves la data de les quals ja ha passat (ja s'han realitzat)"
     },
     "seriesSettings": {
@@ -1662,7 +1662,20 @@
     "dia3": "3 dies",
     "dia7": "7 dies",
     "dia14": "14 dies",
-    "dia30": "30 dies"
+    "dia30": "30 dies",
+    "status": {
+      "draft": "Esborrany",
+      "approved": "Aprovada",
+      "issued": "Emesa",
+      "sent": "Enviada",
+      "paid": "Pagada",
+      "partial": "Parcial",
+      "overdue": "Vençuda",
+      "cancelled": "Cancel·lada",
+      "void": "Anul·lada",
+      "rectified": "Rectificada",
+      "rectificative": "Rectificativa"
+    }
   },
   "dashboard": {
     "billedThisMonth": "Facturat aquest mes",

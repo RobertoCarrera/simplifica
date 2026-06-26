@@ -354,9 +354,9 @@
           "desconocido": "Desconocido",
           "auditoria": {
             "titulo": "Registro de Auditoría",
-    "fecha": "Fecha",
-    "fechaEmision": "Emisión",
-    "fechaAccion": "Vence / Cerrado",
+            "fecha": "Fecha",
+            "fechaEmision": "Emisión",
+            "fechaAccion": "Vence / Cerrado",
             "accion": "Acción",
             "sujeto": "Sujeto",
             "razon": "Razón",
@@ -1596,19 +1596,19 @@
       "pastBookingsWithoutInvoiceHint": "Sesiones realizadas que NO tienen factura: drift que requiere atención (cliente vino, no se facturó)",
       "invoiceDescuadre": "Descuadre",
       "invoiceDescuadreHint": "Suma de sesiones sin factura + facturas huérfanas. Si es mayor que 0, hay drift entre el universo de reservas pasadas y el de facturas",
-    "status": {
-      "draft": "Borrador",
-      "approved": "Aprobada",
-      "issued": "Emitida",
-      "sent": "Enviada",
-      "paid": "Pagada",
-      "partial": "Parcial",
-      "overdue": "Vencida",
-      "cancelled": "Cancelada",
-      "void": "Anulada",
-      "rectified": "Rectificada",
-      "rectificative": "Rectificativa"
-    },
+      "status": {
+        "draft": "Borrador",
+        "approved": "Aprobada",
+        "issued": "Emitida",
+        "sent": "Enviada",
+        "paid": "Pagada",
+        "partial": "Parcial",
+        "overdue": "Vencida",
+        "cancelled": "Cancelada",
+        "void": "Anulada",
+        "rectified": "Rectificada",
+        "rectificative": "Rectificativa"
+      },
       "pastBookingsHint": "Reservas cuya fecha ya ha pasado (ya se han realizado)"
     },
     "seriesSettings": {
@@ -1671,7 +1671,20 @@
     "dia3": "3 días",
     "dia7": "7 días",
     "dia14": "14 días",
-    "dia30": "30 días"
+    "dia30": "30 días",
+    "status": {
+      "draft": "Borrador",
+      "approved": "Aprobada",
+      "issued": "Emitida",
+      "sent": "Enviada",
+      "paid": "Pagada",
+      "partial": "Parcial",
+      "overdue": "Vencida",
+      "cancelled": "Cancelada",
+      "void": "Anulada",
+      "rectified": "Rectificada",
+      "rectificative": "Rectificativa"
+    }
   },
   "dashboard": {
     "billedThisMonth": "Facturado este mes",

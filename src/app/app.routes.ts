@@ -206,10 +206,10 @@ export const routes: Routes = [
     canActivate: [StaffGuard],
   },
   {
-    path: "facturacion/series",
+    path: "facturacion/configuracion",
     loadComponent: () =>
-      import("./features/invoices/invoice-series-settings/invoice-series-settings.component").then(
-        (m) => m.InvoiceSeriesSettingsComponent,
+      import("./features/settings/billing-config-page/billing-config-page.component").then(
+        (m) => m.BillingConfigPageComponent,
       ),
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
