@@ -1518,7 +1518,7 @@
                                 <span class="toggle-slider"></span>
                               </label>
                             </div>
-                            @if (!formData.is_visible_in_portal) {
+@if (!formData.is_visible_in_portal) {
                               <div class="channel-hint">
                                 <i class="fas fa-info-circle"></i>
                                 <span>{{ 'services.portalOcultoHint' | transloco }}</span>
@@ -1529,6 +1529,30 @@
                                 <span>{{ 'services.portalHint' | transloco }}</span>
                               </div>
                             }
+                            <div class="channel-card-extras">
+                              <label class="extra-option">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.is_bookable_in_portal"
+                                  name="is_bookable_in_portal"
+                                />
+                                <span>
+                                  <strong>{{ 'services.portalReservable' | transloco }}</strong>
+                                  <small>{{ 'services.portalReservableHint' | transloco }}</small>
+                                </span>
+                              </label>
+                              <label class="extra-option">
+                                <input
+                                  type="checkbox"
+                                  [(ngModel)]="formData.allow_direct_contracting_in_portal"
+                                  name="allow_direct_contracting_in_portal"
+                                />
+                                <span>
+                                  <strong>{{ 'services.portalContratacionDirecta' | transloco }}</strong>
+                                  <small>{{ 'services.portalContratacionDirectaHint' | transloco }}</small>
+                                </span>
+                              </label>
+                            </div>
                           </div>
 
                           <!-- ASSIGNMENTS CARD -->

@@ -77,6 +77,8 @@ export interface Service {
   is_public?: boolean;
   is_visible_in_portal?: boolean;
   allow_direct_contracting?: boolean;
+  is_bookable_in_portal?: boolean | null;
+  allow_direct_contracting_in_portal?: boolean | null;
   features?: string; // JSON or text description of features
   min_quantity?: number;
   max_quantity?: number;
@@ -449,6 +451,11 @@ export class SupabaseServicesService {
       is_public: !!service.is_public,
       is_visible_in_portal: service.is_visible_in_portal !== false,
       allow_direct_contracting: !!service.allow_direct_contracting,
+      // Portal-specific action flags: explicit value wins, otherwise NULL
+      // (the migration backfilled existing rows from the agenda values, so
+      // NULL = "follow the agenda flag" for backward compat).
+      is_bookable_in_portal: service.is_bookable_in_portal ?? null,
+      allow_direct_contracting_in_portal: service.allow_direct_contracting_in_portal ?? null,
       features: service.features || undefined,
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
@@ -699,6 +706,10 @@ export class SupabaseServicesService {
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.is_visible_in_portal !== undefined)
       serviceDataForDB.is_visible_in_portal = serviceData.is_visible_in_portal;
+    if (serviceData.is_bookable_in_portal !== undefined)
+      serviceDataForDB.is_bookable_in_portal = serviceData.is_bookable_in_portal ?? null;
+    if (serviceData.allow_direct_contracting_in_portal !== undefined)
+      serviceDataForDB.allow_direct_contracting_in_portal = serviceData.allow_direct_contracting_in_portal ?? null;
     if (serviceData.allow_direct_contracting !== undefined)
       serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
     if (serviceData.features !== undefined) serviceDataForDB.features = serviceData.features;
@@ -795,6 +806,10 @@ export class SupabaseServicesService {
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.is_visible_in_portal !== undefined)
       serviceData.is_visible_in_portal = updates.is_visible_in_portal;
+    if (updates.is_bookable_in_portal !== undefined)
+      serviceData.is_bookable_in_portal = updates.is_bookable_in_portal ?? null;
+    if (updates.allow_direct_contracting_in_portal !== undefined)
+      serviceData.allow_direct_contracting_in_portal = updates.allow_direct_contracting_in_portal ?? null;
     if (updates.allow_direct_contracting !== undefined)
       serviceData.allow_direct_contracting = updates.allow_direct_contracting;
     if (updates.features !== undefined) serviceData.features = updates.features;

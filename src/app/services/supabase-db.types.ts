@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      _e2e_debug: {
+        Row: {
+          data: Json | null
+          id: number
+          step: string | null
+          ts: string | null
+        }
+        Insert: {
+          data?: Json | null
+          id?: number
+          step?: string | null
+          ts?: string | null
+        }
+        Update: {
+          data?: Json | null
+          id?: number
+          step?: string | null
+          ts?: string | null
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           company_id: string | null
@@ -658,6 +679,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "booking_clinical_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "booking_clinical_notes_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -745,6 +773,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "booking_documents_created_by_fkey"
@@ -1194,6 +1229,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bookings_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1580,6 +1622,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "client_assignments_company_member_id_fkey"
             columns: ["company_member_id"]
             isOneToOne: false
@@ -1651,6 +1700,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bonuses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "client_bonuses_service_id_fkey"
@@ -1732,6 +1788,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "client_clinical_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       client_contacts: {
@@ -1775,6 +1838,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -1851,6 +1921,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "client_documents_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1912,6 +1989,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_inactivity_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -1977,6 +2061,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "client_notes_company_id_fkey"
@@ -2048,6 +2139,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_portal_users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "client_portal_users_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2098,6 +2196,69 @@ export type Database = {
           },
         ]
       }
+      client_reclamation_log: {
+        Row: {
+          actor_user_id: string | null
+          client_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          previous_metadata: Json | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          previous_metadata?: Json | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          previous_metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reclamation_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reclamation_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reclamation_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reclamation_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reclamation_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       client_service_assignments: {
         Row: {
           client_id: string
@@ -2130,6 +2291,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_variant_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "client_variant_assignments_service_id_fkey"
@@ -2220,6 +2388,7 @@ export type Database = {
           marketing_consent_date: string | null
           marketing_consent_method: string | null
           mercantile_registry_data: Json | null
+          merge_with: string | null
           metadata: Json | null
           name: string
           needs_data_completion: boolean | null
@@ -2311,6 +2480,7 @@ export type Database = {
           marketing_consent_date?: string | null
           marketing_consent_method?: string | null
           mercantile_registry_data?: Json | null
+          merge_with?: string | null
           metadata?: Json | null
           name: string
           needs_data_completion?: boolean | null
@@ -2402,6 +2572,7 @@ export type Database = {
           marketing_consent_date?: string | null
           marketing_consent_method?: string | null
           mercantile_registry_data?: Json | null
+          merge_with?: string | null
           metadata?: Json | null
           name?: string
           needs_data_completion?: boolean | null
@@ -2464,6 +2635,20 @@ export type Database = {
             referencedRelation: "addresses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clients_merge_with_fkey"
+            columns: ["merge_with"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_merge_with_fkey"
+            columns: ["merge_with"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       clients_tags: {
@@ -2489,6 +2674,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_tags_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "clients_tags_tag_id_fkey"
@@ -4022,6 +4214,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracted_services_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "contracted_services_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -4128,6 +4327,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "contracts_company_id_fkey"
@@ -4511,11 +4717,25 @@ export type Database = {
             referencedColumns: ["id", "company_id"]
           },
           {
+            foreignKeyName: "devices_client_company_fkey"
+            columns: ["client_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id", "company_id"]
+          },
+          {
             foreignKeyName: "devices_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "devices_company_id_fkey"
@@ -6133,6 +6353,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gdpr_consent_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "gdpr_consent_requests_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -6365,6 +6592,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gdpr_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -7598,6 +7832,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "invoices_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -8122,6 +8363,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "loyalty_points_client_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "loyalty_points_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -8617,6 +8865,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "marketing_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       marketing_metrics: {
@@ -8960,6 +9215,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_client_recipient_id_fkey"
+            columns: ["client_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "notifications_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -9236,6 +9498,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "payments_company_id_fkey"
@@ -10428,6 +10697,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_activity_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "project_activity_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -10520,6 +10796,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_comments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "project_comments_project_id_fkey"
@@ -10655,6 +10938,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notification_preferences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "project_notification_preferences_project_id_fkey"
@@ -10827,6 +11117,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_reads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "project_reads_project_id_fkey"
@@ -11093,6 +11390,7 @@ export type Database = {
           client_id: string | null
           company_id: string
           created_at: string
+          created_by: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -11104,6 +11402,7 @@ export type Database = {
           priority: string | null
           stage_id: string | null
           start_date: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -11111,6 +11410,7 @@ export type Database = {
           client_id?: string | null
           company_id: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -11122,6 +11422,7 @@ export type Database = {
           priority?: string | null
           stage_id?: string | null
           start_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -11129,6 +11430,7 @@ export type Database = {
           client_id?: string | null
           company_id?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -11140,6 +11442,7 @@ export type Database = {
           priority?: string | null
           stage_id?: string | null
           start_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11149,6 +11452,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "projects_company_id_fkey"
@@ -11177,6 +11487,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
             referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "projects_stage_id_fkey"
@@ -11397,6 +11728,99 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "service_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_status_transitions: {
+        Row: {
+          actor_user_id: string | null
+          company_id: string
+          created_at: string
+          from_status: string
+          id: string
+          metadata: Json
+          quote_id: string
+          reason: string | null
+          to_status: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          company_id: string
+          created_at?: string
+          from_status: string
+          id?: string
+          metadata?: Json
+          quote_id: string
+          reason?: string | null
+          to_status: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          company_id?: string
+          created_at?: string
+          from_status?: string
+          id?: string
+          metadata?: Json
+          quote_id?: string
+          reason?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_status_transitions_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "quote_status_transitions_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -11695,6 +12119,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "quotes_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -11861,6 +12292,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "recurring_budgets_company_id_fkey"
@@ -12633,6 +13071,7 @@ export type Database = {
         Row: {
           active_mode_enabled: boolean
           allow_direct_contracting: boolean | null
+          allow_direct_contracting_in_portal: boolean | null
           base_features: Json | null
           base_price: number | null
           booking_color: string | null
@@ -12657,6 +13096,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_bookable: boolean | null
+          is_bookable_in_portal: boolean | null
           is_public: boolean | null
           is_visible_in_portal: boolean
           legacy_negocio_id: string | null
@@ -12686,6 +13126,7 @@ export type Database = {
         Insert: {
           active_mode_enabled?: boolean
           allow_direct_contracting?: boolean | null
+          allow_direct_contracting_in_portal?: boolean | null
           base_features?: Json | null
           base_price?: number | null
           booking_color?: string | null
@@ -12710,6 +13151,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_bookable?: boolean | null
+          is_bookable_in_portal?: boolean | null
           is_public?: boolean | null
           is_visible_in_portal?: boolean
           legacy_negocio_id?: string | null
@@ -12739,6 +13181,7 @@ export type Database = {
         Update: {
           active_mode_enabled?: boolean
           allow_direct_contracting?: boolean | null
+          allow_direct_contracting_in_portal?: boolean | null
           base_features?: Json | null
           base_price?: number | null
           booking_color?: string | null
@@ -12763,6 +13206,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_bookable?: boolean | null
+          is_bookable_in_portal?: boolean | null
           is_public?: boolean | null
           is_visible_in_portal?: boolean
           legacy_negocio_id?: string | null
@@ -13188,6 +13632,9 @@ export type Database = {
       }
       system_settings: {
         Row: {
+          budget_reminders_paused: boolean
+          budget_reminders_paused_at: string | null
+          budget_reminders_paused_by: string | null
           id: number
           marketing_automation_paused: boolean
           marketing_automation_paused_at: string | null
@@ -13201,6 +13648,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          budget_reminders_paused?: boolean
+          budget_reminders_paused_at?: string | null
+          budget_reminders_paused_by?: string | null
           id?: number
           marketing_automation_paused?: boolean
           marketing_automation_paused_at?: string | null
@@ -13214,6 +13664,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          budget_reminders_paused?: boolean
+          budget_reminders_paused_at?: string | null
+          budget_reminders_paused_by?: string | null
           id?: number
           marketing_automation_paused?: boolean
           marketing_automation_paused_at?: string | null
@@ -13378,6 +13831,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "ticket_comments_parent_id_fkey"
@@ -13982,6 +14442,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "tickets_company_id_fkey"
@@ -14824,6 +15291,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bookings_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -15328,6 +15802,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bookings_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -15350,6 +15831,66 @@ export type Database = {
           },
           {
             foreignKeyName: "bookings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+        ]
+      }
+      v_clientes_desconocidos: {
+        Row: {
+          archived_at: string | null
+          archived_reason: string | null
+          booking_id: string | null
+          booking_start: string | null
+          booking_status: string | null
+          claimed_at: string | null
+          claimed_by_user_id: string | null
+          client_id: string | null
+          cliente_creado: string | null
+          company_id: string | null
+          dias_sin_reclamar: number | null
+          email: string | null
+          merged_with_client_id: string | null
+          metadata: Json | null
+          name: string | null
+          phone: string | null
+          profesional: string | null
+          professional_id: string | null
+          source: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "clients_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
@@ -15557,6 +16098,78 @@ export type Database = {
       accept_company_invitation_by_email: {
         Args: { p_auth_user_id: string; p_email: string }
         Returns: Json
+      }
+      accept_quote_by_client: {
+        Args: {
+          p_ip_address?: unknown
+          p_quote_id: string
+          p_signature_data_url?: string
+          p_user_agent?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          anonymized_at: string | null
+          booking_id: string | null
+          client_id: string
+          client_ip_address: unknown
+          client_user_agent: string | null
+          client_viewed_at: string | null
+          company_id: string
+          conversion_status: string
+          convert_policy: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          deposit_percentage: number | null
+          description: string | null
+          digital_signature: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          full_quote_number: string | null
+          id: string
+          invoice_id: string | null
+          invoice_on_date: string | null
+          invoiced_at: string | null
+          is_anonymized: boolean | null
+          language: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          notes: string | null
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          quote_date: string
+          quote_month: string | null
+          quote_number: string
+          rectification_reason: string | null
+          rectifies_invoice_id: string | null
+          recurrence_day: number | null
+          recurrence_end_date: string | null
+          recurrence_interval: number
+          recurrence_start_date: string | null
+          recurrence_type: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          retention_until: string | null
+          scheduled_conversion_date: string | null
+          sequence_number: number
+          signature_timestamp: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax_amount: number
+          terms_conditions: string | null
+          ticket_id: string | null
+          title: string
+          total_amount: number
+          updated_at: string | null
+          valid_until: string
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       accept_quote_for_booking: {
         Args: { p_booking_id: string }
@@ -15818,6 +16431,10 @@ export type Database = {
         Args: { p_date: string; p_type: string }
         Returns: string
       }
+      can_transition_quote_status: {
+        Args: { p_actor_role: string; p_from: string; p_to: string }
+        Returns: boolean
+      }
       can_view_client: {
         Args: {
           p_client_auth_user_id: string
@@ -15900,6 +16517,17 @@ export type Database = {
       check_stage_coverage_after_hide: {
         Args: { p_company_id: string; p_stage_id: string }
         Returns: boolean
+      }
+      claim_unknown_client: {
+        Args: {
+          p_notes?: string
+          p_real_client_id?: string
+          p_real_email?: string
+          p_real_name?: string
+          p_real_phone?: string
+          p_unknown_client_id: string
+        }
+        Returns: string
       }
       claim_waitlist_spot: {
         Args: { p_waitlist_entry_id: string }
@@ -16075,6 +16703,7 @@ export type Database = {
         }
         Returns: Json
       }
+      client_unclaimed_days: { Args: { p_client_id: string }; Returns: number }
       client_update_preferences: {
         Args: {
           p_email_notifications: boolean
@@ -16163,6 +16792,15 @@ export type Database = {
           p_piso?: string
           p_provincia?: string
           p_puerta?: string
+        }
+        Returns: Json
+      }
+      create_arc_request: {
+        Args: {
+          p_details?: Json
+          p_ip_address?: string
+          p_request_type: string
+          p_user_agent?: string
         }
         Returns: Json
       }
@@ -16576,6 +17214,10 @@ export type Database = {
       dispatch_due_budget_notifications: {
         Args: { p_target_date?: string }
         Returns: number
+      }
+      dispatch_quote_event: {
+        Args: { p_event: string; p_quote_id: string }
+        Returns: undefined
       }
       dispatch_send_budget_notification: {
         Args: { p_budget_id: string; p_day_offset?: number; p_kind: string }
@@ -17797,6 +18439,7 @@ export type Database = {
         Returns: {
           active_mode_enabled: boolean
           allow_direct_contracting: boolean | null
+          allow_direct_contracting_in_portal: boolean | null
           base_features: Json | null
           base_price: number | null
           booking_color: string | null
@@ -17821,6 +18464,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_bookable: boolean | null
+          is_bookable_in_portal: boolean | null
           is_public: boolean | null
           is_visible_in_portal: boolean
           legacy_negocio_id: string | null
@@ -18174,6 +18818,73 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
+      mark_quote_as_viewed: {
+        Args: { p_quote_id: string }
+        Returns: {
+          accepted_at: string | null
+          anonymized_at: string | null
+          booking_id: string | null
+          client_id: string
+          client_ip_address: unknown
+          client_user_agent: string | null
+          client_viewed_at: string | null
+          company_id: string
+          conversion_status: string
+          convert_policy: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          deposit_percentage: number | null
+          description: string | null
+          digital_signature: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          full_quote_number: string | null
+          id: string
+          invoice_id: string | null
+          invoice_on_date: string | null
+          invoiced_at: string | null
+          is_anonymized: boolean | null
+          language: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          notes: string | null
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          quote_date: string
+          quote_month: string | null
+          quote_number: string
+          rectification_reason: string | null
+          rectifies_invoice_id: string | null
+          recurrence_day: number | null
+          recurrence_end_date: string | null
+          recurrence_interval: number
+          recurrence_start_date: string | null
+          recurrence_type: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          retention_until: string | null
+          scheduled_conversion_date: string | null
+          sequence_number: number
+          signature_timestamp: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax_amount: number
+          terms_conditions: string | null
+          ticket_id: string | null
+          title: string
+          total_amount: number
+          updated_at: string | null
+          valid_until: string
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       match_product_catalog: {
         Args: {
           match_count: number
@@ -18231,17 +18942,15 @@ export type Database = {
       portal_export_my_data: { Args: never; Returns: Json }
       portal_get_my_arco_requests: { Args: never; Returns: Json }
       portal_get_my_consents: { Args: never; Returns: Json }
-      portal_submit_arco_request:
-        | { Args: { p_details?: Json; p_request_type: string }; Returns: Json }
-        | {
-            Args: {
-              p_details?: Json
-              p_ip_address?: string
-              p_request_type: string
-              p_user_agent?: string
-            }
-            Returns: Json
-          }
+      portal_submit_arco_request: {
+        Args: {
+          p_details?: Json
+          p_ip_address?: string
+          p_request_type: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       portal_withdraw_my_consent: {
         Args: { p_consent_type: string; p_evidence?: Json }
         Returns: Json
@@ -18301,6 +19010,73 @@ export type Database = {
         Args: { p_token: string; p_user_id: string }
         Returns: Json
       }
+      reject_quote_by_client: {
+        Args: { p_quote_id: string; p_reason?: string }
+        Returns: {
+          accepted_at: string | null
+          anonymized_at: string | null
+          booking_id: string | null
+          client_id: string
+          client_ip_address: unknown
+          client_user_agent: string | null
+          client_viewed_at: string | null
+          company_id: string
+          conversion_status: string
+          convert_policy: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          deposit_percentage: number | null
+          description: string | null
+          digital_signature: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          full_quote_number: string | null
+          id: string
+          invoice_id: string | null
+          invoice_on_date: string | null
+          invoiced_at: string | null
+          is_anonymized: boolean | null
+          language: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          notes: string | null
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          quote_date: string
+          quote_month: string | null
+          quote_number: string
+          rectification_reason: string | null
+          rectifies_invoice_id: string | null
+          recurrence_day: number | null
+          recurrence_end_date: string | null
+          recurrence_interval: number
+          recurrence_start_date: string | null
+          recurrence_type: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          retention_until: string | null
+          scheduled_conversion_date: string | null
+          sequence_number: number
+          signature_timestamp: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax_amount: number
+          terms_conditions: string | null
+          ticket_id: string | null
+          title: string
+          total_amount: number
+          updated_at: string | null
+          valid_until: string
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       remove_or_deactivate_client_rpc: {
         Args: { p_client_id: string }
         Returns: Json
@@ -18317,6 +19093,7 @@ export type Database = {
         Returns: number
       }
       reorder_stages: { Args: { stage_ids: string[] }; Returns: undefined }
+      resolve_actor_role: { Args: { p_auth_user: string }; Returns: string }
       retention_records: {
         Args: {
           p_category: string
@@ -18411,6 +19188,73 @@ export type Database = {
       seed_company_filter_visibility: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      send_quote_to_client: {
+        Args: { p_quote_id: string }
+        Returns: {
+          accepted_at: string | null
+          anonymized_at: string | null
+          booking_id: string | null
+          client_id: string
+          client_ip_address: unknown
+          client_user_agent: string | null
+          client_viewed_at: string | null
+          company_id: string
+          conversion_status: string
+          convert_policy: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          deposit_percentage: number | null
+          description: string | null
+          digital_signature: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          full_quote_number: string | null
+          id: string
+          invoice_id: string | null
+          invoice_on_date: string | null
+          invoiced_at: string | null
+          is_anonymized: boolean | null
+          language: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          notes: string | null
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          quote_date: string
+          quote_month: string | null
+          quote_number: string
+          rectification_reason: string | null
+          rectifies_invoice_id: string | null
+          recurrence_day: number | null
+          recurrence_end_date: string | null
+          recurrence_interval: number
+          recurrence_start_date: string | null
+          recurrence_type: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          retention_until: string | null
+          scheduled_conversion_date: string | null
+          sequence_number: number
+          signature_timestamp: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax_amount: number
+          terms_conditions: string | null
+          ticket_id: string | null
+          title: string
+          total_amount: number
+          updated_at: string | null
+          valid_until: string
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       send_test_company_email: {
         Args: { p_account_id: string; p_to_email: string }
