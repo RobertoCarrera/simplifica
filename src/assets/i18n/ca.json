@@ -3184,6 +3184,7 @@
     "tabIntegrations": "Integracions de pagament",
     "tabSeries": "Sèries de facturació",
     "tabVerifactu": "Verifactu / AEAT",
-    "verifactuCertificados": "Verifactu - Certificats i enviament a l'AEAT"
+    "verifactuCertificados": "Verifactu - Certificats i enviament a l'AEAT",
+    "tabRedsys": "Redsys"
   }
 }

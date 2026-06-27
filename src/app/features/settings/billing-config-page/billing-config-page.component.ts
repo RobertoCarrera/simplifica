@@ -5,11 +5,12 @@ import { BillingDataFormComponent } from '../billing-data-form/billing-data-form
 import { BillingSettingsComponent } from '../billing-settings/billing-settings.component';
 import { InvoiceSeriesSettingsComponent } from '../../invoices/invoice-series-settings/invoice-series-settings.component';
 import { VerifactuSettingsComponent } from '../../invoices/verifactu-settings/verifactu-settings.component';
+import { RedsysConfigComponent } from '../integrations/redsys-config/redsys-config.component';
 
 @Component({
   selector: 'app-billing-config-page',
   standalone: true,
-  imports: [CommonModule, TranslocoPipe, BillingDataFormComponent, BillingSettingsComponent, InvoiceSeriesSettingsComponent, VerifactuSettingsComponent],
+  imports: [CommonModule, TranslocoPipe, BillingDataFormComponent, BillingSettingsComponent, InvoiceSeriesSettingsComponent, VerifactuSettingsComponent, RedsysConfigComponent],
   template: `
     <div class="h-full flex flex-col p-6 max-w-5xl mx-auto">
       <div class="mb-6">
@@ -39,6 +40,16 @@ import { VerifactuSettingsComponent } from '../../invoices/verifactu-settings/ve
             [class.text-gray-500]="activeTab() !== 'verifactu'"
             class="border-b-2 px-4 py-2 text-sm font-medium transition-colors hover:text-gray-700 dark:hover:text-gray-300">
             <i class="fas fa-shield-alt mr-2"></i>{{ 'billingConfigPage.tabVerifactu' | transloco }}
+          </button>
+          <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'redsys'"
+            (click)="activeTab.set('redsys')"
+            [class.border-emerald-500]="activeTab() === 'redsys'"
+            [class.text-emerald-700]="activeTab() === 'redsys'"
+            [class.dark:text-emerald-400]="activeTab() === 'redsys'"
+            [class.border-transparent]="activeTab() !== 'redsys'"
+            [class.text-gray-500]="activeTab() !== 'redsys'"
+            class="border-b-2 px-4 py-2 text-sm font-medium transition-colors hover:text-gray-700 dark:hover:text-gray-300">
+            <i class="fas fa-credit-card mr-2"></i>{{ 'billingConfigPage.tabRedsys' | transloco }}
           </button>
           <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'integrations'"
             (click)="activeTab.set('integrations')"
@@ -73,6 +84,10 @@ import { VerifactuSettingsComponent } from '../../invoices/verifactu-settings/ve
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ 'billingConfigPage.verifactuCertificados' | transloco }}</h2>
           <app-verifactu-settings></app-verifactu-settings>
         }
+        @if (activeTab() === 'redsys') {
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ 'billingConfigPage.tabRedsys' | transloco }} (TPV Virtual)</h2>
+          <app-redsys-config></app-redsys-config>
+        }
         @if (activeTab() === 'integrations') {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ 'billingConfigPage.paymentIntegrations' | transloco }}</h2>
           <app-billing-settings></app-billing-settings>
@@ -89,7 +104,7 @@ export class BillingConfigPageComponent implements OnInit {
   // Tab state for the three config sections. 'series' is the least-frequently
   // touched so it is the default; users who land on this page typically want
   // to see what integrations they have.
-  activeTab = signal<'fiscal' | 'verifactu' | 'integrations' | 'series'>('integrations');
+  activeTab = signal<'fiscal' | 'verifactu' | 'redsys' | 'integrations' | 'series'>('integrations');
 
   ngOnInit() {}
 }

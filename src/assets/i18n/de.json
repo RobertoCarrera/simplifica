@@ -3329,6 +3329,7 @@
     "tabIntegrations": "Zahlungsintegrationen",
     "tabSeries": "Rechnungsserien",
     "tabVerifactu": "Verifactu / AEAT",
-    "verifactuCertificados": "Verifactu - Zertifikate und Versand an die AEAT"
+    "verifactuCertificados": "Verifactu - Zertifikate und Versand an die AEAT",
+    "tabRedsys": "Redsys"
   }
 }
