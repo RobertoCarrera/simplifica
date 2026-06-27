@@ -249,7 +249,7 @@ export class ProjectsService {
           start_date, end_date, is_archived, is_internal_archived,
           created_at, updated_at, created_by,
           client:client_id (id, name, surname, business_name, auth_user_id),
-          tasks:project_tasks (id, is_completed, position)
+          tasks:project_tasks (id, title, is_completed, position)
         `)
                     .eq('is_archived', archived)
                     .eq('company_id', companyId)
@@ -271,7 +271,7 @@ export class ProjectsService {
           start_date, end_date, is_archived, is_internal_archived,
           created_at, updated_at, created_by,
           client:client_id (id, name, surname, business_name, auth_user_id),
-          tasks:project_tasks (id, is_completed, position)
+          tasks:project_tasks (id, title, is_completed, position)
         `)
                 .eq('is_archived', archived)
                 .eq('company_id', companyId)
@@ -322,7 +322,7 @@ export class ProjectsService {
                 start_date, end_date, is_archived, is_internal_archived,
                 created_at, updated_at, created_by,
                 client:client_id (id, name, surname, business_name, auth_user_id),
-                tasks:project_tasks (id, is_completed, position)
+                tasks:project_tasks (id, title, is_completed, position)
             `)
             .eq('id', id)
             .maybeSingle();
