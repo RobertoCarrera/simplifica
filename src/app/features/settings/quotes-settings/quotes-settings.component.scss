@@ -1,1 +1,8 @@
-// Styles minimal for quotes-settings component
+// The component host must fill the available height in <main> so that
+// the inner `overflow-y-auto` has a constrained scroll container.
+// Without `:host { height: 100% }`, the component is content-sized and
+// the scroll never engages because there's nothing to overflow.
+:host {
+  display: block;
+  height: 100%;
+}
