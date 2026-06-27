@@ -182,11 +182,14 @@ export class GdprRequestDetailComponent {
         const lines = description.split('\n');
 
         lines.forEach(line => {
-            // New format: - Label: Valor actual "X" => Nuevo valor "Y"
-            const match = line.match(/- (.*?): Valor actual ".*?" => Nuevo valor "(.*?)"/);
-            if (match && match[2]) {
+            // Format used by both the CRM GdprRequestModalComponent and the
+            // portal PortalGdprRectifyModalComponent:
+            //   - Label: "oldValue" => "newValue"
+            // Optional [DATA:...] tag on the address line for structured fields.
+            const match = line.match(/- (.*?): "(.*?)" => "(.*?)"/);
+            if (match && match[3]) {
                 const fieldLabel = match[1].trim();
-                const newValue = match[2].trim();
+                const newValue = match[3].trim();
 
                 switch (fieldLabel) {
                     case 'Nombre Completo':
