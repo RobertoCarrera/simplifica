@@ -16,11 +16,12 @@ import {
 } from '../../../services/payment-integrations.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { RedsysConfigComponent } from '../integrations/redsys-config/redsys-config.component';
 
 @Component({
   selector: 'app-billing-settings',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, RouterModule],
+  imports: [FormsModule, ReactiveFormsModule, RouterModule, RedsysConfigComponent],
   templateUrl: './billing-settings.component.html',
 })
 export class BillingSettingsComponent implements OnInit {
@@ -67,7 +68,7 @@ export class BillingSettingsComponent implements OnInit {
   // UI state
   showPaypalSecret = signal(false);
   showStripeSecret = signal(false);
-  activeTab = signal<'paypal' | 'stripe' | 'general'>('general');
+  activeTab = signal<'paypal' | 'stripe' | 'redsys' | 'general'>('general');
 
   ngOnInit(): void {
     this.initForms();
@@ -323,7 +324,7 @@ export class BillingSettingsComponent implements OnInit {
     this.router.navigate(['/configuracion']);
   }
 
-  setActiveTab(tab: 'paypal' | 'stripe' | 'general'): void {
+  setActiveTab(tab: 'paypal' | 'stripe' | 'redsys' | 'general'): void {
     this.activeTab.set(tab);
   }
 }

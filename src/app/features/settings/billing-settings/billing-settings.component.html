@@ -112,6 +112,12 @@
             <span class="ml-2 w-2 h-2 rounded-full bg-green-500 inline-block"></span>
           }
         </button>
+        <button 
+          (click)="setActiveTab('redsys')"
+          class="pb-3 px-1 text-sm font-medium border-b-2 transition-colors"
+          [class]="activeTab() === 'redsys' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+          <i class="fas fa-credit-card mr-2"></i>Redsys
+        </button>
       </nav>
     </div>
 
@@ -412,5 +418,11 @@
         </div>
       }
     }
+
+      <!-- Redsys Tab -->
+      @if (activeTab() === 'redsys') {
+        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Integración Redsys (TPV Virtual)</h2>
+        <app-redsys-config></app-redsys-config>
+      }
   }
 </div>
