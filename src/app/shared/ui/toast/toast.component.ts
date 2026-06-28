@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
@@ -152,8 +152,30 @@ import { AnimationService } from '../../../services/animation.service';
     `,
   ],
 })
-export class ToastComponent {
+export class ToastComponent implements OnInit {
   toastService = inject(ToastService);
+  private hostEl = inject(ElementRef).nativeElement as HTMLElement;
+
+  /**
+   * Move the entire <app-toast> host element to <body> on init so the
+   * toast container escapes any ancestor stacking context
+   * (e.g. responsive layout's `transform`/`filter`/`opacity`, modals with
+   * `backdrop-filter`, etc.) and renders definitively above the AppModal's
+   * `z-index: 2147483640` overlay. Without this, even a z-index of
+   * 2147483647 (max int32) on the inner container can be trapped by an
+   * ancestor stacking context that has the modal in it.
+   *
+   * Idempotent: if the host is already a child of <body> (subsequent
+   * re-initializations, route changes that re-mount), the move is skipped.
+   *
+   * SSR-safe: guarded with `typeof document !== 'undefined'` even though
+   * this app's bootstrap is `bootstrapApplication` (browser-only).
+   */
+  ngOnInit(): void {
+    if (typeof document !== 'undefined' && this.hostEl.parentElement !== document.body) {
+      document.body.appendChild(this.hostEl);
+    }
+  }
 
   removeToast(id: string): void {
     this.toastService.removeToast(id);
