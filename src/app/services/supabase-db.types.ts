@@ -4167,6 +4167,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          paypal_subscription_id: string | null
           price: number
           recurrence_day: number | null
           recurrence_end: string | null
@@ -4174,6 +4175,7 @@ export type Database = {
           recurrence_type: string | null
           start_date: string
           status: string
+          stripe_subscription_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4186,6 +4188,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          paypal_subscription_id?: string | null
           price?: number
           recurrence_day?: number | null
           recurrence_end?: string | null
@@ -4193,6 +4196,7 @@ export type Database = {
           recurrence_type?: string | null
           start_date?: string
           status?: string
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4205,6 +4209,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          paypal_subscription_id?: string | null
           price?: number
           recurrence_day?: number | null
           recurrence_end?: string | null
@@ -4212,6 +4217,7 @@ export type Database = {
           recurrence_type?: string | null
           start_date?: string
           status?: string
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -12336,6 +12342,104 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
             referencedColumns: ["viewing_company_id"]
+          },
+        ]
+      }
+      recurring_charges: {
+        Row: {
+          amount: number
+          client_id: string
+          company_id: string
+          contract_id: string
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          paid_at: string
+          provider: string
+          provider_charge_id: string | null
+          provider_invoice_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          company_id: string
+          contract_id: string
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string
+          provider: string
+          provider_charge_id?: string | null
+          provider_invoice_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          company_id?: string
+          contract_id?: string
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string
+          provider?: string
+          provider_charge_id?: string | null
+          provider_invoice_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_charges_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clientes_desconocidos"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "recurring_charges_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracted_services"
+            referencedColumns: ["id"]
           },
         ]
       }
