@@ -139,11 +139,22 @@
                     @for (change of autoApplyChangesList; track change.field) {
                     <li class="flex items-start gap-3">
                         <i class="fas fa-check-circle text-green-500 mt-1"></i>
-                        <div>
+                        <div class="flex-1 min-w-0">
                             <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{{
                                 change.field }}:</span>
-                            <span class="block text-sm text-gray-900 dark:text-white font-bold">{{ change.newValue
-                                }}</span>
+                            @if (getAddressBreakdown(change); as addressRows) {
+                                <ul class="mt-1 ml-1 space-y-0.5 text-sm text-gray-900 dark:text-white">
+                                    @for (row of addressRows; track row.label) {
+                                    <li class="flex gap-2">
+                                        <span class="text-gray-500 dark:text-gray-400 min-w-[6.5rem] shrink-0">{{ row.label }}:</span>
+                                        <span class="font-bold break-words">{{ row.value }}</span>
+                                    </li>
+                                    }
+                                </ul>
+                                <span class="block text-xs text-gray-400 dark:text-gray-500 mt-1 italic break-words">Valor original: {{ change.newValue }}</span>
+                            } @else {
+                                <span class="block text-sm text-gray-900 dark:text-white font-bold break-words">{{ change.newValue }}</span>
+                            }
                         </div>
                     </li>
                     }
