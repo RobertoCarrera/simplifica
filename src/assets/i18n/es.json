@@ -3081,7 +3081,7 @@
     "onboardingEmailCheckboxHint": "Solo para un primer envío informativo sobre la activación del consentimiento. No usar para campañas promocionales.",
     "legalWarningTitle": "ATENCIÓN — IMPLICACIONES LEGALES RGPD",
     "legalWarningSubtitle": "Esta funcionalidad tiene restricciones legales. Lea atentamente antes de continuar.",
-    "legalWarningIntro": "Al activar esta opción, la campaña se enviará también a clientes que NO han aceptado recibir comunicaciones comerciales. Esta funcionalidad está diseñada EXCLUSIVAMENTE para un envío informativo inicial sobre la activación del mecanismo de consentimiento de marketing de Simplifica CRM.",
+    "legalWarningIntro": "Al activar esta opción, la campaña se enviará también a clientes que NO han aceptado recibir comunicaciones comerciales. Esta funcionalidad está diseñada EXCLUSIVAMENTE para un envío informativo inicial sobre la activación del mecanismo de consentimiento de marketing de Simplifica CRM. El email SOLO pide consentimiento (es informativo) e incluye un enlace a una página pública donde el destinatario puede aceptar o rechazar de forma explícita, con ambos botones igualmente visibles.",
     "legalBasisTitle": "Base legal aplicable",
     "legalBasis1": "Art. 6(1)(b) RGPD — Necesario para la ejecución de la relación contractual preexistente",
     "legalBasis2": "Art. 6(1)(f) RGPD — Interés legítimo del responsable del tratamiento en informar sobre el servicio",
@@ -3090,7 +3090,7 @@
     "requirement1": "El contenido del mensaje debe ser EXCLUSIVAMENTE informativo sobre la funcionalidad de consentimiento",
     "requirement2": "Debe incluir un mecanismo claro para que el destinatario acepte o rechace el consentimiento",
     "requirement3": "No debe contener contenido publicitario, promocional ni comercial de ningún tipo",
-    "requirement4": "Este envío masivo sin consentimiento solo debe realizarse UNA SOLA VEZ por destinatario",
+    "requirement4": "Este envío masivo sin consentimiento solo se realizará UNA SOLA VEZ por destinatario (el sistema marca al cliente como ya contactado)",
     "responsibilityNotice": "Simplifica CRM actúa como encargado del tratamiento de datos. Usted, como responsable del tratamiento, asume TODA la responsabilidad legal sobre este envío, incluyendo posibles reclamaciones ante la AEPD. Este envío quedará registrado con fines de auditoría.",
     "confirmationCheckbox": "He leído, comprendo y acepto las implicaciones legales descritas anteriormente. Entiendo que este envío infringe las políticas normales de consentimiento y asumo toda la responsabilidad.",
     "confirmationTypeLabel": "Para confirmar, escriba ACEPTO (en mayúsculas)",
@@ -3462,5 +3462,138 @@
     "tabVerifactu": "Verifactu / AEAT",
     "verifactuCertificados": "Verifactu - Certificados y envío a la AEAT",
     "tabRedsys": "Redsys"
+  },
+  "customerImport": {
+    "title": "Importar Clientes con Asistente",
+    "subtitle": "Revisá cada fila antes de importar. Los duplicados exactos se saltan automáticamente.",
+    "close": "Cerrar",
+    "loading": {
+      "classifying": "Clasificando filas…"
+    },
+    "step": {
+      "dryRun": "Revisión",
+      "resolution": "Resolver duplicados",
+      "preview": "Confirmar",
+      "importing": "Importando",
+      "summary": "Resultado",
+      "error": "Error"
+    },
+    "clientType": {
+      "individual": "Persona física",
+      "business": "Empresa",
+      "selfEmployed": "Autónomo",
+      "consumer": "Consumidor final"
+    },
+    "status": {
+      "valid": "válida",
+      "likelyDuplicate": "duplicado probable",
+      "invalid": "inválida",
+      "alreadyExists": "ya existe"
+    },
+    "dryRun": {
+      "total": "total",
+      "valid": "válidas",
+      "likelyDuplicate": "duplicados probables",
+      "invalid": "inválidas",
+      "alreadyExists": "ya existen",
+      "skipped": "saltadas",
+      "editHint": "Editá los campos abajo para corregir las filas inválidas.",
+      "inlineEditPlaceholder": "Hacé clic para editar",
+      "typeSelect": "Tipo",
+      "skip": "Saltar fila",
+      "continue": "Continuar",
+      "back": "Cancelar",
+      "existingMatch": "Ya existe en el CRM:",
+      "possibleDuplicate": "Posible duplicado de:",
+      "forceCreate": "Crear de todos modos",
+      "forceCreateActive": "Forzando creación",
+      "forceCreateHint": "Forzar la creación de esta fila aunque ya exista un cliente con el mismo email o DNI",
+      "undoForceCreate": "Deshacer",
+      "undoSkip": "Revertir",
+      "col": {
+        "name": "Nombre",
+        "surname": "Apellidos",
+        "email": "Email",
+        "phone": "Teléfono",
+        "city": "Ciudad",
+        "postalCode": "CP",
+        "country": "País",
+        "cif": "CIF/NIF",
+        "dni": "DNI",
+        "type": "Tipo",
+        "status": "Estado",
+        "actions": "Acciones"
+      }
+    },
+    "resolution": {
+      "duplicates": "Filas con posibles duplicados",
+      "candidatesLabel": "Candidatos en el CRM",
+      "jaccardLabel": "similitud",
+      "vincular": "Vincular existente",
+      "crear": "Crear nuevo",
+      "saltar": "Saltar fila",
+      "bulkEmailCheckbox": "Aplicar a las {{count}} filas con este mismo email",
+      "resolved": "Resueltas",
+      "unresolved": "Pendientes",
+      "continue": "Continuar",
+      "back": "Volver"
+    },
+    "preview": {
+      "title": "Revisá el resumen antes de importar",
+      "willCreate": "Se crearán",
+      "alreadyExists": "Ya existían",
+      "skipped": "Saltadas",
+      "invalid": "Inválidas (no se importan)",
+      "confirm": "Confirmar e Importar",
+      "back": "Volver"
+    },
+    "importing": {
+      "title": "Importando clientes…"
+    },
+    "summary": {
+      "titleComplete": "Importación completada",
+      "titlePartial": "Importación completada con errores",
+      "imported": "Creadas",
+      "alreadyExists": "Ya existían",
+      "skipped": "Saltadas",
+      "failed": "Fallidas",
+      "failedHint": "Descargá el reporte para ver los detalles.",
+      "downloadFailures": "Descargar reporte",
+      "close": "Cerrar"
+    },
+    "error": {
+      "generic": "Ocurrió un error. Intentá de nuevo."
+    }
+  },
+  "consentLanding": {
+    "headerEyebrow": "Consentimiento RGPD",
+    "headerTitle": "Revisa y actualiza tus preferencias de privacidad para {{companyName}}",
+    "helloName": "Hola, {{name}}",
+    "bodyIntro": "Para seguir prestándote nuestros servicios y cumplir con el Reglamento General de Protección de Datos (RGPD), necesitamos que confirmes tus preferencias de comunicaciones comerciales. Tu decisión quedará registrada con la fecha, hora y dirección IP de esta conexión a efectos de auditoría (RGPD Art. 5.2).",
+    "controllerTitle": "Responsable del tratamiento",
+    "controllerName": "Empresa",
+    "controllerNif": "NIF",
+    "purposeLabel": "Finalidad",
+    "purposeValue": "Gestión de tus preferencias de comunicaciones comerciales.",
+    "legalBasisLabel": "Base legitimadora",
+    "legalBasisValue": "Consentimiento explícito (RGPD Art. 6.1.a).",
+    "retentionLabel": "Plazo de conservación",
+    "retentionValue": "5 años desde la retirada del consentimiento o hasta que ejerzas tu derecho de supresión.",
+    "rightsTitle": "Tus derechos",
+    "rightsBody": "Puedes ejercer en cualquier momento tus derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento, portabilidad y a no ser objeto de decisiones automatizadas con efectos jurídicos.",
+    "rightsAepd": "Si consideras que tus derechos no se han atendido, puedes reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).",
+    "acceptButton": "Aceptar comunicaciones comerciales",
+    "rejectButton": "Rechazar comunicaciones comerciales",
+    "actionsHint": "Ambas opciones tienen la misma visibilidad. Tu decisión es libre y específica.",
+    "invalidTokenTitle": "Este enlace ya no es válido",
+    "invalidTokenBody": "El enlace que has abierto ha expirado o ya fue utilizado.",
+    "invalidTokenContact": "Si necesitas actualizar tus preferencias, contacta directamente con la empresa.",
+    "alreadyCompletedTitle": "Ya has respondido a esta solicitud",
+    "alreadyCompletedBody": "Hemos registrado tu respuesta con anterioridad. Si quieres cambiar tu decisión, contacta directamente con la empresa.",
+    "currentStatus": "Estado actual",
+    "thanksTitle": "Tus preferencias han sido registradas",
+    "thanksBody": "Gracias. {{companyName}} ha registrado tu decisión. Puedes cambiarla en cualquier momento contactando con la empresa.",
+    "thanksHint": "Ya puedes cerrar esta ventana.",
+    "privacyPolicyLink": "Ver política de privacidad"
   }
 }

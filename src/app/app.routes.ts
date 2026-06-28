@@ -549,6 +549,18 @@ export const routes: Routes = [
 
   // Catch-all - redirect to inicio
   // Public legal pages (no auth required)
+  // /consent is the public RGPD consent landing page reached from the
+  // consent-migration email. The token in the query string is the
+  // authorization — no auth guard (RGPD: data subject may not be a user
+  // of the platform).
+  {
+    path: "consent",
+    loadComponent: () =>
+      import("./features/consent/consent-landing/consent-landing.component").then(
+        (m) => m.ConsentLandingComponent,
+      ),
+    data: { title: "Consentimiento RGPD | Simplifica CRM" },
+  },
   {
     path: "privacy",
     loadComponent: () =>
