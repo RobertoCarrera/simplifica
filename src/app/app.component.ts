@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { ResponsiveLayoutComponent } from './shared/layout/responsive-layout/responsive-layout.component';
-import { ToastComponent } from './shared/ui/toast/toast.component';
+import { ToastHostComponent } from './shared/ui/toast/toast.component';
 import { PwaInstallComponent } from './shared/ui/pwa-install/pwa-install.component';
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
@@ -13,7 +13,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, FeedbackModalComponent],
+  imports: [ResponsiveLayoutComponent, ToastHostComponent, PwaInstallComponent, FeedbackModalComponent],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>

@@ -77,6 +77,32 @@ body {
   background: var(--text-muted);
 }
 
+/* ─── Angular CDK Overlay container ────────────────────────────────────── */
+/*
+ * Angular CDK's Overlay service appends a single `.cdk-overlay-container`
+ * element to <body> (created lazily by OverlayContainer on first use).
+ * Every overlay rendered by the app (toast notifications, context menu,
+ * etc.) lives inside this container, so its z-index defines the highest
+ * layer any in-app UI can reach.
+ *
+ * 2147483647 is max int32 (one above the AppModal's "Max Safe Z-Index" of
+ * 2147483640), guaranteeing the overlay sits above the modal's
+ * `backdrop-filter: blur(4px)` overlay — which was the bug behind
+ * `1bc8efa5` and `28d4153c`. The container is appended directly to <body>,
+ * so no ancestor stacking context can capture it.
+ *
+ * `pointer-events: none` keeps clicks passing through the empty space of
+ * the container; `pointer-events: auto` on its direct children re-enables
+ * interaction on the actual toast / menu content.
+ */
+.cdk-overlay-container {
+  z-index: 2147483647;
+  pointer-events: none;
+}
+.cdk-overlay-container > * {
+  pointer-events: auto;
+}
+
 /* ─── Floating Action Button (FAB) ──────────────────────────────────────── */
 /* Defined globally because customers, services, invoices, and calendar use  */
 /* fab-button without local SCSS. Tickets/quotes override via component SCSS.*/

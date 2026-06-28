@@ -1,12 +1,102 @@
-import { Component, inject, OnInit, ElementRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  Injector,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
 import { ToastService } from '../../../services/toast.service';
 import { Toast } from '../../../models/toast.interface';
 import { AnimationService } from '../../../services/animation.service';
 
+/**
+ * ToastHostComponent — the <app-toast> tag mounted in the app shell.
+ *
+ * Creates an Angular CDK Overlay (a dedicated `.cdk-overlay-container`
+ * appended to <body>) and attaches {@link ToastRendererComponent} to it.
+ *
+ * Why CDK Overlay? Two earlier fixes failed:
+ *   1bc8efa5 raised the inner container to `z-index: 2147483647`
+ *     (max int32) — insufficient because some ancestor stacking
+ *     context (responsive layout's `transform`/`filter`, AppModal
+ *     portal, etc.) was still capturing the toast.
+ *   28d4153c reparented the <app-toast> host to <body> in `ngOnInit` —
+ *     still blurred, because the AppModal's `backdrop-filter` renders
+ *     into a separate subtree that visually overlaps the toast
+ *     regardless of DOM position.
+ *
+ * Angular CDK's Overlay service creates a single
+ * `.cdk-overlay-container` at the top of <body>, with its own
+ * stacking context that no app component can be above. Combined
+ * with the `z-index: 2147483647` rule on `.cdk-overlay-container` in
+ * `styles.scss` (which sits above the AppModal's `2147483640`), the
+ * toast is definitively above the modal's `backdrop-filter: blur`.
+ *
+ * The host's own template is empty — the actual visual content lives
+ * in {@link ToastRendererComponent} (attached via ComponentPortal).
+ * See the context-menu feature (`shared/ui/context-menu`) for the
+ * same pattern in this codebase.
+ */
 @Component({
   selector: 'app-toast',
+  standalone: true,
+  template: ``,
+})
+export class ToastHostComponent implements OnInit, OnDestroy {
+  private overlay = inject(Overlay);
+  private injector = inject(Injector);
+  private overlayRef: OverlayRef | null = null;
+
+  ngOnInit(): void {
+    this.overlayRef = this.overlay.create({
+      // Global positioning mirrors the previous Tailwind classes:
+      //   top-8  → top: 2rem
+      //   right-4 → right: 1rem
+      positionStrategy: this.overlay
+        .position()
+        .global()
+        .top('2rem')
+        .right('1rem'),
+      // Toasts are page-level notifications; they should not move when
+      // the page scrolls.
+      scrollStrategy: this.overlay.scrollStrategies.noop(),
+      panelClass: 'app-toast-overlay-panel',
+    });
+
+    const portal = new ComponentPortal(
+      ToastRendererComponent,
+      null,
+      this.injector,
+    );
+    this.overlayRef.attach(portal);
+  }
+
+  ngOnDestroy(): void {
+    this.overlayRef?.dispose();
+    this.overlayRef = null;
+  }
+}
+
+/**
+ * ToastRendererComponent — the visual toast list.
+ *
+ * Rendered inside a CDK Overlay managed by {@link ToastHostComponent}.
+ * Holds the template and helper methods that previously lived on
+ * ToastComponent. The visual is unchanged from the pre-CDK version:
+ * a fixed top-right container (`top-8 right-4`) showing stacked
+ * toasts.
+ *
+ * The inner `<div>` keeps `z-[2147483647]` as a belt-and-braces
+ * guard — the real fix is the `.cdk-overlay-container` z-index rule
+ * in `styles.scss`, which positions the CDK overlay subtree above
+ * the AppModal's overlay.
+ */
+@Component({
+  selector: 'app-toast-renderer',
   standalone: true,
   imports: [CommonModule, RouterModule],
   animations: [AnimationService.toastNotification],
@@ -106,7 +196,7 @@ import { AnimationService } from '../../../services/animation.service';
               <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                 <path
                   fill-rule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                   clip-rule="evenodd"
                 />
               </svg>
@@ -152,34 +242,8 @@ import { AnimationService } from '../../../services/animation.service';
     `,
   ],
 })
-export class ToastComponent implements OnInit {
+export class ToastRendererComponent {
   toastService = inject(ToastService);
-  private hostEl = inject(ElementRef).nativeElement as HTMLElement;
-
-  /**
-   * Move the entire <app-toast> host element to <body> on init so the
-   * toast container escapes any ancestor stacking context
-   * (e.g. responsive layout's `transform`/`filter`/`opacity`, modals with
-   * `backdrop-filter`, etc.) and renders definitively above the AppModal's
-   * `z-index: 2147483640` overlay. Without this, even a z-index of
-   * 2147483647 (max int32) on the inner container can be trapped by an
-   * ancestor stacking context that has the modal in it.
-   *
-   * Idempotent: if the host is already a child of <body> (subsequent
-   * re-initializations, route changes that re-mount), the move is skipped.
-   *
-   * SSR-safe: guarded with `typeof document !== 'undefined'` even though
-   * this app's bootstrap is `bootstrapApplication` (browser-only).
-   */
-  ngOnInit(): void {
-    if (typeof document !== 'undefined' && this.hostEl.parentElement !== document.body) {
-      document.body.appendChild(this.hostEl);
-    }
-  }
-
-  removeToast(id: string): void {
-    this.toastService.removeToast(id);
-  }
 
   getToastClasses(type: Toast['type']): string {
     const classes = {
