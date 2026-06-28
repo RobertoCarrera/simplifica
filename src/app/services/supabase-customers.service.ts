@@ -1224,15 +1224,16 @@ export class SupabaseCustomersService {
       delete payload.usuario_id;
     }
 
-    // Clean up non-DB / legacy fields. `address` is a real JSONB column on
-    // `clients`, but the Customer model still types it as `string` for legacy
-    // reasons. Legacy callers send a plain string (which would error trying to
-    // coerce into JSONB), so we drop those. The GDPR rectification modal wraps
-    // it as `{ value: "..." }` before sending — that shape is a real DB value
-    // and must reach Postgres.
+    // `address` is a real JSONB column on `clients` with shape `{ value: "..." }`.
+    // Callers (modals, importers, etc.) typically pass a plain string — the natural
+    // in-memory representation. We wrap it here at the DB boundary so callers
+    // don't have to know the column shape. Objects that already match the shape
+    // pass through unchanged.
     if (typeof payload.address === 'string') {
-      delete payload.address;
+      payload.address = { value: payload.address } as any;
     }
+
+    // Clean up non-DB / legacy fields.
     delete payload.devices;
     delete payload.favicon;
 

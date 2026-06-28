@@ -246,12 +246,13 @@ export class GdprRequestDetailComponent {
                     case 'Dirección':
                     case 'Dirección Física':
                     case 'Dirección Fiscal':
-                        // `clients.address` is a JSONB column shaped `{ value: "..." }`. We must
-                        // wrap the raw string the user submitted before sending it to Supabase.
-                        // `as any` because the legacy `Customer.address` model field is typed as
-                        // `string`; the modal-to-DB boundary is the place where we cross from
-                        // string-in-UI to JSONB-in-DB.
-                        updates.address = { value: newValue } as any;
+                        // `clients.address` is a JSONB column shaped `{ value: "..." }`.
+                        // We send the raw string from the description; the
+                        // SupabaseCustomersService wraps it into the JSONB shape at
+                        // the DB boundary. The modal renders the parsed breakdown
+                        // (tipo de vía, nombre, número, piso, puerta) via
+                        // `getAddressBreakdown`, which expects `newValue` to be a string.
+                        updates.address = newValue;
                         break;
                     case 'Sitio Web':
                         updates.website = newValue;
