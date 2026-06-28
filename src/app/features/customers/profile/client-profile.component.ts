@@ -297,16 +297,14 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                         <i class="fas fa-user-circle text-blue-500"></i> {{ 'clients.infoGeneral' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        @if (!isOwner() && !isProfessional()) {
-                          <div class="sm:col-span-2">
-                            <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              {{ 'clients.tipoCliente' | transloco }}
-                            </dt>
-                            <dd class="text-slate-700 dark:text-slate-200">
-                              {{ customer()!.client_type === 'business' ? ('clients.empresa' | transloco) : ('clients.personaFisica' | transloco) }}
-                            </dd>
-                          </div>
-                        }
+                        <div class="sm:col-span-2">
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">
+                            {{ 'clients.tipoCliente' | transloco }}
+                          </dt>
+                          <dd class="text-slate-700 dark:text-slate-200">
+                            {{ customer()!.client_type === 'business' ? ('clients.empresa' | transloco) : ('clients.personaFisica' | transloco) }}
+                          </dd>
+                        </div>
                         <!-- Business specific -->
                         @if (customer()!.client_type === 'business') {
                           <div class="sm:col-span-2">
@@ -358,7 +356,6 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                               {{ customer()!.surname || '-' }}
                             </dd>
                           </div>
-                          @if (!isOwner() && !isProfessional()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.dniNif' | transloco }}
@@ -372,8 +369,6 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                               }
                             </dd>
                           </div>
-                          }
-                          @if (!isOwner() && !isProfessional()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.fechaNacimiento' | transloco }}
@@ -382,7 +377,6 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                               {{ customer()!.fecha_nacimiento || '-' }}
                             </dd>
                           </div>
-                          }
                         }
                       </dl>
                     </div>
@@ -396,6 +390,29 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                         <i class="fas fa-address-book text-emerald-500"></i> {{ 'clients.contactoUbicacion' | transloco }}
                       </h3>
                       <dl class="space-y-4">
+                        @if (customer()!.direccion) {
+                          <div>
+                            <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.direccion' | transloco }}</dt>
+                            <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
+                              <i class="fas fa-map-marker-alt text-slate-300 mt-1"></i>
+                              <div>
+                                @if (customer()!.direccion!.tipo_via) {
+                                  <div>{{ customer()!.direccion!.tipo_via }} {{ customer()!.direccion!.nombre }}@if (customer()!.direccion!.numero) { , {{ customer()!.direccion!.numero }} }</div>
+                                } @else {
+                                  <div>{{ customer()!.direccion!.nombre }}</div>
+                                }
+                              </div>
+                            </dd>
+                          </div>
+                        } @else if (customer()!.address) {
+                          <div>
+                            <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.direccion' | transloco }}</dt>
+                            <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
+                              <i class="fas fa-map-marker-alt text-slate-300 mt-1"></i>
+                              <span class="break-words">{{ customer()!.address }}</span>
+                            </dd>
+                          </div>
+                        }
                         <div>
                           <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.email' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
@@ -435,7 +452,6 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                           </div>
                         }
                         @if (customer()!.tax_region) {
-                          @if (!isOwner()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.regionFiscal' | transloco }}
@@ -444,7 +460,6 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                               {{ customer()!.tax_region }}
                             </dd>
                           </div>
-                          }
                         }
                       </dl>
                     </div>

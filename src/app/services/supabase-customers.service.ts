@@ -672,6 +672,11 @@ export class SupabaseCustomersService {
         localidad_id: client.direccion.locality_id || '',
         localidad: undefined
       } : null,
+      // Address: the column is JSONB shaped `{ value: "..." }`, but legacy rows
+      // may still hold a plain string. The `Customer.address` model field is
+      // typed as `string` for back-compat, so we extract the human-readable value
+      // at the DB→model boundary.
+      address: this.extractAddressValue(client.address),
       metadata: client.metadata || undefined,
       // CRM & Billing
       status: client.status || 'lead',
@@ -796,6 +801,23 @@ export class SupabaseCustomersService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Normalize `clients.address` (JSONB `{ value: "..." }` or legacy string)
+   * into the plain string the Customer model expects. Returns undefined when
+   * no usable value is present so the template can render the "-" fallback.
+   */
+  private extractAddressValue(raw: any): string | undefined {
+    if (raw === null || raw === undefined) return undefined;
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+    if (typeof raw === 'object' && 'value' in raw) {
+      return this.extractAddressValue((raw as any).value);
+    }
+    return undefined;
   }
 
   /**
