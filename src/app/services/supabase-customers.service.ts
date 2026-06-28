@@ -366,7 +366,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))');
+      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
@@ -426,7 +426,7 @@ export class SupabaseCustomersService {
 
           let filteredQuery = this.supabase
             .from('clients')
-            .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+            .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
             .eq('company_id', this.authService.companyId())
             .in('id', assignedClientIds)
             .is('deleted_at', filters.showDeleted ? null : null)
@@ -479,7 +479,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without address embed
         devLog('Reintentando consulta sin embed de dirección...');
-        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, clients_tags(global_tags(id,name,color))');
+        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, clients_tags(global_tags(id,name,color))');
 
         const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
@@ -570,7 +570,7 @@ export class SupabaseCustomersService {
         // Paso 2: Construir y ejecutar query con filter in
         let query = this.supabase
           .from('clients')
-          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
           .in('id', assignedClientIds);
 
         // Aplicar filtros de búsqueda
@@ -3184,11 +3184,24 @@ export class SupabaseCustomersService {
   ): Pick<ClassifiedCustomerRow, 'status' | 'candidates' | 'invalidFields'> {
     // Required-field validation first — invalid rows don't get matched.
     const invalidFields: string[] = [];
-    // client_type is optional in the CSV — if missing, default to 'individual'.
+    // client_type is optional in the CSV. Smart default when missing:
+    //   - if businessName is set AND firstName+surname are empty → 'business'
+    //   - otherwise → 'individual'
     // Only mark invalid if the value is PRESENT but not one of the whitelisted types.
     const rawClientType = (row.clientType ?? '').toLowerCase().trim();
     const validClientTypes = ['individual', 'business', 'self_employed', 'consumer'];
-    const clientType = validClientTypes.includes(rawClientType) ? rawClientType : 'individual';
+    const hasBusinessName = !!(row.businessName && row.businessName.trim());
+    const hasPersonName =
+      !!(row.firstName && row.firstName.trim()) || !!(row.surname && row.surname.trim());
+    let clientType: string;
+    if (validClientTypes.includes(rawClientType)) {
+      clientType = rawClientType;
+    } else if (hasBusinessName && !hasPersonName) {
+      // CSV has a company name but no person name — clearly a company.
+      clientType = 'business';
+    } else {
+      clientType = 'individual';
+    }
     if (row.clientType && rawClientType && !validClientTypes.includes(rawClientType)) {
       // The CSV had a client_type value but it was unrecognised — that's a real error.
       invalidFields.push('clientType');
