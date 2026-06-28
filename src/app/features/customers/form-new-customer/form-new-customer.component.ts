@@ -405,9 +405,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         typeof customer.mercantile_registry_data === 'string'
           ? customer.mercantile_registry_data
           : JSON.stringify(customer.mercantile_registry_data || ''),
-      addressTipoVia: customer.direccion?.tipo_via || '',
-      addressNombre: customer.direccion?.nombre || '',
-      addressNumero: customer.direccion?.numero || '',
+      addressTipoVia: customer.direccion?.tipo_via || this.parseAddressTipoVia(customer.address) || '',
+      addressNombre: customer.direccion?.nombre || this.parseAddressNombre(customer.address) || '',
+      addressNumero: customer.direccion?.numero || this.parseAddressNumero(customer.address) || '',
+      // Locality can't be inferred from a single-string address — leave empty
+      // and let the user pick from the dropdown. Only use the FK if present.
       addressLocalidadId: customer.direccion?.localidad_id || '',
 
       // CRM
@@ -669,6 +671,89 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   getClientTypeIcon(): string {
     const option = this.clientTypeOptions.find((o) => o.value === this.formData.client_type);
     return option ? option.icon : 'fas fa-question';
+  }
+
+  // ─── Single-string address parser (fallback for clients with no FK `direccion`) ──
+  //
+  // When a client's address was set via the GDPR rectification flow
+  // (which writes the raw string to the `clients.address` JSONB column),
+  // the `direccion_id` FK is null and the structured address fields
+  // (tipo_via / nombre / numero) would otherwise render empty in the
+  // Editar Cliente modal. We parse the string into its parts so the user
+  // sees the data and can edit it.
+  //
+  // This duplicates the parser in `gdpr-request-detail.component.ts` for
+  // now. If a third caller appears, extract to a shared utility.
+
+  private readonly ADDRESS_VIA_PREFIXES: Record<string, string> = {
+    'C/': 'Calle',
+    'Cl/': 'Calle',
+    'Av/': 'Avenida',
+    'Avda/': 'Avenida',
+    'Pz/': 'Plaza',
+    'Pl/': 'Plaza',
+    'Plza/': 'Plaza',
+    'Ps/': 'Paseo',
+    'Pseo/': 'Paseo',
+    'Cr/': 'Carretera',
+    'Ctra/': 'Carretera',
+    'Tr/': 'Travesía',
+    'Gv/': 'Gran Vía',
+    'Rd/': 'Ronda',
+    'Cm/': 'Camino',
+    'Po/': 'Poblado',
+  };
+
+  /** "C/Segre 13, 3º3ª" → "Calle" */
+  parseAddressTipoVia(raw: string | undefined | null): string {
+    if (!raw || typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    const prefixes = Object.keys(this.ADDRESS_VIA_PREFIXES).sort((a, b) => b.length - a.length);
+    for (const prefix of prefixes) {
+      if (trimmed.startsWith(prefix)) {
+        return this.ADDRESS_VIA_PREFIXES[prefix];
+      }
+    }
+    return '';
+  }
+
+  /** "C/Segre 13, 3º3ª" → "Segre" */
+  parseAddressNombre(raw: string | undefined | null): string {
+    if (!raw || typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    const tipoVia = this.parseAddressTipoVia(trimmed);
+    // Strip the prefix (use the original prefix that matched, not the expanded name)
+    const prefixes = Object.keys(this.ADDRESS_VIA_PREFIXES).sort((a, b) => b.length - a.length);
+    let remainder = trimmed;
+    for (const prefix of prefixes) {
+      if (trimmed.startsWith(prefix)) {
+        remainder = trimmed.substring(prefix.length).trim();
+        break;
+      }
+    }
+    // "Segre 13, 3º3ª" → "Segre 13" → split on first whitespace before a number
+    const head = remainder.split(',')[0].trim();
+    const numMatch = head.match(/^(.+?)\s+(\d+\S?)\s*$/);
+    if (numMatch) return numMatch[1].trim();
+    return head;
+  }
+
+  /** "C/Segre 13, 3º3ª" → "13" */
+  parseAddressNumero(raw: string | undefined | null): string {
+    if (!raw || typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    const prefixes = Object.keys(this.ADDRESS_VIA_PREFIXES).sort((a, b) => b.length - a.length);
+    let remainder = trimmed;
+    for (const prefix of prefixes) {
+      if (trimmed.startsWith(prefix)) {
+        remainder = trimmed.substring(prefix.length).trim();
+        break;
+      }
+    }
+    const head = remainder.split(',')[0].trim();
+    const numMatch = head.match(/^(.+?)\s+(\d+\S?)\s*$/);
+    if (numMatch) return numMatch[2].trim();
+    return '';
   }
 
   onAddressViaInput(event: Event) {
