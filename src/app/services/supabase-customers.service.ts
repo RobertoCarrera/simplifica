@@ -1224,10 +1224,15 @@ export class SupabaseCustomersService {
       delete payload.usuario_id;
     }
 
-    // Clean up non-DB fields
-    delete payload.nombre;
-    delete payload.telefono;
-    delete payload.address;
+    // Clean up non-DB / legacy fields. `address` is a real JSONB column on
+    // `clients`, but the Customer model still types it as `string` for legacy
+    // reasons. Legacy callers send a plain string (which would error trying to
+    // coerce into JSONB), so we drop those. The GDPR rectification modal wraps
+    // it as `{ value: "..." }` before sending — that shape is a real DB value
+    // and must reach Postgres.
+    if (typeof payload.address === 'string') {
+      delete payload.address;
+    }
     delete payload.devices;
     delete payload.favicon;
 
@@ -1238,11 +1243,17 @@ export class SupabaseCustomersService {
     // Explicitly remove undefined fields so Supabase/Postgrest ignores them
     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
-    return from(this.supabase.from('clients').update(payload).eq('id', id).select().single()).pipe(
+    return from(this.supabase.from('clients').update(payload).eq('id', id).select().maybeSingle()).pipe(
       map(({ data, error }) => {
         if (error) {
           devError('Error en Update Standard', error);
           throw error;
+        }
+        if (!data) {
+          // RLS hid the row from the UPDATE, or no row matched the WHERE.
+          // Surface a typed error so callers can show a meaningful toast
+          // instead of a generic "fallo al actualizar".
+          throw new Error('No se pudo actualizar: la fila no es visible o no existe para esta sesión.');
         }
         return this.toCustomerFromClient(data);
       }),
@@ -3280,7 +3291,12 @@ export class SupabaseCustomersService {
         source: 'csv-wizard',
         metadata: {
           address: csv.address ?? '',
+          address_city: csv.addressCity ?? '',
+          address_state: csv.addressState ?? '',
+          address_postal_code: csv.addressPostalCode ?? '',
+          address_country: csv.addressCountry ?? '',
           imported_at: new Date().toISOString(),
+          import_source: 'stripe-csv',
         },
       });
     }
