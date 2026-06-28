@@ -122,26 +122,16 @@ export class RedsysConfigService {
         { p_company_id: companyId, p_payload: payload },
       );
       if (error) {
-        // If the RPC doesn't exist yet, fall back to a direct upsert
-        // (the encrypted-secret column is just null in that case —
-        // a follow-up migration wires the RPC).
-        if (error.code === '42883' || /function .* does not exist/i.test(error.message)) {
-          const { error: upErr } = await this.supabase.instance
-            .from('company_payment_config')
-            .upsert(
-              { ...payload, secret_key_encrypted: null },
-              { onConflict: 'company_id,provider' },
-            );
-          if (upErr) {
-            this.toast.error('Error guardando Redsys', upErr.message ?? 'Error desconocido');
-            return false;
-          }
-        } else {
-          this.toast.error('Error guardando Redsys', error.message ?? 'Error desconocido');
-          return false;
-        }
+        // RPC failed — likely the user isn't an owner of this company
+        // (42501) or the payload is malformed (22023). Show the real
+        // message so the user knows what's wrong. We no longer fall
+        // back to a direct .upsert() because that hits PostgREST's CSRF
+        // requirement and returns 403 — see migration
+        // 20260627_upsert_company_payment_config_rpc.sql for details.
+        this.toast.error('Error guardando la configuración', error.message ?? 'Error desconocido');
+        return false;
       }
-      this.toast.success('Configuración guardada', 'Redsys se ha configurado para tu empresa');
+      this.toast.success('Configuración guardada', `${payload.provider} se ha configurado para tu empresa`);
       await this.load(companyId);
       return true;
     } finally {
