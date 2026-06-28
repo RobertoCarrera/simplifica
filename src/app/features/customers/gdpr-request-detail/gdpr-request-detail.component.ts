@@ -64,9 +64,12 @@ export class GdprRequestDetailComponent {
     }
 
     loadCustomer(email: string) {
-        // Use search to find specific customer, avoiding pagination issues
-        this.customersService.getCustomers({ search: email }).subscribe((customers: Customer[]) => {
-            const found = customers.find((c: Customer) => c.email === email);
+        // Use exact email match — `getCustomers({ search })` routes through
+        // `search_customers_dev` which does fuzzy matching on name/CIF and is
+        // unreliable for an exact email hit. The GDPR rectification flow needs
+        // the *one* client whose email is the request's `subject_email`.
+        this.isLoading.set(true);
+        this.customersService.getCustomerByEmail(email).subscribe((found: Customer | null) => {
             if (found) {
                 this.customer.set(found);
             } else {

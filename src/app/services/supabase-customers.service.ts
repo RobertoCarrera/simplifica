@@ -13,6 +13,20 @@ import { CsrfService } from './csrf.service';
 import { GdprComplianceService } from './gdpr-compliance.service';
 import { environment } from '../../environments/environment';
 import { escapeOrFilterValue, escapeLike } from '../shared/utils/escape-like';
+import {
+  matchCustomerByName,
+  matchCustomerByExactEmail,
+  matchCustomerByCifOrDni,
+  CustomerLite,
+  normalizePersonName,
+} from './customer-matcher';
+import {
+  CustomerCsvRow,
+  ClassifiedCustomerRow,
+  CustomerInsertPayload,
+  CustomerImportProgress,
+  RowClassificationStatus,
+} from './customer-import.types';
 
 export interface CustomerFilters {
   search?: string;
@@ -869,6 +883,51 @@ export class SupabaseCustomersService {
       catchError(error => {
         this.handleError('Error al cargar cliente', error);
         return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Lookup a client by exact email match.
+   *
+   * This is intentionally separate from `getCustomers({ search: email })`:
+   * the latter routes through the `search_customers_dev` RPC which does fuzzy
+   * matching on name / CIF and is unreliable for an exact email hit (e.g. the
+   * GDPR rectification flow needs to find the *one* client whose email is the
+   * `subject_email` of the request — fuzzy search can miss it or return others).
+   *
+   * Returns `null` (resolved, not thrown) when no row matches, so callers can
+   * distinguish "not found" from a real error.
+   */
+  getCustomerByEmail(email: string): Observable<Customer | null> {
+    if (!email || typeof email !== 'string') {
+      return of(null);
+    }
+    const normalized = email.trim().toLowerCase();
+
+    const query = this.supabase
+      .from('clients')
+      .select('*, clients_tags(global_tags(*)), direccion:addresses(*, localidad:localities(*))')
+      .eq('email', normalized)
+      .maybeSingle();
+
+    return from(query).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('[SupabaseCustomersService] getCustomerByEmail error:', error);
+          return null;
+        }
+        if (!data) return null;
+        return this.toCustomerFromClient(data);
+      }),
+      tap((customer: Customer | null) => {
+        if (customer?.id) {
+          this.gdprService.logDataAccess('clients', customer.id, customer.email, 'GDPR rectification: client lookup by email');
+        }
+      }),
+      catchError(error => {
+        this.handleError('Error al buscar cliente por email', error);
+        return of(null);
       })
     );
   }
@@ -3042,5 +3101,357 @@ export class SupabaseCustomersService {
       map(({ count }: any) => count || 0),
       catchError(() => of(0))
     );
+  }
+
+  // ============================================================================
+  // Customer Import Wizard (Configuración > Dades > Importar)
+  // ============================================================================
+  // The wizard is a structured CSV importer that lets users review each row
+  // before import. Four entry points: classify, fetch, build, import. They
+  // are called by the wizard shell in this order:
+  //
+  //   1. fetchClientsForMatcher(companyId) — load CRM clients once
+  //   2. classifyCustomerRow(row, candidates) — per-row classification
+  //   3. buildCustomersForInsert(classified) — filter + shape the payload
+  //   4. importCustomersWizard(payloads, companyId) — chunked insert via RPC
+  //
+  // The classifier uses three strategies, in order:
+  //   - exact email (case-insensitive) → `alreadyExists`
+  //   - exact cif/dni (non-null)        → `alreadyExists`
+  //   - fuzzy name + apellido anchor    → `likely_duplicate`
+  //   - else                            → `valid` (or `invalid` if required fields missing)
+
+  /**
+   * Fetch the lite shape of all active clients for the company. Used by the
+   * wizard's matcher to classify CSV rows. RLS-safe (runs as the user).
+   */
+  async fetchClientsForMatcher(companyId: string): Promise<CustomerLite[]> {
+    const { data, error } = await this.supabase
+      .from('clients')
+      .select('id, name, surname, email, cif_nif, dni, company_id')
+      .eq('company_id', companyId)
+      .is('deleted_at', null);
+    if (error) {
+      console.error('[CustomerImportWizard] fetchClientsForMatcher error:', error);
+      throw error;
+    }
+    return (data ?? []) as CustomerLite[];
+  }
+
+  /**
+   * Classify a single CSV row against existing CRM clients. Returns:
+   *   - status: 'valid' | 'likely_duplicate' | 'alreadyExists' | 'invalid'
+   *   - candidates: match candidates (empty for 'valid' and 'alreadyExists')
+   *   - invalidFields: list of required fields that are missing/malformed
+   */
+  classifyCustomerRow(
+    row: CustomerCsvRow,
+    existingClients: CustomerLite[],
+  ): Pick<ClassifiedCustomerRow, 'status' | 'candidates' | 'invalidFields'> {
+    // Required-field validation first — invalid rows don't get matched.
+    const invalidFields: string[] = [];
+    // client_type is optional in the CSV — if missing, default to 'individual'.
+    // Only mark invalid if the value is PRESENT but not one of the whitelisted types.
+    const rawClientType = (row.clientType ?? '').toLowerCase().trim();
+    const validClientTypes = ['individual', 'business', 'self_employed', 'consumer'];
+    const clientType = validClientTypes.includes(rawClientType) ? rawClientType : 'individual';
+    if (row.clientType && rawClientType && !validClientTypes.includes(rawClientType)) {
+      // The CSV had a client_type value but it was unrecognised — that's a real error.
+      invalidFields.push('clientType');
+    }
+    // For individuals, name + surname are required. For businesses, business_name.
+    if (clientType === 'individual' || clientType === 'consumer' || clientType === 'self_employed') {
+      if (!row.firstName || !row.firstName.trim()) invalidFields.push('firstName');
+      if (!row.surname || !row.surname.trim()) invalidFields.push('surname');
+    } else if (clientType === 'business') {
+      if (!row.businessName || !row.businessName.trim()) invalidFields.push('businessName');
+    }
+    // Email is optional but if present must be roughly valid (an @).
+    if (row.email && row.email.trim() && !row.email.includes('@')) {
+      invalidFields.push('email');
+    }
+    if (invalidFields.length > 0) {
+      return { status: 'invalid', candidates: [], invalidFields };
+    }
+
+    // Pass 1: exact email match (case-insensitive, trimmed).
+    const emailMatch = matchCustomerByExactEmail(row.email, existingClients);
+    if (emailMatch) {
+      return {
+        status: 'alreadyExists',
+        candidates: [{
+          client: emailMatch,
+          jaccard: 1,
+          apellidoMatches: true,
+          source: 'exact' as const,
+        }],
+        invalidFields: [],
+      };
+    }
+
+    // Pass 2: exact cif/dni match (only if non-null/non-empty).
+    const cifMatch = matchCustomerByCifOrDni(row.cif, row.dni, existingClients);
+    if (cifMatch) {
+      return {
+        status: 'alreadyExists',
+        candidates: [{
+          client: cifMatch,
+          jaccard: 1,
+          apellidoMatches: true,
+          source: 'exact' as const,
+        }],
+        invalidFields: [],
+      };
+    }
+
+    // Pass 3: fuzzy name + apellido anchor.
+    // Only relevant for individuals (businesses match by cif_nif in Pass 2).
+    if (clientType === 'individual' || clientType === 'consumer' || clientType === 'self_employed') {
+      const fuzzy = matchCustomerByName(row.firstName, row.surname, existingClients);
+      if (fuzzy.length > 0) {
+        return {
+          status: 'likely_duplicate',
+          candidates: fuzzy,
+          invalidFields: [],
+        };
+      }
+    }
+    // Pass 4: no match anywhere → valid.
+    return { status: 'valid', candidates: [], invalidFields: [] };
+  }
+
+  /**
+   * Classify ALL rows of the wizard in one pass. Convenience wrapper around
+   * `classifyCustomerRow` for the dry-run step.
+   */
+  classifyAllCustomerRows(
+    rows: CustomerCsvRow[],
+    existingClients: CustomerLite[],
+  ): ClassifiedCustomerRow[] {
+    return rows.map((row) => ({
+      csv: row,
+      ...this.classifyCustomerRow(row, existingClients),
+    }));
+  }
+
+  /**
+   * Build the INSERT payloads from classified rows. Filters out:
+   *   - rows still `invalid` (user did not fix them)
+   *   - rows with resolution.choice === 'skip'
+   *   - rows with resolution.choice === 'link' (already exists, not creating)
+   *
+   * Returns one payload per row that should be CREATED.
+   */
+  buildCustomersForInsert(
+    classified: ClassifiedCustomerRow[],
+  ): CustomerInsertPayload[] {
+    const payloads: CustomerInsertPayload[] = [];
+    for (const r of classified) {
+      // Skip rows the user explicitly skipped.
+      if (r.resolution?.choice === 'skip') continue;
+      // Skip rows the user linked (already exists, no INSERT).
+      if (r.resolution?.choice === 'link') continue;
+      // Skip rows that are still invalid.
+      if (r.status === 'invalid') continue;
+      // Skip rows that are alreadyExists and have no override (user didn't force-create).
+      if (r.status === 'alreadyExists' && !r.resolution) continue;
+      // For valid + alreadyExists-with-create-override + likely_duplicate-with-create-override:
+      if (!r.csv) continue;
+      const csv = r.csv;
+      const clientType = (csv.clientType ?? 'individual').toLowerCase().trim();
+      const validClientTypes = ['individual', 'business', 'self_employed', 'consumer'];
+      const finalType = validClientTypes.includes(clientType)
+        ? (clientType as 'individual' | 'business' | 'self_employed' | 'consumer')
+        : 'individual';
+
+      payloads.push({
+        csvRowIndex: csv.rowIndex,
+        name: (csv.businessName ?? csv.firstName ?? '').trim() || 'Cliente',
+        surname: (csv.surname ?? '').trim() || null,
+        email: (csv.email ?? '').trim() || null,
+        phone: (csv.phone ?? '').trim() || null,
+        dni: (csv.dni ?? '').trim() || null,
+        client_type: finalType,
+        business_name: (csv.businessName ?? '').trim() || null,
+        cif_nif: (csv.cif ?? '').trim() || null,
+        trade_name: (csv.tradeName ?? '').trim() || null,
+        legal_representative_name: (csv.legalRepresentativeName ?? '').trim() || null,
+        legal_representative_dni: (csv.legalRepresentativeDni ?? '').trim() || null,
+        source: 'csv-wizard',
+        metadata: {
+          address: csv.address ?? '',
+          imported_at: new Date().toISOString(),
+        },
+      });
+    }
+    return payloads;
+  }
+
+  /**
+   * Import wizard-classified customers in chunks of N via the existing
+   * `import_customers_batch` RPC. The RPC captures unique-violation errors
+   * per row and returns them in the `errors` array; we translate those to
+   * `alreadyExists` so the wizard can count them correctly.
+   *
+   * Returns an Observable that emits progress events and completes with the
+   * final summary. Errors are emitted per-batch — a single bad row does not
+   * abort the whole import.
+   */
+  importCustomersWizard(
+    payloads: CustomerInsertPayload[],
+    batchSize = 50,
+  ): Observable<CustomerImportProgress> {
+    const totalCount = payloads.length;
+    let importedCount = 0;
+    let alreadyExistsCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    const allErrors: { rowIndex: number; errorCode: string; errorMessage: string }[] = [];
+
+    const progress$ = new Subject<CustomerImportProgress>();
+
+    const chunks: CustomerInsertPayload[][] = [];
+    for (let i = 0; i < totalCount; i += batchSize) {
+      chunks.push(payloads.slice(i, i + batchSize));
+    }
+
+    from(chunks)
+      .pipe(
+        concatMap((chunk, chunkIdx) =>
+          this.callImportCustomerWizardBatch(chunk).pipe(
+            tap((result) => {
+              importedCount += result.inserted.length;
+              alreadyExistsCount += result.alreadyExists;
+              const failedInBatch = result.errors.length;
+              failedCount += failedInBatch;
+              for (const err of result.errors) {
+                allErrors.push({
+                  rowIndex: err.csvRowIndex,
+                  errorCode: err.errorCode,
+                  errorMessage: err.errorMessage,
+                });
+              }
+              progress$.next({
+                importedCount,
+                alreadyExistsCount,
+                skippedCount,
+                failedCount,
+                totalCount,
+              });
+            }),
+            catchError((err) => {
+              // Hard RPC failure: count the whole chunk as failed but keep going.
+              const errorMessage = err?.message ?? String(err);
+              for (const row of chunk) {
+                allErrors.push({
+                  rowIndex: row.csvRowIndex,
+                  errorCode: 'rpc_failed',
+                  errorMessage,
+                });
+              }
+              failedCount += chunk.length;
+              progress$.next({
+                importedCount,
+                alreadyExistsCount,
+                skippedCount,
+                failedCount,
+                totalCount,
+                latestError: { rowIndex: chunk[0]?.csvRowIndex ?? -1, errorCode: 'rpc_failed', errorMessage },
+              });
+              return of(null); // swallow the error so the Subject keeps emitting for the next chunk
+            }),
+          )
+        ),
+        finalize(() => {
+          // Final emission with the latestError populated if there were errors.
+          progress$.next({
+            importedCount,
+            alreadyExistsCount,
+            skippedCount,
+            failedCount,
+            totalCount,
+            ...(allErrors.length > 0 ? { latestError: allErrors[allErrors.length - 1] } : {}),
+          });
+          progress$.complete();
+        }),
+      )
+      .subscribe();
+
+    return progress$.asObservable();
+  }
+
+  /**
+   * Single-batch import via the existing RPC. Translates unique_violation
+   * errors (23505) into `alreadyExists` so the wizard can count them.
+   */
+  private callImportCustomerWizardBatch(
+    batch: CustomerInsertPayload[],
+  ): Observable<{
+    inserted: { id: string; csvRowIndex: number }[];
+    alreadyExists: number;
+    errors: { csvRowIndex: number; errorCode: string; errorMessage: string }[];
+  }> {
+    return new Observable((observer) => {
+      if (batch.length === 0) {
+        observer.next({ inserted: [], alreadyExists: 0, errors: [] });
+        observer.complete();
+        return;
+      }
+      const payloadRows = batch.map((p) => ({
+        name: p.name,
+        surname: p.surname,
+        email: p.email,
+        phone: p.phone,
+        dni: p.dni,
+        client_type: p.client_type,
+        business_name: p.business_name,
+        cif_nif: p.cif_nif,
+        trade_name: p.trade_name,
+        metadata: p.metadata,
+        is_active: true,
+      }));
+      (async () => {
+        try {
+          const { data, error } = await this.supabase.rpc('import_customers_batch', {
+            p_rows: payloadRows,
+          });
+          if (error) {
+            observer.error(new Error(error.message || String(error)));
+            return;
+          }
+          const inserted: any[] = Array.isArray(data?.inserted) ? data.inserted : [];
+          const rpcErrors: any[] = Array.isArray(data?.errors) ? data.errors : [];
+
+          // Map inserted rows to their original CSV row indexes by position.
+          // The RPC returns inserted rows in the same order as the input,
+          // so we can correlate by index.
+          const insertedWithIndex = inserted.map((row: any, idx: number) => ({
+            id: row.id,
+            csvRowIndex: batch[idx]?.csvRowIndex ?? -1,
+          }));
+
+          // Translate unique_violation errors to alreadyExists; everything else is failed.
+          let alreadyExists = 0;
+          const errors: { csvRowIndex: number; errorCode: string; errorMessage: string }[] = [];
+          for (const err of rpcErrors) {
+            const errorMsg = String(err?.error ?? '');
+            const isUniqueViolation = /duplicate key|unique constraint|23505/i.test(errorMsg);
+            if (isUniqueViolation) {
+              alreadyExists += 1;
+            } else {
+              errors.push({
+                csvRowIndex: batch.find((_, i) => i === rpcErrors.indexOf(err))?.csvRowIndex ?? -1,
+                errorCode: 'insert_failed',
+                errorMessage: errorMsg,
+              });
+            }
+          }
+          observer.next({ inserted: insertedWithIndex, alreadyExists, errors });
+          observer.complete();
+        } catch (err: any) {
+          observer.error(err);
+        }
+      })();
+    });
   }
 }
