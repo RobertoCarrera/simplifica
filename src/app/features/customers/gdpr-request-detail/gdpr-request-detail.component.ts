@@ -246,44 +246,13 @@ export class GdprRequestDetailComponent {
                     case 'Dirección':
                     case 'Dirección Física':
                     case 'Dirección Fiscal':
-                        // Check if it has structured data tag [DATA:...]
-                        const dataMatch = line.match(/\[DATA:(.*?)\]/);
-                        if (dataMatch && dataMatch[1]) {
-                            const parts = dataMatch[1].split('|');
-                            if (parts.length === 8) {
-                                // [tipo, nombre, num, piso, puerta, cp, poblacion, provincia]
-                                updates.addressTipoVia = parts[0];
-                                updates.addressNombre = parts[1];
-                                updates.addressNumero = parts[2];
-                                updates.addressPiso = parts[3];
-                                updates.addressPuerta = parts[4];
-                                updates.addressCodigoPostal = parts[5];
-                                updates.addressPoblacion = parts[6];
-                                updates.addressProvincia = parts[7];
-                            } else if (parts.length === 7) {
-                                // Legacy without "puerta"
-                                updates.addressTipoVia = parts[0];
-                                updates.addressNombre = parts[1];
-                                updates.addressNumero = parts[2];
-                                updates.addressPiso = parts[3];
-                                updates.addressCodigoPostal = parts[4];
-                                updates.addressPoblacion = parts[5];
-                                updates.addressProvincia = parts[6];
-                            }
-                        } else {
-                            // No structured tag — try to split the single-string
-                            // address ("C/Segre 13, 3º3ª") into structured columns.
-                            const parsed = this.parseSpanishAddress(newValue);
-                            if (parsed) {
-                                updates.addressTipoVia = parsed.tipoVia;
-                                updates.addressNombre = parsed.nombre;
-                                updates.addressNumero = parsed.numero;
-                                updates.addressPiso = parsed.piso;
-                                updates.addressPuerta = parsed.puerta;
-                            } else {
-                                updates.address = newValue;
-                            }
-                        }
+                        // The `clients` table only has a single `address` text column —
+                        // it does NOT have structured `addressTipoVia` / `addressNombre` /
+                        // `addressNumero` / `addressPiso` / `addressPuerta` / ... columns.
+                        // Persist the raw string verbatim. The modal still renders the
+                        // parsed breakdown (tipo de vía, nombre, número, piso, puerta)
+                        // via `getAddressBreakdown`, which parses the value on the fly.
+                        updates.address = newValue;
                         break;
                     case 'Sitio Web':
                         updates.website = newValue;
