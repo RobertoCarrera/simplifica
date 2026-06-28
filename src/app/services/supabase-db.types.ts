@@ -3545,6 +3545,7 @@ export type Database = {
       }
       company_payment_config: {
         Row: {
+          api_key_encrypted: string | null
           company_id: string
           created_at: string
           currency: string
@@ -3554,12 +3555,15 @@ export type Database = {
           merchant_code: string | null
           merchant_name: string | null
           notify_url: string | null
+          paypal_client_id: string | null
           provider: string
           secret_key_encrypted: string | null
+          stripe_publishable_key: string | null
           terminal: string
           updated_at: string
         }
         Insert: {
+          api_key_encrypted?: string | null
           company_id: string
           created_at?: string
           currency?: string
@@ -3569,12 +3573,15 @@ export type Database = {
           merchant_code?: string | null
           merchant_name?: string | null
           notify_url?: string | null
+          paypal_client_id?: string | null
           provider?: string
           secret_key_encrypted?: string | null
+          stripe_publishable_key?: string | null
           terminal?: string
           updated_at?: string
         }
         Update: {
+          api_key_encrypted?: string | null
           company_id?: string
           created_at?: string
           currency?: string
@@ -3584,8 +3591,10 @@ export type Database = {
           merchant_code?: string | null
           merchant_name?: string | null
           notify_url?: string | null
+          paypal_client_id?: string | null
           provider?: string
           secret_key_encrypted?: string | null
+          stripe_publishable_key?: string | null
           terminal?: string
           updated_at?: string
         }
@@ -19409,6 +19418,33 @@ export type Database = {
           p_phone?: string
         }
         Returns: Json
+      }
+      upsert_company_payment_config: {
+        Args: { p_company_id: string; p_payload: Json }
+        Returns: {
+          api_key_encrypted: string | null
+          company_id: string
+          created_at: string
+          currency: string
+          enabled: boolean
+          environment: string
+          id: string
+          merchant_code: string | null
+          merchant_name: string | null
+          notify_url: string | null
+          paypal_client_id: string | null
+          provider: string
+          secret_key_encrypted: string | null
+          stripe_publishable_key: string | null
+          terminal: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "company_payment_config"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_user_module:
         | {
