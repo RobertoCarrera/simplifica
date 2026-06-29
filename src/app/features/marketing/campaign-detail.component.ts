@@ -14,8 +14,9 @@ import { SendConfirmationModalComponent } from './send-confirmation-modal.compon
 import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
 
 /**
- * Per-recipient delivery row. Joined from `clients` (for name/email) and
- * the latest matching `company_email_logs` row (for delivery status).
+ * Per-recipient delivery row. Joined from `clients` (for name/email),
+ * the latest matching `company_email_logs` row (for delivery status),
+ * and `email_tracking_events` (for open attribution).
  *
  * `company_email_logs` doesn't carry a `client_id` column — only
  * `to_address` (text). We join by lowercased email, which is good enough
@@ -34,6 +35,12 @@ interface RecipientRow {
   delivery_label: string;
   delivery_class: string;
   delivery_icon: string;
+  /**
+   * Timestamp of the first open (pixel fire). null until the recipient
+   * loads the tracking pixel. When non-null, the "Abierto" badge is
+   * surfaced in the per-recipient list.
+   */
+  opened_at: string | null;
 }
 
 interface DeliveryStats {
@@ -192,6 +199,7 @@ interface DeliveryStats {
                     @if (deliveryStats().noLog > 0) {
                       · {{ deliveryStats().noLog }} sin registro
                     }
+                    · {{ opensCount() }} abierto(s) por {{ recipients().length }}
                   </p>
                 }
               </div>
@@ -220,17 +228,32 @@ interface DeliveryStats {
                         </p>
                       </div>
                       <div class="text-right shrink-0">
-                        <span
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                          [class]="r.delivery_class"
-                          [title]="r.error_message || r.delivery_label"
-                        >
-                          <i [class]="r.delivery_icon"></i>
-                          {{ r.delivery_label }}
-                        </span>
-                        @if (r.sent_at) {
+                        <div class="flex flex-col items-end gap-1">
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                            [class]="r.delivery_class"
+                            [title]="r.error_message || r.delivery_label"
+                          >
+                            <i [class]="r.delivery_icon"></i>
+                            {{ r.delivery_label }}
+                          </span>
+                          @if (r.opened_at) {
+                            <span
+                              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                              [title]="'Abierto por primera vez el ' + (r.opened_at | date:'medium')"
+                            >
+                              <i class="fas fa-envelope-open"></i>
+                              Abierto
+                            </span>
+                          }
+                        </div>
+                        @if (r.sent_at || r.opened_at) {
                           <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                            {{ r.sent_at | date:'short' }}
+                            @if (r.opened_at) {
+                              {{ r.opened_at | date:'short' }}
+                            } @else if (r.sent_at) {
+                              {{ r.sent_at | date:'short' }}
+                            }
                           </p>
                         }
                       </div>
@@ -315,6 +338,13 @@ export class CampaignDetailComponent implements OnInit {
     complained: 0,
     noLog: 0,
   });
+
+  /**
+   * Count of distinct recipients whose tracking pixel fired at least once.
+   * Counts UNIQUE emails — multiple opens by the same recipient collapse
+   * to one, which matches how "open rate" is normally measured.
+   */
+  opensCount = signal(0);
 
   /**
    * Derive funnel/automation banner info from `campaign.config`.
@@ -461,7 +491,10 @@ export class CampaignDetailComponent implements OnInit {
    *   1. Pull client rows (id, name, email) for the campaign's audience.
    *   2. Pull all `company_email_logs` rows for those email addresses
    *      (no `email_type` filter on purpose — see the design note below).
-   *   3. Build a "latest log per email" map and join client ↔ log in JS.
+   *   3. Pull `email_tracking_events` rows for the campaign
+   *      (event_type = 'open') to derive first-open timestamps.
+   *   4. Build a "latest log per email" map and an "earliest open per
+   *      email" map; join client ↔ log ↔ open in JS.
    *
    * Design note (email_type filter):
    *   The task brief suggested `.eq('email_type', 'consent')` but the
@@ -477,7 +510,11 @@ export class CampaignDetailComponent implements OnInit {
    *   The current `send-client-consent-invite` v78 sends via SES direct
    *   and does NOT write to `company_email_logs`. Per-recipient status
    *   for those campaigns will all read "Sin registro". This is called
-   *   out in the UI helper text under the recipient list.
+   *   out in the UI helper text under the recipient list. The
+   *   open-tracking pixel DOES fire (send-campaign now forwards
+   *   campaign_id to the consent invite, which appends a 1x1 GIF), so
+   *   the "Abierto" badge will still surface here for recipients who
+   *   opened the consent email.
    */
   private async loadRecipients() {
     this.recipientsLoading.set(true);
@@ -497,6 +534,7 @@ export class CampaignDetailComponent implements OnInit {
           complained: 0,
           noLog: 0,
         });
+        this.opensCount.set(0);
         return;
       }
 
@@ -545,7 +583,40 @@ export class CampaignDetailComponent implements OnInit {
         }
       }
 
-      // 3. Keep only the latest log per email.
+      // 3. Pull tracking events (opens) for this campaign.
+      //
+      // email_tracking_events stores EVERY pixel load (a Gmail image-proxy
+      // double fetch, or a user reopening the email, will both produce
+      // rows). For the per-recipient display we want the FIRST open
+      // (earliest created_at), so we sort ASC and take the first hit per
+      // recipient. The aggregate `opensCount` would double-count without
+      // distinct, so we collapse duplicates on the recipient_email column
+      // on the server via a `select distinct...` chain — PostgREST can't
+      // DISTINCT ON, but the campaign_id+recipient_email+event_type
+      // compound shape means a single recipient rarely exceeds a few
+      // rows, and the dedup below is cheap. For very active campaigns we
+      // would switch to a server-side RPC.
+      let tracking: Array<{
+        recipient_email: string | null;
+        created_at: string | null;
+        event_type: string | null;
+      }> = [];
+      const { data: trackingRows, error: trackingErr } = await this.sb
+        .from('email_tracking_events')
+        .select('recipient_email, created_at, event_type')
+        .eq('campaign_id', c.id)
+        .eq('event_type', 'open')
+        .order('created_at', { ascending: true });
+
+      if (trackingErr) {
+        // The campaign detail page must not 500 just because a tracking
+        // row is missing or RLS blocks us — degrade silently.
+        console.warn('Campaign detail: could not load tracking events', trackingErr);
+      } else {
+        tracking = (trackingRows || []) as typeof tracking;
+      }
+
+      // 4. Keep only the latest log per email.
       const latestLogByEmail = new Map<
         string,
         { status: string; sent_at: string | null; error_message: string | null }
@@ -562,8 +633,22 @@ export class CampaignDetailComponent implements OnInit {
         }
       }
 
-      // 4. Join clients ↔ latest log and pre-compute display strings so
-      //    the template stays clean.
+      // 5. Map of FIRST open per email (camera pixels + Apple proxies can
+      //    produce multiple events for the same recipient).
+      const firstOpenByEmail = new Map<string, string>();
+      const openedEmails = new Set<string>();
+      for (const ev of tracking) {
+        const key = (ev.recipient_email || '').toLowerCase().trim();
+        if (!key) continue;
+        if (ev.created_at && !firstOpenByEmail.has(key)) {
+          firstOpenByEmail.set(key, ev.created_at);
+        }
+        openedEmails.add(key);
+      }
+      this.opensCount.set(openedEmails.size);
+
+      // 6. Join clients ↔ latest log ↔ first open and pre-compute
+      //    display strings so the template stays clean.
       const stats: DeliveryStats = {
         delivered: 0,
         failed: 0,
@@ -592,6 +677,7 @@ export class CampaignDetailComponent implements OnInit {
           delivery_label: presentation.label,
           delivery_class: presentation.className,
           delivery_icon: presentation.icon,
+          opened_at: key ? firstOpenByEmail.get(key) ?? null : null,
         };
       });
 

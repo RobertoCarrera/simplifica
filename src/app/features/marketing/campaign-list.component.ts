@@ -8,6 +8,7 @@ import {
   MarketingCampaign,
   MarketingClient,
 } from '../../services/supabase-marketing.service';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 import { ToastService } from '../../services/toast.service';
 import { SendConfirmationModalComponent } from './send-confirmation-modal.component';
 
@@ -120,7 +121,18 @@ import { SendConfirmationModalComponent } from './send-confirmation-modal.compon
                       </span>
                     </td>
                     <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                      {{ getAudienceCount(c) }} {{ 'marketing.clients' | transloco }}
+                      <div class="flex flex-col">
+                        <span>{{ getAudienceCount(c) }} {{ 'marketing.clients' | transloco }}</span>
+                        @if (opensCountFor(c) > 0) {
+                          <span
+                            class="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 w-fit"
+                            [title]="'Abierto por ' + opensCountFor(c) + ' de ' + getAudienceCount(c) + ' destinatario(s)'"
+                          >
+                            <i class="fas fa-envelope-open"></i>
+                            {{ opensCountFor(c) }}/{{ getAudienceCount(c) }} abiertos
+                          </span>
+                        }
+                      </div>
                     </td>
                     <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">
                       {{ c.created_at | date:'shortDate' }}
@@ -182,11 +194,25 @@ import { SendConfirmationModalComponent } from './send-confirmation-modal.compon
 export class CampaignListComponent implements OnInit {
   private marketingService = inject(SupabaseMarketingService);
   private toast = inject(ToastService);
+  private sb = inject(SupabaseClientService).instance;
 
   loading = signal(true);
   campaigns = signal<MarketingCampaign[]>([]);
   statusFilter = 'all';
   typeFilter = 'all';
+
+  /**
+   * Open counts keyed by campaign_id. Sourced from
+   * `public.email_tracking_events` (event_type='open'). We count
+   * DISTINCT recipient_email per campaign so multiple opens by the same
+   * recipient collapse to one — matches how "open rate" is normally
+   * measured in marketing tools.
+   *
+   * Loaded once per `loadCampaigns()` call (the campaign list doesn't
+   * paginate here, but the underlying query is bounded by the number of
+   * campaigns on screen — typically <100).
+   */
+  opensByCampaign = signal<Map<string, number>>(new Map());
 
   /** Personalized confirmation modal state (mirrors campaign-detail's flow). */
   showSendModal = signal(false);
@@ -207,17 +233,67 @@ export class CampaignListComponent implements OnInit {
   async loadCampaigns() {
     this.loading.set(true);
     try {
-      this.campaigns.set(
-        await this.marketingService.getCampaigns({
-          status: this.statusFilter,
-          type: this.typeFilter,
-        }),
+      const list = await this.marketingService.getCampaigns({
+        status: this.statusFilter,
+        type: this.typeFilter,
+      });
+      this.campaigns.set(list);
+      // Fire-and-forget: fetch the per-campaign aggregate opens AFTER the
+      // campaign rows paint so the table isn't gated on the slow query.
+      this.loadOpenCounts(list).catch((err) =>
+        console.warn('Campaign list: could not load open counts', err),
       );
     } catch (err) {
       console.warn('Campaign list: could not load campaigns', err);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Compute per-campaign unique-opens in a single round-trip and project
+   * it into a Map so the template can look up an open count per row in
+   * O(1). We fetch raw `email_tracking_events` rows for the visible
+   * campaign IDs and dedupe in JS — PostgREST can't DISTINCT ON but the
+   * visible campaign list is bounded (<100 rows in normal use), so this
+   * is fine.
+   */
+  private async loadOpenCounts(rows: MarketingCampaign[]): Promise<void> {
+    const ids = rows.map((c) => c.id).filter(Boolean);
+    if (ids.length === 0) {
+      this.opensByCampaign.set(new Map());
+      return;
+    }
+    try {
+      const { data, error } = await this.sb
+        .from('email_tracking_events')
+        .select('campaign_id, recipient_email')
+        .eq('event_type', 'open')
+        .in('campaign_id', ids);
+      if (error) throw error;
+      const map = new Map<string, Set<string>>();
+      for (const ev of (data || []) as Array<{
+        campaign_id: string | null;
+        recipient_email: string | null;
+      }>) {
+        if (!ev.campaign_id || !ev.recipient_email) continue;
+        const set = map.get(ev.campaign_id) ?? new Set<string>();
+        set.add(ev.recipient_email.toLowerCase().trim());
+        map.set(ev.campaign_id, set);
+      }
+      const out = new Map<string, number>();
+      for (const [cid, set] of map) out.set(cid, set.size);
+      this.opensByCampaign.set(out);
+    } catch (err) {
+      console.warn('Campaign list: could not load open counts', err);
+      this.opensByCampaign.set(new Map());
+    }
+  }
+
+  /** O(1) lookup of the open count for a campaign row. Returns 0 when
+   *  the count hasn't loaded yet or the campaign has no opens. */
+  opensCountFor(campaign: MarketingCampaign): number {
+    return this.opensByCampaign().get(campaign.id) ?? 0;
   }
 
   getAudienceCount(campaign: MarketingCampaign): number {
