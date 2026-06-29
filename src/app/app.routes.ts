@@ -392,6 +392,18 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
 
+  // Email templates editor (owner/admin). Focused page for editing
+  // the subject + body + button text for each transactional email type.
+  // See features/settings/email-templates/email-templates.component.ts
+  {
+    path: "settings/email-templates",
+    loadComponent: () =>
+      import("./features/settings/email-templates/email-templates.component").then(
+        (m) => m.EmailTemplatesComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+
   // Inbound mail admin (superadmin only)
   {
     path: "admin/inbound-mail",
