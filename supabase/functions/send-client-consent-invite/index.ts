@@ -72,7 +72,12 @@ serve(async (req) => {
         //     auth check (the service-role JWT cannot satisfy getUser()).
         let _body: any = {};
         try { _body = await req.json(); } catch { /* body may be empty for OPTIONS */ }
-        const { client_id, _service_context } = _body;
+        // campaign_id is OPTIONAL — only forwarded by the send-campaign
+        // orchestrator. When present, we append a 1x1 tracking pixel to the
+        // HTML body so this consent invite can be measured for opens. We
+        // never block the send when the pixel can't be added (e.g. invalid
+        // campaign id) — tracking is best-effort.
+        const { client_id, _service_context, campaign_id } = _body;
 
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
@@ -272,6 +277,37 @@ serve(async (req) => {
           ? interpolateSafe(settings.custom_body_template, templateVars)
           : defaultBody;
 
+        // Append a 1x1 tracking pixel ONLY when the caller passed a
+        // campaign_id (i.e. this invite is being sent as part of a
+        // marketing campaign and the sender wants open attribution).
+        //
+        // The pixel URL points to the email-tracking Edge Function which
+        // records the open event in public.email_tracking_events. We keep
+        // it at the end of the document so it doesn't visually shift any
+        // content even when image rendering is blocked (mail clients
+        // collapse broken <img> tags).
+        //
+        // token = the invitation_token the function just persisted on
+        // clients. It is unused for now (the email-tracking table schema
+        // already has an event_data column to hold it) but is reserved
+        // so a future signed-URL protection pass can verify it without
+        // changing call sites here.
+        let trackingPixel = '';
+        if (campaign_id && typeof campaign_id === 'string' &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaign_id)) {
+          const functionBase =
+            Deno.env.get('EMAIL_TRACKING_FUNCTION_URL') ??
+            `${Deno.env.get('SUPABASE_URL') ?? 'https://ufutyjbqfjrlzkprvyvs.supabase.co'}/functions/v1/email-tracking`;
+          const trackingUrl =
+            `${functionBase}/track/open?cid=${encodeURIComponent(campaign_id)}` +
+            `&e=${encodeURIComponent(client.email)}` +
+            `&t=${encodeURIComponent(token)}`;
+          trackingPixel =
+            `<img src="${trackingUrl}" width="1" height="1" alt="" ` +
+            `style="display:block;border:0;width:1px;height:1px;" />`;
+        }
+        const finalHtmlBody = htmlBody + trackingPixel;
+
         const aws = new AwsClient({
           accessKeyId: AWS_ACCESS_KEY_ID,
           secretAccessKey: AWS_SECRET_ACCESS_KEY,
@@ -284,7 +320,7 @@ serve(async (req) => {
         params_.append('Source', fromEmail);
         params_.append('Destination.ToAddresses.member.1', client.email);
         params_.append('Message.Subject.Data', subject);
-        params_.append('Message.Body.Html.Data', htmlBody);
+        params_.append('Message.Body.Html.Data', finalHtmlBody);
 
         const response = await aws.fetch(`https://email.${REGION}.amazonaws.com`, {
           method: 'POST',
