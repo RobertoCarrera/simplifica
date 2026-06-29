@@ -4,11 +4,12 @@ import { firstValueFrom } from 'rxjs';
 import { CompanyEmailService } from '../../../services/company-email.service';
 import { ToastService } from '../../../services/toast.service';
 import { EmailType, EMAIL_TYPE_LABELS } from '../../../models/company-email.models';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 @Component({
   selector: 'app-email-preview',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SafeHtmlPipe],
   templateUrl: './email-preview.component.html',
   styleUrls: ['./email-preview.component.scss'],
 })

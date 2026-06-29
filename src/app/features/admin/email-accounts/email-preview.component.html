@@ -27,11 +27,19 @@
           </div>
         </div>
       } @else {
-        <!-- Email Preview Container -->
+        <!-- Email Preview Container.
+             We pipe the HTML through SafeHtmlPipe which:
+               1. Sanitizes via DOMPurify against a strict allow-list (drops
+                  <script>, <style>, event handlers, javascript: URLs).
+               2. Bypasses Angular's default SecurityContext.HTML sanitizer
+                  (which strips <style> tags and many style attributes that
+                  legitimate admin-authored email templates need).
+             Without this, [innerHTML]="<plain-string>" silently strips the
+             embedded styles so the preview shows raw HTML. -->
         <div class="bg-gray-100 dark:bg-slate-900 rounded-lg p-4">
           <div
             class="bg-white rounded-lg shadow-lg overflow-hidden max-w-full"
-            [innerHTML]="htmlContent()"
+            [innerHTML]="htmlContent() | safeHtml"
           ></div>
         </div>
       }
