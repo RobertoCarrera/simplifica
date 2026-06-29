@@ -3929,9 +3929,15 @@ async function handleImportClients(serviceClient: any, companyId: string) {
         }
       }
 
-      // Link booking to client
+      // Link booking to client (idempotent: skip if already linked)
+      // Rafter ops v0.52: added .neq('client_id', clientId) so the UPDATE
+      // is a no-op when client_id is already set. Eliminates 20k redundant
+      // UPDATEs/24h from the */15 * * * * cron.
       if (clientId) {
-        const { error: updateErr } = await serviceClient.from('bookings').update({ client_id: clientId, updated_at: new Date().toISOString() }).eq('id', b.id);
+        const { error: updateErr } = await serviceClient.from('bookings')
+          .update({ client_id: clientId })
+          .eq('id', b.id)
+          .neq('client_id', clientId);
         if (updateErr) {
           errors.push(`Booking ${b.id}: link failed - ${updateErr.message}`);
         } else {
