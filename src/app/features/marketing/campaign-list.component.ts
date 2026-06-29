@@ -74,10 +74,10 @@ import { ToastService } from '../../services/toast.service';
                 <tr>
                   <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.campaignName' | transloco }}</th>
                   <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.type' | transloco }}</th>
-                  <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.status' | transloco }}</th>
+                  <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.statusLabel' | transloco }}</th>
                   <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ 'marketing.audience' | transloco }}</th>
                   <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ 'marketing.created' | transloco }}</th>
-                  <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.actions' | transloco }}</th>
+                  <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">{{ 'marketing.actionsLabel' | transloco }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
