@@ -34,7 +34,7 @@ import { LocalitiesService } from '../../services/localities.service';
           <div class="ml-auto flex items-center gap-2">
             <button
               (click)="save()"
-               [disabled]="saving() || !form.name || !form.content || (includeWithoutConsent() && !legalVerified())"
+               [disabled]="saving() || !form.name || (contentRequired() && !form.content) || (includeWithoutConsent() && !legalVerified())"
                class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
             >
               <i class="fas" [class.fa-save]="!saving()" [class.fa-spinner]="saving()" [class.fa-spin]="saving()"></i>
@@ -109,7 +109,10 @@ import { LocalitiesService } from '../../services/localities.service';
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {{ 'marketing.content' | transloco }} *
+                {{ 'marketing.content' | transloco }}
+                @if (contentRequired()) {
+                  <span class="text-red-500">*</span>
+                }
               </label>
               <button
                 type="button"
@@ -126,9 +129,16 @@ import { LocalitiesService } from '../../services/localities.service';
               [placeholder]="'marketing.contentPlaceholder' | transloco"
               [companyId]="auth.currentCompanyId()"
             ></app-tiptap-editor>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Las variables como {{ '{{client_name}}' }} se reemplazan al enviar. Puedes insertar imágenes usando el editor.
-            </p>
+            @if (includeWithoutConsent()) {
+              <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                <i class="fas fa-info-circle mr-1"></i>
+                {{ 'marketing.contentIgnoredHint' | transloco }}
+              </p>
+            } @else {
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Las variables como {{ '{{client_name}}' }} se reemplazan al enviar. Puedes insertar imágenes usando el editor.
+              </p>
+            }
           </div>
 
           <!-- Target Audience -->
@@ -779,6 +789,15 @@ export class CampaignFormComponent implements OnInit {
   legalAcceptText = signal('');
   legalVerified = signal(false);  // True after "Comprobar" passes
 
+  /**
+   * Content is only required for normal marketing campaigns. When the user toggles
+   * "incluir clientes sin consentimiento" the send is routed through
+   * `send-client-consent-invite`, which ignores `form.content` and uses the
+   * system's RGPD informational template instead. In that mode the content field
+   * becomes OPTIONAL so the user is not blocked by a field that would never be used.
+   */
+  contentRequired = computed(() => !this.includeWithoutConsent());
+
   selectAll = computed(() => {
     const clients = this.audienceClients();
     return clients.length > 0 && clients.every((c) => this.selectedIds().has(c.id));
@@ -999,7 +1018,8 @@ export class CampaignFormComponent implements OnInit {
   }
 
   async save() {
-    if (!this.form.name || !this.form.content) return;
+    if (!this.form.name) return;
+    if (this.contentRequired() && !this.form.content) return;
 
     // If including clients without consent, must have passed legal verification
     if (this.includeWithoutConsent() && !this.legalVerified()) {

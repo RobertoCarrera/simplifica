@@ -3063,6 +3063,7 @@
     "subjectPlaceholder": "Asunto del email",
     "content": "Contenido",
     "contentPlaceholder": "Escribe el contenido de la campaña aquí...",
+    "contentIgnoredHint": "Este contenido se ignorará en el envío. El email usará la plantilla RGPD informativa del sistema.",
     "schedule": "Programar envío",
     "scheduleHint": "Dejar vacío para envío manual",
     "targetAudience": "Audiencia objetivo",
