@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { MailAccount } from '../../../../core/interfaces/webmail.interface';
 import { MailAccountService } from '../../services/mail-account.service';
 import { AuthService } from '../../../../services/auth.service';
