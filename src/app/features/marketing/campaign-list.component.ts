@@ -6,13 +6,15 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import {
   SupabaseMarketingService,
   MarketingCampaign,
+  MarketingClient,
 } from '../../services/supabase-marketing.service';
 import { ToastService } from '../../services/toast.service';
+import { SendConfirmationModalComponent } from './send-confirmation-modal.component';
 
 @Component({
   selector: 'app-campaign-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe],
+  imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe, SendConfirmationModalComponent],
   template: `
     <div class="space-y-4">
       <!-- Toolbar -->
@@ -128,8 +130,10 @@ import { ToastService } from '../../services/toast.service';
                         @if (c.status === 'draft') {
                           <button
                             (click)="sendNow(c.id)"
-                            class="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                            [disabled]="sending()"
+                            class="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
                             [title]="'marketing.sendNow' | transloco"
+                            data-testid="quick-send-btn"
                           >
                             <i class="fas fa-paper-plane"></i>
                           </button>
@@ -157,6 +161,21 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
       }
+
+      <!-- Personalized send confirmation modal (quick-send row action). -->
+      @if (showSendModal() && selectedCampaign()) {
+        <app-send-confirmation-modal
+          [campaignName]="selectedCampaign()!.name"
+          [audienceCount]="modalAudienceCount()"
+          [audienceNames]="audienceNames()"
+          [isConsentMigration]="isConsentMigration()"
+          [subject]="selectedCampaign()!.subject || ''"
+          [contentPreview]="contentPreview()"
+          [contentPreviewWasTruncated]="contentPreviewWasTruncated()"
+          (confirmed)="onSendConfirmed()"
+          (cancelled)="showSendModal.set(false)"
+        />
+      }
     </div>
   `,
 })
@@ -168,6 +187,18 @@ export class CampaignListComponent implements OnInit {
   campaigns = signal<MarketingCampaign[]>([]);
   statusFilter = 'all';
   typeFilter = 'all';
+
+  /** Personalized confirmation modal state (mirrors campaign-detail's flow). */
+  showSendModal = signal(false);
+  sending = signal(false);
+  selectedCampaign = signal<MarketingCampaign | null>(null);
+  modalAudienceCount = signal(0);
+  audienceNames = signal<string[]>([]);
+  contentPreview = signal('');
+  contentPreviewWasTruncated = signal(false);
+
+  /** True when the campaign was flagged as a consent-migration send. */
+  isConsentMigration = signal(false);
 
   async ngOnInit() {
     await this.loadCampaigns();
@@ -193,11 +224,63 @@ export class CampaignListComponent implements OnInit {
     return campaign.target_audience?.client_ids?.length ?? 0;
   }
 
+  /**
+   * Quick-send handler bound to the row's green paper-plane icon.
+   *
+   * Replaces the previous native `confirm()` dialog with the personalized
+   * `SendConfirmationModalComponent`. The list row only carries summary data,
+   * so we fetch the full campaign first to resolve recipient names, the
+   * consent-migration flag and the content preview the modal needs.
+   */
   async sendNow(campaignId: string) {
-    if (!confirm('¿Estás seguro de que quieres enviar esta campaña ahora?')) return;
+    if (this.sending()) return;
 
     try {
-      const result = await this.marketingService.sendCampaign(campaignId);
+      const full = await this.marketingService.getCampaign(campaignId);
+      if (!full) {
+        this.toast.error('Error', 'No se pudo cargar la campaña');
+        return;
+      }
+
+      this.selectedCampaign.set(full);
+      this.modalAudienceCount.set(full.target_audience?.client_ids?.length ?? 0);
+      this.isConsentMigration.set(full.config?.['is_onboarding_email'] === true);
+
+      const ids = full.target_audience?.client_ids || [];
+      if (ids.length > 0) {
+        const names = await this.resolveRecipientNames(ids);
+        this.audienceNames.set(names.slice(0, 5));
+      } else {
+        this.audienceNames.set([]);
+      }
+
+      // Truncate content for the marketing-mode preview (first 200 chars).
+      const raw = full.content || '';
+      const TRUNCATE_AT = 200;
+      this.contentPreviewWasTruncated.set(raw.length > TRUNCATE_AT);
+      this.contentPreview.set(
+        raw.length > TRUNCATE_AT ? raw.slice(0, TRUNCATE_AT) : raw,
+      );
+
+      this.showSendModal.set(true);
+    } catch (err: any) {
+      this.toast.error('Error', err.message || 'No se pudo preparar el envío');
+    }
+  }
+
+  /**
+   * Called when the user confirms the modal. Performs the actual
+   * `send-campaign` Edge Function invocation and reloads the list so the
+   * row flips from "draft" to "sent".
+   */
+  async onSendConfirmed() {
+    const c = this.selectedCampaign();
+    if (!c) return;
+
+    this.showSendModal.set(false);
+    this.sending.set(true);
+    try {
+      const result = await this.marketingService.sendCampaign(c.id);
       this.toast.success(
         'Campaña enviada',
         `${result.sent} emails enviados${result.failed > 0 ? `, ${result.failed} fallidos` : ''}`,
@@ -205,7 +288,48 @@ export class CampaignListComponent implements OnInit {
       await this.loadCampaigns();
     } catch (err: any) {
       this.toast.error('Error', err.message || 'No se pudo enviar la campaña');
+    } finally {
+      this.sending.set(false);
     }
+  }
+
+  /**
+   * Resolve display names for the audience IDs. Duplicates the same helper
+   * from `campaign-detail.component.ts` because the detail page is out of
+   * scope for this change and no shared utility exists yet. When the row's
+   * audience mixes consent-migration clients with active consented clients,
+   * we fall back from `getClientsWithConsent()` → `getAllActiveClients()` so
+   * every recipient has a name when possible.
+   */
+  private async resolveRecipientNames(ids: string[]): Promise<string[]> {
+    const wanted = new Set(ids);
+    const found = new Map<string, string>();
+
+    const collect = async (clients: MarketingClient[]) => {
+      for (const cl of clients) {
+        if (wanted.has(cl.id) && !found.has(cl.id)) {
+          const full = `${cl.name ?? ''} ${cl.surname ?? ''}`.trim();
+          if (full) found.set(cl.id, full);
+        }
+      }
+    };
+
+    try {
+      const consented = await this.marketingService.getClientsWithConsent();
+      await collect(consented);
+      if (found.size < wanted.size) {
+        const active = await this.marketingService.getAllActiveClients();
+        await collect(active);
+      }
+    } catch (err) {
+      console.warn('Campaign list: could not resolve recipient names', err);
+    }
+
+    // Preserve the order of the audience IDs so the preview matches what
+    // the user actually selected in the campaign form.
+    return ids
+      .map((id) => found.get(id))
+      .filter((name): name is string => Boolean(name));
   }
 
   async deleteCampaign(campaign: MarketingCampaign) {
