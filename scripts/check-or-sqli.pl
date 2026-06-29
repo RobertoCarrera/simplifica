@@ -68,14 +68,16 @@ sub check_file {
       next if $var =~ /^profile\.[a-zA-Z_]+$/;
       # Allow: typed union literal (e.g. scope: 'clients' | 'tickets' | 'services')
       next if $var =~ /^scope$/;
-      # Allow: variable assigned via escape function in the prior 5 lines (most recent assignment)
+      # Allow: variable assigned via escape function in the prior 15 lines
+      # (Rafter v0.54: bumped from 5 to 15 because real code has comments
+      # and blank lines between the assignment and the .or() call).
       my $assigned_line;
       for my $a (@assignments) {
         next unless $a->[1] eq $var;
         next if $a->[0] >= $or_line;
         $assigned_line = $a->[0] if !defined($assigned_line) || $a->[0] > $assigned_line;
       }
-      next if defined($assigned_line) && ($or_line - $assigned_line) <= 5;
+      next if defined($assigned_line) && ($or_line - $assigned_line) <= 15;
       # Allow: if the SAME .or() block has escapeOrFilterValue/escapeLike call
       next if $body =~ /escapeOrFilterValue\(|escapeLike\(/;
       push @violations, "$rel:$or_line: .or(\${$var}) (user input without escapeOrFilterValue)";
