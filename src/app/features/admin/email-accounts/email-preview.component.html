@@ -36,9 +36,19 @@
                   legitimate admin-authored email templates need).
              Without this, [innerHTML]="<plain-string>" silently strips the
              embedded styles so the preview shows raw HTML. -->
-        <div class="bg-gray-100 dark:bg-slate-900 rounded-lg p-4">
+        <!-- Email preview area.
+             Theme adaptation strategy (same approach Gmail / Outlook use
+             in dark mode): the SURROUNDING modal adapts to the app's
+             ThemeService via Tailwind's dark: variant, but the EMAIL
+             itself always renders on a light backdrop. Emails are designed
+             for white backgrounds — their templates assume dark text on a
+             light surface, so forcing them into a dark background via CSS
+             filter invert produces unreadable results. The light card is
+             INTENTIONAL: it's the "paper" inside the email envelope. -->
+        <div class="rounded-lg p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 transition-colors">
           <div
-            class="bg-white rounded-lg shadow-lg overflow-hidden max-w-full"
+            class="rounded shadow-sm overflow-auto max-w-full p-4
+                   bg-slate-100 transition-colors"
             [innerHTML]="htmlContent() | safeHtml"
           ></div>
         </div>
