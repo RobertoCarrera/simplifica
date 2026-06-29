@@ -1,0 +1,117 @@
+<div class="space-y-4">
+  <!-- Counts header -->
+  <div class="flex flex-wrap items-center gap-3 px-3 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm">
+    <span class="inline-flex items-center gap-1">
+      <i class="fas fa-question-circle text-amber-600"></i>
+      <strong>{{ duplicateCount() }}</strong> {{ 'customerImport.resolution.duplicates' | transloco }}
+    </span>
+    <span class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+      <i class="fas fa-check"></i>
+      <strong>{{ resolvedCount() }}</strong> {{ 'customerImport.resolution.resolved' | transloco }}
+    </span>
+    <span *ngIf="unresolvedCount() > 0" class="inline-flex items-center gap-1 text-red-700 dark:text-red-300">
+      <i class="fas fa-exclamation-circle"></i>
+      <strong>{{ unresolvedCount() }}</strong> {{ 'customerImport.resolution.unresolved' | transloco }}
+    </span>
+  </div>
+
+  <!-- One card per ⚠️ row -->
+  <div *ngFor="let row of _rows(); trackBy: trackRow"
+       class="border border-amber-200 dark:border-amber-700 rounded-lg overflow-hidden">
+
+    <!-- Row header -->
+    <div class="flex items-center justify-between px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700">
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Fila {{ row.csv.rowIndex }}</span>
+        <span class="font-medium text-gray-900 dark:text-white">
+          {{ row.csv.firstName ?? '' }} {{ row.csv.surname ?? '' }}
+        </span>
+        <span *ngIf="row.csv.email" class="text-xs text-gray-500 dark:text-gray-400">
+          · {{ row.csv.email }}
+        </span>
+      </div>
+      <div *ngIf="row.resolution" class="text-xs text-emerald-700 dark:text-emerald-300">
+        <i class="fas fa-check-circle"></i>
+        {{ row.resolution.choice }}
+      </div>
+    </div>
+
+    <!-- Candidates -->
+    <div class="p-4 space-y-3 text-sm">
+      <p class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+        {{ 'customerImport.resolution.candidatesLabel' | transloco: { count: row.candidates.length } }}
+      </p>
+      <ul class="space-y-2 max-h-40 overflow-y-auto">
+        <li *ngFor="let c of row.candidates"
+            class="flex items-center justify-between gap-3 border border-gray-100 dark:border-gray-700 rounded p-2">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 dark:text-white truncate">
+              {{ c.client.name }} {{ c.client.surname ?? '' }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {{ c.client.email ?? '—' }}
+              <span *ngIf="c.client.cif_nif"> · {{ c.client.cif_nif }}</span>
+              <span *ngIf="c.client.dni"> · {{ c.client.dni }}</span>
+            </div>
+            <div class="text-[11px] text-amber-700 dark:text-amber-300 italic">
+              {{ 'customerImport.resolution.jaccardLabel' | transloco: { score: c.jaccard } }}
+            </div>
+          </div>
+          <button type="button"
+                  (click)="pickLink(row, c)"
+                  [disabled]="!!row.resolution"
+                  class="shrink-0 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50">
+            <i class="fas fa-link mr-1"></i>
+            {{ 'customerImport.resolution.vincular' | transloco }}
+          </button>
+        </li>
+      </ul>
+
+      <!-- Bulk decision checkbox (only when 2+ rows share the email) -->
+      <div *ngIf="countEmailDuplicates(row, row.csv.rowIndex) > 0"
+           class="border-t border-gray-100 dark:border-gray-700 pt-3">
+        <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+          <input type="checkbox"
+                 [checked]="isBroadcast(row.csv.rowIndex)"
+                 (change)="setBroadcast(row.csv.rowIndex, $any($event.target).checked)">
+          <span>
+            {{ 'customerImport.resolution.bulkEmailCheckbox' | transloco: { count: countEmailDuplicates(row, row.csv.rowIndex) } }}
+          </span>
+        </label>
+      </div>
+
+      <!-- Bottom action row: Crear / Saltar -->
+      <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+        <button type="button"
+                (click)="pickCreate(row)"
+                [disabled]="!!row.resolution"
+                class="text-xs px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 disabled:opacity-50">
+          <i class="fas fa-plus mr-1"></i>
+          {{ 'customerImport.resolution.crear' | transloco }}
+        </button>
+        <button type="button"
+                (click)="pickSkip(row)"
+                [disabled]="row.resolution?.choice === 'skip'"
+                class="text-xs px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">
+          <i class="fas fa-forward mr-1"></i>
+          {{ 'customerImport.resolution.saltar' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="flex items-center justify-between pt-2">
+    <button type="button"
+            (click)="onBack()"
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded text-sm">
+      {{ 'customerImport.resolution.back' | transloco }}
+    </button>
+    <button type="button"
+            (click)="onContinue()"
+            [disabled]="unresolvedCount() > 0"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed">
+      {{ 'customerImport.resolution.continue' | transloco }}
+    </button>
+  </div>
+</div>

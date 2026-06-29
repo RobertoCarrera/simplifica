@@ -1,0 +1,218 @@
+<div class="space-y-4">
+  <!-- Header counts -->
+  <div class="flex flex-wrap items-center gap-3 px-3 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm">
+    <span class="inline-flex items-center gap-1">
+      <i class="fas fa-check-circle text-emerald-600"></i>
+      <strong>{{ validCount() }}</strong> {{ 'customerImport.dryRun.valid' | transloco }}
+    </span>
+    <span *ngIf="duplicateCount() > 0" class="inline-flex items-center gap-1">
+      <i class="fas fa-question-circle text-amber-600"></i>
+      <strong>{{ duplicateCount() }}</strong> {{ 'customerImport.dryRun.likelyDuplicate' | transloco }}
+    </span>
+    <span *ngIf="alreadyExistsCount() > 0" class="inline-flex items-center gap-1">
+      <i class="fas fa-link text-gray-500"></i>
+      <strong>{{ alreadyExistsCount() }}</strong> {{ 'customerImport.dryRun.alreadyExists' | transloco }}
+    </span>
+    <span *ngIf="invalidCount() > 0" class="inline-flex items-center gap-1">
+      <i class="fas fa-times-circle text-red-600"></i>
+      <strong>{{ invalidCount() }}</strong> {{ 'customerImport.dryRun.invalid' | transloco }}
+    </span>
+    <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">
+      {{ 'customerImport.dryRun.total' | transloco: { count: totalCount() } }}
+    </span>
+  </div>
+
+  <!-- Edit hint -->
+  <p class="text-xs text-gray-600 dark:text-gray-400 italic">
+    {{ 'customerImport.dryRun.editHint' | transloco }}
+  </p>
+
+  <!-- Table -->
+  <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-800/50">
+        <tr>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">#</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.name' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.surname' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.email' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.phone' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.city' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.postalCode' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.country' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.cif' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.dni' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.type' | transloco }}</th>
+          <th class="px-2 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.status' | transloco }}</th>
+          <th class="px-2 py-2 text-right text-xs font-semibold text-gray-600 dark:text-gray-300">{{ 'customerImport.dryRun.col.actions' | transloco }}</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        <tr *ngFor="let row of _rows(); trackBy: trackRow"
+            [ngClass]="{'bg-red-50 dark:bg-red-900/10': row.status === 'invalid'}">
+          <td class="px-2 py-1 text-xs text-gray-500">{{ row.csv.rowIndex }}</td>
+
+          <!-- Inline edit for invalid rows, plain text for valid ones -->
+          <ng-container *ngIf="row.status === 'invalid'; else readOnly">
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.firstName ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'firstName', $event)"
+                     [placeholder]="'customerImport.dryRun.inlineEditPlaceholder' | transloco"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.surname ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'surname', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="email"
+                     [ngModel]="row.csv.email ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'email', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="tel"
+                     [ngModel]="row.csv.phone ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'phone', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.addressCity ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'addressCity', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.addressPostalCode ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'addressPostalCode', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.addressCountry ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'addressCountry', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.cif ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'cif', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <input type="text"
+                     [ngModel]="row.csv.dni ?? ''"
+                     (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'dni', $event)"
+                     class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+            </td>
+            <td class="px-2 py-1">
+              <select [ngModel]="row.csv.clientType ?? ''"
+                      (ngModelChange)="onFieldChanged(row.csv.rowIndex, 'clientType', $event)"
+                      class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                <option value="">{{ 'customerImport.dryRun.typeSelect' | transloco }}</option>
+                <option value="individual">{{ 'customerImport.clientType.individual' | transloco }}</option>
+                <option value="business">{{ 'customerImport.clientType.business' | transloco }}</option>
+                <option value="self_employed">{{ 'customerImport.clientType.selfEmployed' | transloco }}</option>
+                <option value="consumer">{{ 'customerImport.clientType.consumer' | transloco }}</option>
+              </select>
+            </td>
+          </ng-container>
+          <ng-template #readOnly>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.firstName ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.surname ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.email ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.phone ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.addressCity ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.addressPostalCode ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.addressCountry ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.cif ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.dni ?? '—' }}</td>
+            <td class="px-2 py-1 text-gray-900 dark:text-gray-100">{{ row.csv.clientType ?? '—' }}</td>
+          </ng-template>
+
+          <td class="px-2 py-1">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
+                  [ngClass]="statusClass(row.status)">
+              <i class="fas" [ngClass]="statusIcon(row.status)"></i>
+              {{ statusLabel(row.status) | transloco }}
+            </span>
+            <!-- Existing match (alreadyExists or likely_duplicate): show the
+                 matched CRM client name inline so the user can verify manually. -->
+            <div *ngIf="row.status === 'alreadyExists' && existingClientLabel(row) as existingLabel"
+                 class="mt-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[180px]"
+                 [title]="existingLabel">
+              <i class="fas fa-link text-gray-500 mr-1"></i>
+              <span class="italic">{{ 'customerImport.dryRun.existingMatch' | transloco }}</span>
+              <strong class="block truncate text-gray-900 dark:text-gray-100">{{ existingLabel }}</strong>
+            </div>
+            <div *ngIf="row.status === 'likely_duplicate' && existingClientLabel(row) as dupLabel"
+                 class="mt-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[180px]"
+                 [title]="dupLabel">
+              <i class="fas fa-question-circle text-amber-500 mr-1"></i>
+              <span class="italic">{{ 'customerImport.dryRun.possibleDuplicate' | transloco }}</span>
+              <strong class="block truncate text-gray-900 dark:text-gray-100">{{ dupLabel }}</strong>
+            </div>
+            <!-- Force-create override indicator -->
+            <div *ngIf="isForceCreate(row)"
+                 class="mt-1 inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ 'customerImport.dryRun.forceCreateActive' | transloco }}
+            </div>
+            <ul *ngIf="row.status === 'invalid' && row.invalidFields.length > 0"
+                class="mt-1 text-[11px] text-red-700 dark:text-red-300 list-disc list-inside">
+              <li *ngFor="let f of row.invalidFields">{{ f }}</li>
+            </ul>
+          </td>
+          <td class="px-2 py-1 text-right">
+            <!-- alreadyExists: show 'Crear de todos modos' as an explicit override.
+                 Default behaviour is 'skip' (auto), which we surface via the badge. -->
+            <ng-container *ngIf="row.status === 'alreadyExists'">
+              <button *ngIf="!isForceCreate(row)"
+                      type="button"
+                      (click)="forceCreate(row)"
+                      [title]="'customerImport.dryRun.forceCreateHint' | transloco"
+                      class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded">
+                {{ 'customerImport.dryRun.forceCreate' | transloco }}
+              </button>
+              <button *ngIf="isForceCreate(row)"
+                      type="button"
+                      (click)="clearResolution(row)"
+                      class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300">
+                {{ 'customerImport.dryRun.undoForceCreate' | transloco }}
+              </button>
+            </ng-container>
+            <button *ngIf="row.status !== 'invalid' && row.status !== 'alreadyExists' && row.resolution?.choice !== 'skip'"
+                    type="button"
+                    (click)="skipRow(row)"
+                    class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300">
+              {{ 'customerImport.dryRun.skip' | transloco }}
+            </button>
+            <span *ngIf="row.resolution?.choice === 'skip'"
+                  class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-500 italic">
+              {{ 'customerImport.dryRun.skipped' | transloco }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Navigation -->
+  <div class="flex items-center justify-between pt-2">
+    <button type="button"
+            (click)="onBack()"
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded text-sm">
+      {{ 'customerImport.dryRun.back' | transloco }}
+    </button>
+    <button type="button"
+            (click)="onContinue()"
+            [disabled]="invalidCount() > 0"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed">
+      {{ 'customerImport.dryRun.continue' | transloco }}
+    </button>
+  </div>
+</div>

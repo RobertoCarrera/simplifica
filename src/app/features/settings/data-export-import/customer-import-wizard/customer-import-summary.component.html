@@ -1,0 +1,73 @@
+<div class="space-y-5">
+  <!-- Title -->
+  <div class="flex items-center gap-3">
+    <i class="fas"
+       [ngClass]="hasFailures ? 'fa-exclamation-triangle text-amber-500' : 'fa-check-circle text-emerald-500'"
+       class="text-2xl"></i>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+      {{ titleKey | transloco }}
+    </h3>
+  </div>
+
+  <!-- Count cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center">
+      <div class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+        {{ result.importedCount }}
+      </div>
+      <div class="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+        {{ 'customerImport.summary.imported' | transloco }}
+      </div>
+    </div>
+    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 p-4 text-center">
+      <div class="text-2xl font-bold text-gray-700 dark:text-gray-300">
+        {{ result.alreadyExistsCount }}
+      </div>
+      <div class="text-xs text-gray-700 dark:text-gray-300 mt-1">
+        {{ 'customerImport.summary.alreadyExists' | transloco }}
+      </div>
+    </div>
+    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 p-4 text-center">
+      <div class="text-2xl font-bold text-gray-700 dark:text-gray-300">
+        {{ result.skippedCount }}
+      </div>
+      <div class="text-xs text-gray-700 dark:text-gray-300 mt-1">
+        {{ 'customerImport.summary.skipped' | transloco }}
+      </div>
+    </div>
+    <div class="rounded-lg p-4 text-center"
+         [ngClass]="hasFailures
+           ? 'border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+           : 'border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30'">
+      <div class="text-2xl font-bold"
+           [ngClass]="hasFailures ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-300'">
+        {{ result.failedCount }}
+      </div>
+      <div class="text-xs mt-1"
+           [ngClass]="hasFailures ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-300'">
+        {{ 'customerImport.summary.failed' | transloco }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Failures hint -->
+  <p *ngIf="hasFailures" class="text-xs text-amber-700 dark:text-amber-300 italic">
+    {{ 'customerImport.summary.failedHint' | transloco: { count: result.failedCount } }}
+  </p>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-end gap-3 pt-2">
+    <button *ngIf="hasFailures"
+            type="button"
+            (click)="onDownloadFailures()"
+            class="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50">
+      <i class="fas fa-download mr-1"></i>
+      {{ 'customerImport.summary.downloadFailures' | transloco }}
+    </button>
+    <button type="button"
+            (click)="onClose()"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium">
+      {{ 'customerImport.summary.close' | transloco }}
+    </button>
+  </div>
+</div>
