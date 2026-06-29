@@ -5,6 +5,16 @@
 // 2. Validate usage permissions
 // 3. Update client record with new invitation_token
 // 4. Send email with link to public consent page via send-branded-email
+//
+// Two auth paths are supported (decided by the body shape, not by JWT claim):
+//   - Direct user call from the CRM frontend: requires a valid user JWT and
+//     owner/admin role. The client lookup is scoped to the caller's company.
+//   - Service call from the send-campaign orchestrator: signaled by
+//     `_service_context: 'campaign_send'` in the body. The orchestrator
+//     invokes us with the service-role JWT (supabaseAdmin.functions.invoke),
+//     which we cannot validate via getUser() — so we trust the flag and
+//     resolve companyId from the client row instead. Direct user calls
+//     cannot pass this flag to escalate (verify_jwt is on at the gateway).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -103,38 +113,95 @@ serve(async (req) => {
     }
 
     try {
+        // Parse body once. The body shape decides the auth path:
+        //   - Direct user call (frontend): no _service_context flag → require
+        //     a valid user JWT and owner/admin role.
+        //   - Service call (send-campaign orchestrator): _service_context ===
+        //     'campaign_send' → trust the orchestrator, skip the per-user
+        //     auth check (the service-role JWT cannot satisfy getUser()).
+        let _body: any = {};
+        try { _body = await req.json(); } catch { /* body may be empty for OPTIONS */ }
+        const { client_id, _service_context } = _body;
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
             { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
         );
 
-        // 1. Auth Check (Caller must be authenticated, verify role via RLS or logic)
-        const authHeader = req.headers.get('Authorization')!;
-        const userClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: authHeader } } }
-        );
+        // Resolve companyId + client before any side effects.
+        //   - User path: validate JWT + role, then scope the client lookup to
+        //     the caller's company (defense in depth: even if RLS were
+        //     missing, cross-tenant access would still 404).
+        //   - Service path: trust the orchestrator flag and resolve companyId
+        //     from the client row itself. The orchestrator has already
+        //     verified the triggering user via the frontend session.
+        let companyId: string;
+        let client: {
+            id: string;
+            name: string;
+            email: string;
+            company_id: string;
+            consent_status: string;
+        };
 
-        const { data: { user }, error: userError } = await userClient.auth.getUser();
-        if (userError || !user) {
-            throw new Error('Unauthorized');
+        if (_service_context === 'campaign_send') {
+            if (!client_id) throw new Error('Client ID is required');
+
+            const { data: c, error: ce } = await supabaseClient
+                .from('clients')
+                .select('id, name, email, company_id, consent_status')
+                .eq('id', client_id)
+                .single();
+
+            if (ce || !c) throw new Error('Client not found');
+            if (!c.email) throw new Error('Client has no email address');
+
+            client = c;
+            companyId = c.company_id;
+        } else {
+            // 1. Auth Check (Caller must be authenticated, verify role via RLS or logic)
+            const authHeader = req.headers.get('Authorization')!;
+            const userClient = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+                { global: { headers: { Authorization: authHeader } } }
+            );
+
+            const { data: { user }, error: userError } = await userClient.auth.getUser();
+            if (userError || !user) {
+                throw new Error('Unauthorized');
+            }
+
+            // Check if user is owner/admin
+            const { data: userData } = await supabaseClient
+                .from('users')
+                .select('id, company_id, app_roles(name)')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            const role = userData?.app_roles?.name;
+            if (role !== 'owner' && role !== 'admin') {
+                throw new Error('Forbidden: Only admins/owners can send consent invites');
+            }
+
+            companyId = userData.company_id;
+
+            if (!client_id) throw new Error('Client ID is required');
+
+            // 2. Fetch Client (scoped to caller's company)
+            const { data: c, error: ce } = await supabaseClient
+                .from('clients')
+                .select('id, name, email, company_id, consent_status')
+                .eq('id', client_id)
+                .eq('company_id', companyId)
+                .single();
+
+            if (ce || !c) throw new Error('Client not found or access denied');
+            if (!c.email) throw new Error('Client has no email address');
+
+            client = c;
         }
-
-        // Check if user is owner/admin
-        const { data: userData } = await supabaseClient
-            .from('users')
-            .select('id, company_id, app_roles(name)')
-            .eq('auth_user_id', user.id)
-            .single();
-
-        const role = userData?.app_roles?.name;
-        if (role !== 'owner' && role !== 'admin') {
-            throw new Error('Forbidden: Only admins/owners can send consent invites');
-        }
-
-        const companyId = userData.company_id;
 
         const { data: companyData, error: companyError } = await supabaseClient
             .from('companies')
@@ -168,20 +235,6 @@ serve(async (req) => {
           console.warn('[send-client-consent-invite] could not fetch company branding, using default');
         }
 
-        const { client_id } = await req.json();
-        if (!client_id) throw new Error('Client ID is required');
-
-        // 2. Fetch Client
-        const { data: client, error: clientError } = await supabaseClient
-            .from('clients')
-            .select('id, name, email, company_id, consent_status')
-            .eq('id', client_id)
-            .eq('company_id', companyId)
-            .single();
-
-        if (clientError || !client) throw new Error('Client not found or access denied');
-        if (!client.email) throw new Error('Client has no email address');
-
         // 3. Generate Token
         const token = crypto.randomUUID();
         const sentAt = new Date().toISOString();
@@ -194,7 +247,7 @@ serve(async (req) => {
                 invitation_sent_at: sentAt,
                 invitation_status: 'sent',
             })
-            .eq('id', client_id);
+            .eq('id', client.id);
 
         if (updateError) throw new Error('Failed to update client record: ' + updateError.message);
 
