@@ -256,13 +256,22 @@ serve(async (req) => {
         const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
         const REGION = Deno.env.get('AWS_REGION') ?? 'us-east-1';
         const FROM_EMAIL = Deno.env.get('SES_FROM_ADDRESS') ?? 'notifications@simplificacrm.es';
+        // APP_URL = the CRM app (admin side) — used for the privacy policy link in
+        // the footer and for company_email_settings / configuracion navigation.
         const APP_URL = Deno.env.get('FRONTEND_APP_URL') ?? 'https://app.simplificacrm.es';
+        // PORTAL_URL = the public client portal (no auth, token-based). This is
+        // where the consent capture page lives: portal.simplificacrm.es/consent.
+        // The recipient is a non-authenticated client so they MUST land on the
+        // portal, NOT on the CRM (which would redirect to /login and confuse them).
+        const PORTAL_URL = Deno.env.get('PORTAL_URL') ?? 'https://portal.simplificacrm.es';
 
         if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
             throw new Error('Missing AWS credentials');
         }
 
-        const consentLink = `${APP_URL}/consent?token=${token}`;
+        // Consent capture link goes to the public portal (token-based, no auth).
+        // Privacy policy link stays on the CRM (it lives behind the admin shell).
+        const consentLink = `${PORTAL_URL}/consent?token=${encodeURIComponent(token)}`;
         const subject = 'Importante: Actualización de Privacidad y Consentimiento';
         const htmlBody = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -293,7 +302,21 @@ serve(async (req) => {
             emailType: 'consent',
             to: [{ email: client.email, name: client.name }],
             subject,
-            data: { client: { name: client.name, email: client.email }, company: { name: companyName }, link: consentLink },
+            // send-branded-email's interpolateSafe() only handles FLAT {{key}}
+            // tokens (regex: \{\{(\w+)\}\}), so we pass the variables both as
+            // nested objects (for the fallback HTML below) AND as flat keys
+            // (so a custom_body_template in company_email_settings can use
+            // {{link}}, {{consent_url}}, {{client_name}}, {{company_name}}).
+            data: {
+              // nested — used by the built-in HTML body inside send-branded-email
+              client: { name: client.name, email: client.email },
+              company: { name: companyName },
+              link: consentLink,
+              // flat — usable from admin-authored custom_body_template
+              consent_url: consentLink,
+              client_name: client.name,
+              company_name: companyName,
+            },
             supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
             serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
             fallbackHtml: htmlBody,
