@@ -1,15 +1,25 @@
 // Edge Function: send-client-consent-invite
 // Purpose: Send GDPR consent invitation email to a client.
-// Flow:
+//
+// Flow (2026-06-29 redesign — email-based, no token in URL):
 // 1. Admin/Owner calls function with { client_id }
 // 2. Validate usage permissions
-// 3. Update client record with new invitation_token
+// 3. Generate invitation_token and persist on clients (still useful for
+//    audit + future one-click resend + consent_evidence back-reference)
 // 4. Read consent templates from company_email_settings (custom_subject_template,
 //    custom_body_template) and the email account's verified from address
 //    (company_email_accounts.ses_from_email, fallback to email).
-// 5. Render the templates with interpolateSafe() (Rafter v0.27 — escaped by default)
+// 5. Build the consent link WITHOUT the token:
+//        ${PORTAL_URL}/consent?c=<company_id>&e=<urlencoded_email>
+//    The portal page identifies the recipient by (company, email) and is
+//    intentionally a 1-tap accept/reject UI (see /portal/consent).
+// 6. Render the templates with interpolateSafe() (Rafter v0.27 — escaped by default)
 //    and send via SES directly. If no tenant template is configured, fall back
-//    to a MINIMAL hardcoded body so the consent invite still lands.
+//    to a friendly default body so the consent invite still lands.
+//
+// The token is still recorded on the client row and stamped into the
+// consent_evidence JSON for audit purposes — but it is NOT exposed in the URL,
+// so it cannot be brute-forced or leaked through screenshots / forwards.
 //
 // Previously this function delegated rendering + sending to send-branded-email,
 // then fell back to direct SES with a hardcoded HTML body when that failed.
@@ -218,7 +228,13 @@ serve(async (req) => {
 
         // 6. Render and send the consent invite via SES, using the tenant's
         // company_email_settings template when available.
-        const consentLink = `${PORTAL_URL}/consent?token=${encodeURIComponent(token)}`;
+        //
+        // 2026-06-29 redesign: the URL no longer carries the invitation_token.
+        // The portal identifies the recipient by (company_id, email). The token
+        // is still persisted on clients.invitation_token and stamped into
+        // consent_evidence on the eventual gdpr_consent_records row, so audit
+        // traceability is preserved without exposing the token in the URL.
+        const consentLink = `${PORTAL_URL}/consent?c=${encodeURIComponent(companyId)}&e=${encodeURIComponent(client.email)}`;
 
         // Variables exposed to admin-authored templates. Flat keys match the
         // variables send-branded-email documented in
@@ -231,23 +247,30 @@ serve(async (req) => {
           company_name: companyName,
           consent_url: consentLink,
           link: consentLink,
+          unsubscribe_url: `${PORTAL_URL}/consent?c=${encodeURIComponent(companyId)}&e=${encodeURIComponent(client.email)}&action=reject`,
         };
 
         const subject = settings?.custom_subject_template
           ? interpolateSafe(settings.custom_subject_template, templateVars)
-          : `Actualización de Privacidad y Consentimiento - ${companyName}`;
+          : `${client.name}, confirma tus preferencias de privacidad`;
 
         // Body fallback order:
         //   1. tenant custom_body_template (interpolated)
-        //   2. minimal hardcoded body so the consent invite still arrives
+        //   2. friendly default body so the consent invite still arrives
+        //
+        // Default template (Spanish, conversational):
+        const defaultBody = `<p>Hola ${client.name},</p>
+<p>${companyName} quiere seguir enviándote comunicaciones comerciales y necesitamos que confirmes si estás de acuerdo.</p>
+<p>Si quieres seguir recibiendo nuestras comunicaciones, haz clic aquí:</p>
+<p style="margin:24px 0;text-align:center;"><a href="${consentLink}" style="background-color:#4f46e5;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:600;">Sí, quiero seguir recibiéndolas</a></p>
+<p style="font-size:12px;color:#6b7280;">Si prefieres no recibir más comunicaciones nuestras, simplemente ignora este mensaje.</p>
+<p>Gracias,<br>${companyName}</p>
+<hr>
+<p style="font-size:11px;color:#9ca3af;">Conforme al RGPD, tratamos tus datos según nuestra <a href="${APP_URL}/privacidad">política de privacidad</a>.</p>`;
+
         const htmlBody = settings?.custom_body_template
           ? interpolateSafe(settings.custom_body_template, templateVars)
-          : `<p>Hola ${client.name},</p>
-<p>${companyName} necesita que revises y valides tus datos y preferencias de privacidad para cumplir con la normativa RGPD.</p>
-<p><a href="${consentLink}">Revisar y validar mis datos</a></p>
-<p>Gracias por tu confianza.</p>
-<hr>
-<p style="font-size:12px;color:#6b7280;">En cumplimiento del RGPD, sus datos serán tratados conforme a nuestra <a href="${APP_URL}/privacidad">política de privacidad</a>.</p>`;
+          : defaultBody;
 
         const aws = new AwsClient({
           accessKeyId: AWS_ACCESS_KEY_ID,
