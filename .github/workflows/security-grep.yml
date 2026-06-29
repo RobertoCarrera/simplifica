@@ -1,18 +1,21 @@
 name: Security Grep
 
-# Rafter v0.48 — CI grep guard for XSS + SQLi patterns.
+# Rafter v0.48 → v0.56 — CI grep guard for XSS + SQLi patterns.
 #
 # Would have caught v0.45 (XSS in process-reminders + process-automation)
 # and v0.46 (SQLi in 20 frontend .or()/.ilike() callsites) regressions.
 #
 # Detects:
-#   1. XSS: html: / html_body: template literals in Edge Functions that
+#   1. XSS (EF): html: / html_body: template literals in Edge Functions that
 #      interpolate user-controlled fields (client.name, booking.service.name,
 #      etc.) without escapeHtml() wrapping.
 #   2. SQLi (.or()): PostgREST .or(`...${var}...`) calls that interpolate
 #      raw user input without escapeOrFilterValue/escapeLike/JSON.stringify.
 #   3. SQLi (.ilike()): PostgREST .ilike('col', `...${var}...`) calls that
 #      interpolate raw user input without escapeLike.
+#   4. XSS (frontend): Angular [innerHTML] / bypassSecurityTrust* /
+#      .innerHTML = / document.write sinks in src/app/**/*.ts.
+#      v0.56 — closes the EF-only gap from scripts #1.
 
 on:
   pull_request:
@@ -42,12 +45,17 @@ jobs:
         id: sqli-ilike
         run: perl scripts/check-ilike-sqli.pl
 
+      - name: Check for XSS sinks in Angular frontend
+        id: xss-frontend
+        run: perl scripts/check-xss-frontend.pl
+
       - name: Summary
         if: always()
         run: |
           if [ "${{ steps.xss-efs.outcome }}" == "success" ] && \
              [ "${{ steps.sqli-or.outcome }}" == "success" ] && \
-             [ "${{ steps.sqli-ilike.outcome }}" == "success" ]; then
+             [ "${{ steps.sqli-ilike.outcome }}" == "success" ] && \
+             [ "${{ steps.xss-frontend.outcome }}" == "success" ]; then
             echo "All security grep checks passed."
           else
             echo "Security grep checks FAILED — see step output above."

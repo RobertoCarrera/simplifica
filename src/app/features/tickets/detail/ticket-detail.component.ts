@@ -1050,11 +1050,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     });
 
     // Re-sanitize after DOM mutations to prevent bypassing DOMPurify
-    const finalHtml = (DOMPurify as any).sanitize(div.innerHTML, {
+    const sanitizedFinalHtml = (DOMPurify as any).sanitize(div.innerHTML, {
       ADD_ATTR: ['target', 'class'],
     });
 
-    return this.sanitizer.bypassSecurityTrustHtml(finalHtml);
+    return this.sanitizer.bypassSecurityTrustHtml(sanitizedFinalHtml);
   }
 
   // Development-only logger: will be a no-op in production

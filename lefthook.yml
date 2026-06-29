@@ -1,0 +1,19 @@
+# lefthook.yml — Rafter v0.56
+# Pre-commit hooks to prevent XSS + SQLi regressions.
+# Install: https://github.com/evilmartians/lefthook
+#   brew install lefthook && lefthook install
+#
+# These hooks run the same Perl scripts that CI runs in
+# .github/workflows/security-grep.yml. If any fail, the commit is blocked.
+
+pre-commit:
+  parallel: false
+  commands:
+    security-grep:
+      glob: "*.{ts,sql}"
+      run: |
+        perl scripts/check-xss-efs.pl
+        perl scripts/check-or-sqli.pl
+        perl scripts/check-ilike-sqli.pl
+        perl scripts/check-xss-frontend.pl
+      stage_fixed: true

@@ -155,10 +155,11 @@ export class TicketHeaderComponent {
 
   formatDescription(html: string): string {
     if (!html) return '';
-    // Basic sanitization - in production use DOMPurify
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || html;
+    // Use DOMParser instead of div.innerHTML for text extraction.
+    // div.innerHTML = html would fire onerror handlers and load images;
+    // DOMParser runs off-document and never executes embedded resources.
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+    return doc.body.textContent || doc.body.innerText || html;
   }
 
   getPriorityClasses(priority: string): string {

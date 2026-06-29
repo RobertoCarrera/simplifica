@@ -54,8 +54,13 @@ export class SignatureEditorComponent implements OnInit {
   });
 
   previewHtml = computed<SafeHtml>(() => {
+    // Defense-in-depth: even though buildPreviewHtml escapes individual
+    // fields, we run the assembled HTML through DOMPurify before
+    // bypassSecurityTrustHtml so a future field addition that forgets
+    // to escape can't introduce stored XSS in the preview pane.
     const html = this.buildPreviewHtml(this.signatureText());
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    const sanitizedHtml = DOMPurify.sanitize(html);
+    return this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml);
   });
 
   async ngOnInit() {
