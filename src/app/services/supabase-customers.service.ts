@@ -1,7 +1,7 @@
-import { Injectable, inject, effect } from '@angular/core';
+import { Injectable, inject, effect, OnDestroy } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of, firstValueFrom } from 'rxjs';
 import { map, catchError, tap, switchMap, concatMap, shareReplay, finalize } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
@@ -55,7 +55,7 @@ export interface CustomerStats {
 @Injectable({
   providedIn: 'root'
 })
-export class SupabaseCustomersService {
+export class SupabaseCustomersService implements OnDestroy {
   private supabase: SupabaseClient;
   private config = getCurrentSupabaseConfig();
   private authService = inject(AuthService);
@@ -2980,8 +2980,8 @@ export class SupabaseCustomersService {
   // ============================
   // REAL-TIME UPDATES
   // ============================
-  private realTimeChannel: any = null;
-  private assignmentsChannel: any = null;
+  private realTimeChannel: RealtimeChannel | null = null;
+  private assignmentsChannel: RealtimeChannel | null = null;
 
   public subscribeToClientChanges() {
     if (this.realTimeChannel) {
@@ -3022,6 +3022,17 @@ export class SupabaseCustomersService {
       this.supabase.removeChannel(this.assignmentsChannel);
       this.assignmentsChannel = null;
     }
+  }
+
+  /**
+   * Rafter v0.56 — defense-in-depth OnDestroy. The supabase-customers
+   * component already calls `unsubscribeFromClientChanges()` on destroy, so
+   * this is a belt-and-suspenders cleanup that fires only when the service
+   * injector itself is torn down (typically app shutdown, since this is a
+   * `providedIn: 'root'` service). Both channels are released null-safely.
+   */
+  ngOnDestroy() {
+    this.unsubscribeFromClientChanges();
   }
 
   private subscribeToAssignmentChanges(professionalId: string) {
