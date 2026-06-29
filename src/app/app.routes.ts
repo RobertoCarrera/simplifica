@@ -404,6 +404,20 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
 
+  // RGPD consent audit (owner/admin). RGPD Art. 7.1 — "the controller must
+  // be able to demonstrate that the data subject has consented". This page
+  // shows the full immutable history from gdpr_consent_records and supports
+  // CSV export for AEPD inspections.
+  {
+    path: "settings/consent-audit",
+    loadComponent: () =>
+      import("./features/admin/gdpr/consent-audit/consent-audit.component").then(
+        (m) => m.ConsentAuditComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+    data: { title: "Auditoría de consentimientos RGPD" },
+  },
+
   // Inbound mail admin (superadmin only)
   {
     path: "admin/inbound-mail",
