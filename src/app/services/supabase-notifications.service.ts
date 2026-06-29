@@ -188,7 +188,10 @@ export class SupabaseNotificationsService implements OnDestroy {
       .on(
         'postgres_changes',
         {
-          event: '*', // INSERT, UPDATE
+          // Rafter v0.52: only INSERT triggers realtime. UPDATE on
+          // notifications is just `is_read` toggling — refresh on
+          // next page load is enough. Saves a WAL event per toggle.
+          event: 'INSERT',
           schema: 'public',
           table: 'notifications',
           filter: filter,

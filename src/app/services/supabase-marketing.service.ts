@@ -36,6 +36,8 @@ export interface MarketingClient {
   phone: string;
   marketing_consent: boolean;
   birth_date?: string | null;
+  /** ISO timestamp of when the RGPD consent-migration email was sent, or null. */
+  consent_migration_sent_at?: string | null;
 }
 
 export interface Locality {
@@ -449,9 +451,18 @@ export class SupabaseMarketingService {
   }
 
   /**
-   * Get ALL active clients regardless of marketing consent.
+   * Get ALL active clients that still need a RGPD consent migration invite.
+   *
+   * Restricts to:
+   *   - is_active = true
+   *   - marketing_consent = false   (no prior decision)
+   *   - consent_migration_sent_at IS NULL  (not yet asked)
+   *   - deleted_at IS NULL
+   *
    * ONLY for one-time onboarding/informational emails under GDPR Art. 6(1)(b)/(f).
-   * Returns clients with `marketing_consent` field so the UI can differentiate.
+   * The send-campaign Edge Function additionally enforces the one-time
+   * constraint server-side (see is_onboarding_email branch in
+   * supabase/functions/send-campaign/index.ts).
    */
   async getAllActiveClients(search?: string, filters?: ClientFilters): Promise<MarketingClient[]> {
     const cid = this.companyId;
@@ -459,9 +470,11 @@ export class SupabaseMarketingService {
 
     let query = this.sb
       .from('clients')
-      .select('id, name, surname, email, phone, marketing_consent, birth_date')
+      .select('id, name, surname, email, phone, marketing_consent, birth_date, consent_migration_sent_at')
       .eq('company_id', cid)
       .eq('is_active', true)
+      .eq('marketing_consent', false)
+      .is('consent_migration_sent_at', null)
       .order('surname', { ascending: true })
       .limit(500);
 

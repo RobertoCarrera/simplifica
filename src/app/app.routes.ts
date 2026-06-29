@@ -392,6 +392,18 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
 
+  // Email templates editor (owner/admin). Focused page for editing
+  // the subject + body + button text for each transactional email type.
+  // See features/settings/email-templates/email-templates.component.ts
+  {
+    path: "settings/email-templates",
+    loadComponent: () =>
+      import("./features/settings/email-templates/email-templates.component").then(
+        (m) => m.EmailTemplatesComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+
   // Inbound mail admin (superadmin only)
   {
     path: "admin/inbound-mail",
@@ -549,6 +561,18 @@ export const routes: Routes = [
 
   // Catch-all - redirect to inicio
   // Public legal pages (no auth required)
+  // /consent is the public RGPD consent landing page reached from the
+  // consent-migration email. The token in the query string is the
+  // authorization — no auth guard (RGPD: data subject may not be a user
+  // of the platform).
+  {
+    path: "consent",
+    loadComponent: () =>
+      import("./features/consent/consent-landing/consent-landing.component").then(
+        (m) => m.ConsentLandingComponent,
+      ),
+    data: { title: "Consentimiento RGPD | Simplifica CRM" },
+  },
   {
     path: "privacy",
     loadComponent: () =>

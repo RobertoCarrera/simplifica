@@ -8,11 +8,12 @@ import {
   MarketingClient,
 } from '../../services/supabase-marketing.service';
 import { ToastService } from '../../services/toast.service';
+import { SendConfirmationModalComponent } from './send-confirmation-modal.component';
 
 @Component({
   selector: 'app-campaign-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe],
+  imports: [CommonModule, RouterModule, TranslocoPipe, SendConfirmationModalComponent],
   template: `
     <div class="max-w-3xl mx-auto space-y-6">
       <!-- Back link -->
@@ -121,6 +122,21 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
       }
+
+      <!-- Personalized send confirmation modal. -->
+      @if (showSendModal() && campaign()) {
+        <app-send-confirmation-modal
+          [campaignName]="campaign()!.name"
+          [audienceCount]="audienceCount()"
+          [audienceNames]="audienceNames()"
+          [isConsentMigration]="isConsentMigration()"
+          [subject]="campaign()!.subject || ''"
+          [contentPreview]="contentPreview()"
+          [contentPreviewWasTruncated]="contentPreviewWasTruncated()"
+          (confirmed)="onSendConfirmed()"
+          (cancelled)="showSendModal.set(false)"
+        />
+      }
     </div>
   `,
 })
@@ -134,6 +150,108 @@ export class CampaignDetailComponent implements OnInit {
   campaign = signal<MarketingCampaign | null>(null);
   audienceCount = signal(0);
 
+  /** Personalized confirmation modal state. */
+  showSendModal = signal(false);
+  audienceNames = signal<string[]>([]);
+  contentPreview = signal('');
+  contentPreviewWasTruncated = signal(false);
+
+  /** True when the campaign was flagged as a consent-migration send. */
+  isConsentMigration = signal(false);
+
+  /**
+   * Open the personalized confirmation modal. Replaces the previous native
+   * `confirm()` dialog. Resolves the first 5 recipient display names so the
+   * modal can show a concrete preview of who will receive the send.
+   */
+  async sendCampaign() {
+    const c = this.campaign();
+    if (!c) return;
+
+    const ids = c.target_audience?.client_ids || [];
+    this.isConsentMigration.set(c.config?.['is_onboarding_email'] === true);
+
+    if (ids.length > 0) {
+      const names = await this.resolveRecipientNames(ids);
+      this.audienceNames.set(names.slice(0, 5));
+    } else {
+      this.audienceNames.set([]);
+    }
+
+    // Truncate content for the marketing-mode preview (first 200 chars).
+    const raw = c.content || '';
+    const TRUNCATE_AT = 200;
+    this.contentPreviewWasTruncated.set(raw.length > TRUNCATE_AT);
+    this.contentPreview.set(
+      raw.length > TRUNCATE_AT ? raw.slice(0, TRUNCATE_AT) : raw,
+    );
+
+    this.showSendModal.set(true);
+  }
+
+  /**
+   * Called when the user clicks the primary button in the confirmation modal.
+   * Performs the actual `send-campaign` Edge Function invocation.
+   */
+  async onSendConfirmed() {
+    this.showSendModal.set(false);
+    const c = this.campaign();
+    if (!c) return;
+
+    this.sending.set(true);
+    try {
+      const result = await this.marketingService.sendCampaign(c.id);
+      this.toast.success(
+        'Enviada',
+        `${result.sent} emails enviados${result.failed > 0 ? `, ${result.failed} fallidos` : ''}`,
+      );
+      // Refresh
+      const updated = await this.marketingService.getCampaign(c.id);
+      this.campaign.set(updated);
+    } catch (err: any) {
+      this.toast.error('Error', err.message || 'No se pudo enviar la campaña');
+    } finally {
+      this.sending.set(false);
+    }
+  }
+
+  /**
+   * Resolve display names for the audience IDs. Fetches the active client
+   * list (the marketing service doesn't expose a "by id" lookup) and falls
+   * back to consent-migration audiences when the consented set doesn't
+   * cover everyone.
+   */
+  private async resolveRecipientNames(ids: string[]): Promise<string[]> {
+    const wanted = new Set(ids);
+    const found = new Map<string, string>();
+
+    const collect = async (clients: MarketingClient[]) => {
+      for (const cl of clients) {
+        if (wanted.has(cl.id) && !found.has(cl.id)) {
+          const full = `${cl.name ?? ''} ${cl.surname ?? ''}`.trim();
+          if (full) found.set(cl.id, full);
+        }
+      }
+    };
+
+    try {
+      const consented = await this.marketingService.getClientsWithConsent();
+      await collect(consented);
+      if (found.size < wanted.size) {
+        const active = await this.marketingService.getAllActiveClients();
+        await collect(active);
+      }
+    } catch (err) {
+      console.warn('Campaign detail: could not resolve recipient names', err);
+    }
+
+    // Preserve the order of the audience IDs so the preview matches what
+    // the user actually selected in the campaign form.
+    return ids
+      .map((id) => found.get(id))
+      .filter((name): name is string => Boolean(name));
+  }
+
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
@@ -146,25 +264,6 @@ export class CampaignDetailComponent implements OnInit {
       console.warn('Campaign detail: could not load', err);
     } finally {
       this.loading.set(false);
-    }
-  }
-
-  async sendCampaign() {
-    const c = this.campaign();
-    if (!c) return;
-    if (!confirm(`¿Enviar la campaña "${c.name}" a ${this.audienceCount()} clientes?`)) return;
-
-    this.sending.set(true);
-    try {
-      const result = await this.marketingService.sendCampaign(c.id);
-      this.toast.success('Enviada', `${result.sent} emails enviados${result.failed > 0 ? `, ${result.failed} fallidos` : ''}`);
-      // Refresh
-      const updated = await this.marketingService.getCampaign(c.id);
-      this.campaign.set(updated);
-    } catch (err: any) {
-      this.toast.error('Error', err.message || 'No se pudo enviar la campaña');
-    } finally {
-      this.sending.set(false);
     }
   }
 }
