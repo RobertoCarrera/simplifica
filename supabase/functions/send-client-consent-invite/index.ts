@@ -253,8 +253,15 @@ serve(async (req) => {
           });
           if (brandedResult.success) {
             emailSent = true;
-          } else if (brandedResult.error !== 'send-branded-email unavailable') {
-            throw new Error('Branded email failed: ' + brandedResult.error);
+          } else {
+            // Branded-email returned a real error (e.g. missing
+            // company_email_settings for emailType='consent'). Do NOT throw —
+            // the SES fallback below still works and is the documented safety
+            // net for consent invitations. We log the branded error for
+            // observability so the tenant team can fix the settings later.
+            console.warn(
+              `[send-client-consent-invite] send-branded-email did not succeed (${brandedResult.error ?? 'unknown'}); falling back to direct SES.`,
+            );
           }
         }
 
