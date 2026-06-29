@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import { ToastService } from '../../../services/toast.service';
-import { GdprComplianceService, GdprConsentRecord } from '../../../services/gdpr-compliance.service';
-import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { ToastService } from '../../../../services/toast.service';
+import { GdprComplianceService, GdprConsentRecord } from '../../../../services/gdpr-compliance.service';
+import { SimpleSupabaseService } from '../../../../services/simple-supabase.service';
 
 /**
  * ConsentAuditComponent — RGPD Art. 7 demonstrability.
