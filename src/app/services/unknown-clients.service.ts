@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { escapeOrFilterValue } from '../shared/utils/escape-like';
 
 /**
  * Row from public.v_clientes_desconocidos.
@@ -114,8 +115,12 @@ export class UnknownClientsService {
     const term = search.trim();
     if (term.length < 2) return [];
 
-    const escaped = term.replace(/[%_]/g, (m) => `\\${m}`);
-    const pattern = `%${escaped}%`;
+    // Rafter v0.54: use escapeOrFilterValue (not just escapeLike) because
+    // .or() splits on commas. The old escape (replace /[%_]/g) only escaped
+    // LIKE wildcards but not the comma separator, which would let a user
+    // input like "a,b.ilike.x" break out of the filter and inject conditions.
+    // escapeOrFilterValue strips `,` too, plus all other PostgREST metachars.
+    const pattern = `%${escapeOrFilterValue(term)}%`;
 
     let query = this.supabase
       .from('clients')
