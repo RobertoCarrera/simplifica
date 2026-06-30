@@ -714,14 +714,49 @@
                   />
                 </label>
                 <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Icono (FontAwesome)</span>
+                  <span class="block text-xs font-medium text-gray-600 mb-1">
+                    Icono (FontAwesome)
+                    @if (editingAddonDraft()?.icon) {
+                      <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1 align-middle'" [title]="editingAddonDraft()?.icon"></i>
+                    }
+                  </span>
                   <input
                     type="text"
+                    list="fa-icon-picker"
                     [value]="editingAddonDraft()?.icon ?? ''"
                     (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
                     placeholder="fa-bullhorn"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    data-testid="addon-edit-icon"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
                   />
+                  <datalist id="fa-icon-picker">
+                    @for (icon of CURATED_FA_ICONS; track icon) {
+                      <option [value]="icon">{{ icon }}</option>
+                    }
+                  </datalist>
+
+                  <!-- Quick-pick grid for the most common add-on icons -->
+                  <div class="mt-2">
+                    <span class="block text-[11px] font-medium text-gray-500 mb-1">
+                      Populares (click para seleccionar)
+                    </span>
+                    <div class="flex flex-wrap gap-1.5" data-testid="addon-edit-icon-grid">
+                      @for (icon of POPULAR_FA_ICONS; track icon) {
+                        <button
+                          type="button"
+                          (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })"
+                          [attr.aria-label]="icon"
+                          [title]="icon"
+                          class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                          [class.border-purple-500]="editingAddonDraft()?.icon === icon"
+                          [class.bg-purple-50]="editingAddonDraft()?.icon === icon"
+                          [class.border-gray-200]="editingAddonDraft()?.icon !== icon"
+                        >
+                          <i [class]="'fas ' + icon + ' text-gray-700'"></i>
+                        </button>
+                      }
+                    </div>
+                  </div>
                 </label>
                 <label class="block">
                   <span class="block text-xs font-medium text-gray-600 mb-1">Precio (€)</span>
