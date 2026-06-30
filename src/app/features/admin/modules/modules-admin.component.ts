@@ -9,6 +9,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
 import { SIDEBAR_CATALOG } from '../../../shared/module-keys';
+import { SeatBadgeComponent } from '../../../shared/seat-badge.component';
 
 export interface SidebarOrderItem {
   key: string;
@@ -27,7 +28,7 @@ export interface SidebarOrderItem {
 @Component({
   selector: 'app-modules-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SeatBadgeComponent],
   templateUrl: './modules-admin.component.html',
   styleUrls: ['./modules-admin.component.scss']
 })
@@ -394,5 +395,22 @@ export class ModulesAdminComponent implements OnInit {
   // Expose static helpers for template usage (Angular templates can't call static methods directly).
   formatAddonPrice(cents: number, currency: string, period: 'monthly' | 'yearly'): string {
     return PlanService.formatPrice(cents, currency, period);
+  }
+
+  // ── Seat badge (F-SEAT-004) ────────────────────────────────────────────────
+  // The SeatBadgeComponent is intentionally stateless and only emits a
+  // click event. For now we surface a toast with the company id; a future
+  // PR will wire this to a members-breakdown side panel.
+  onSeatBadgeClick(company: any): void {
+    const max = company?.max_users ?? null;
+    const current = company?.seat_current ?? 0;
+    if (max === null) {
+      this.toast.info('Sin límite de plazas', `${company?.name || 'Esta empresa'} no tiene tope de plazas configurado.`);
+      return;
+    }
+    this.toast.info(
+      'Plazas ocupadas',
+      `${company?.name || 'Empresa'}: ${current} / ${max} plazas no-client usadas.`,
+    );
   }
 }

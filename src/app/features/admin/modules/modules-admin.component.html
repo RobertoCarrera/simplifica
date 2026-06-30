@@ -90,9 +90,19 @@
                 </div>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800">{{ c.subscription_tier || 'Basic' }}</span>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span class="inline-block w-2 h-2 rounded-full" [ngClass]="c.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
                 <span class="text-xs font-medium" [ngClass]="c.is_active ? 'text-green-700' : 'text-red-700'">{{ c.is_active ? 'Empresa Activa' : 'Empresa Inactiva' }}</span>
+                <!-- PR 2: Seat badge shows current/max non-client seats.
+                     The company object from adminListCompanies() carries
+                     max_users; seat_current is computed lazily by the
+                     parent (loadCompanies) so the badge stays a pure
+                     presentational component. -->
+                <app-seat-badge
+                  class="ml-auto"
+                  [company]="c"
+                  (seatBadgeClick)="onSeatBadgeClick(c)"
+                />
               </div>
             </div>
             <!-- Modules List -->
