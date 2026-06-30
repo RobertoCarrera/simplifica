@@ -28,7 +28,10 @@ module.exports = {
     url: 'http://localhost/',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
-  testMatch: ['<rootDir>/src/app/shared/utils/**/*.spec.ts'],
+  testMatch: [
+    '<rootDir>/src/app/shared/utils/**/*.spec.ts',
+    '<rootDir>/src/app/features/admin/modules/**/*.spec.ts',
+  ],
   moduleNameMapper: {
     '\\.(scss|css|less|svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot)$':
       '<rootDir>/src/__mocks__/styleMock.ts',

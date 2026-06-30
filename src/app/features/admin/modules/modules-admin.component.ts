@@ -8,28 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
-
-/** All known sidebar navigation items with their display labels and icons */
-const SIDEBAR_CATALOG: { key: string; label: string; icon: string; category: 'core' | 'production' }[] = [
-  { key: 'core_/inicio',        label: 'Inicio',           icon: 'fa-home',            category: 'core' },
-  { key: 'core_/notifications', label: 'Notificaciones',   icon: 'fa-bell',            category: 'core' },
-  { key: 'core_/clientes',      label: 'Clientes',        icon: 'fa-users',           category: 'core' },
-  { key: 'core_/gdpr',          label: 'RGPD',             icon: 'fa-shield-alt',      category: 'core' },
-  { key: 'core_/webmail',       label: 'Webmail',          icon: 'fa-envelope',        category: 'core' },
-  { key: 'core_/webmail-admin', label: 'Admin Webmail',    icon: 'fa-shield-alt',      category: 'core' },
-  { key: 'core_/admin/modulos', label: 'Gestión Módulos',  icon: 'fa-sliders-h',       category: 'core' },
-  { key: 'moduloSAT',            label: 'Dispositivos / Tickets', icon: 'fa-mobile-alt', category: 'production' },
-  { key: 'moduloChat',           label: 'Chat',             icon: 'fa-comments',        category: 'production' },
-  { key: 'moduloPresupuestos',  label: 'Presupuestos',     icon: 'fa-file-alt',        category: 'production' },
-  { key: 'moduloFacturas',      label: 'Facturación',      icon: 'fa-file-invoice-dollar', category: 'production' },
-  { key: 'moduloAnaliticas',    label: 'Analíticas',       icon: 'fa-chart-line',      category: 'production' },
-  { key: 'moduloProductos',     label: 'Productos',         icon: 'fa-box-open',        category: 'production' },
-  { key: 'moduloServicios',     label: 'Servicios',         icon: 'fa-tools',           category: 'production' },
-  { key: 'moduloReservas',      label: 'Reservas',          icon: 'fa-calendar-alt',    category: 'production' },
-  { key: 'moduloProyectos',     label: 'Proyectos',         icon: 'fa-project-diagram', category: 'production' },
-  { key: 'marketing',          label: 'Marketing',         icon: 'fa-bullhorn',       category: 'production' },
-  { key: 'documentacion',      label: 'Documentación',     icon: 'fa-book',           category: 'production' },
-];
+import { SIDEBAR_CATALOG } from './module-keys';
 
 export interface SidebarOrderItem {
   key: string;
