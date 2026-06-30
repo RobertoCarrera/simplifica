@@ -24,7 +24,7 @@ export interface Plan {
 export interface PlanAddon {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   icon: string;
   price_cents: number;
   currency: string;

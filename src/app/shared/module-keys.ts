@@ -22,7 +22,7 @@ export interface SidebarCatalogEntry {
 
 /** Canonical module keys rendered by the sidebar and admin matrices. */
 export const SIDEBAR_CATALOG: ReadonlyArray<SidebarCatalogEntry> = [
-  { key: 'core_/inicio',        label: 'Inicio',           icon: 'fa-home',                category: 'core' },
+  { key: 'core_/inicio',        label: 'Dashboard',        icon: 'fa-home',                category: 'core' },
   { key: 'core_/notifications', label: 'Notificaciones',   icon: 'fa-bell',                category: 'core' },
   { key: 'core_/clientes',      label: 'Clientes',         icon: 'fa-users',               category: 'core' },
   { key: 'core_/gdpr',          label: 'RGPD',             icon: 'fa-shield-alt',          category: 'core' },
