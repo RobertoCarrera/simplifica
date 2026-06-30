@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS public.plans_included_modules_backup AS
   SELECT id AS plan_id, included_modules
     FROM public.plans;
 
+-- Take an exclusive lock on `plans` BEFORE the rewrite loop so a
+-- concurrent `admin_upsert_plan` (which UPDATEs the same row) cannot
+-- race the per-element array rewrite. AccessExclusiveMode blocks both
+-- reads and writes; the migration blocks until any in-flight RPC
+-- completes. Without this, the rewrite of a single row could be split
+-- by an interleaved UPDATE from another transaction, producing a
+-- mixed legacy/canonical array.
+LOCK TABLE public.plans IN ACCESS EXCLUSIVE MODE;
+
 -- Rewrite every plan's array element by element. Keys not present in
 -- the map are preserved as-is (future canonical keys pass through).
 DO $$
