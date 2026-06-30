@@ -512,11 +512,158 @@
         </div>
 
         <!-- Add-ons standalone table -->
-        @if (addons().length > 0) {
-          <div>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-gray-900">
               <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
             </h3>
+            @if (isEditorEnabled()) {
+              <button
+                (click)="startNewAddon()"
+                [disabled]="isAddonEditorOpen()"
+                data-testid="addon-new-button"
+                class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                <i class="fas fa-plus"></i> Nuevo add-on
+              </button>
+            }
+          </div>
+
+          <!-- Inline add-on form (PR 4, F-ADDON-002 + F-ADDON-003) -->
+          @if (isEditorEnabled() && isAddonEditorOpen()) {
+            <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4" data-testid="addon-edit-form">
+              <h4 class="text-sm font-semibold text-gray-900 mb-3">
+                <i class="fas fa-puzzle-piece mr-1 text-purple-500"></i>
+                {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Identificador (id)</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.id ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })"
+                    [disabled]="!newAddonMode()"
+                    placeholder="marketing_pro"
+                    data-testid="addon-edit-id"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
+                  />
+                  <span class="block text-[11px] text-gray-400 mt-1">Inmutable tras crear. Letras, números, - y _.</span>
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Nombre</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.name ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })"
+                    placeholder="Marketing avanzado"
+                    data-testid="addon-edit-name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block md:col-span-2">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Descripción</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.description ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })"
+                    placeholder="Campañas, automatizaciones, segmentación"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Icono (FontAwesome)</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.icon ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
+                    placeholder="fa-bullhorn"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Precio (céntimos)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    [value]="editingAddonDraft()?.price_cents ?? 0"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_cents: +$any($event.target).value })"
+                    data-testid="addon-edit-price"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Periodo</span>
+                  <select
+                    [value]="editingAddonDraft()?.billing_period ?? 'monthly'"
+                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, billing_period: $any($event.target).value })"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  >
+                    <option value="monthly">Mensual</option>
+                    <option value="yearly">Anual</option>
+                  </select>
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Orden</span>
+                  <input
+                    type="number"
+                    [value]="editingAddonDraft()?.sort_order ?? 0"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, sort_order: +$any($event.target).value })"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <div class="md:col-span-2">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>
+                  <div class="flex flex-wrap gap-2">
+                    @for (p of plans(); track p.id) {
+                      <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)"
+                          (change)="toggleAddonPlan(p.id)"
+                          class="rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span class="capitalize">{{ p.name }}</span>
+                      </label>
+                    }
+                  </div>
+                  <span class="block text-[11px] text-gray-400 mt-1">Si no marcas ninguno, el add-on aplica a todos los planes.</span>
+                </div>
+                <label class="inline-flex items-center gap-2 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    [checked]="editingAddonDraft()?.is_active ?? true"
+                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, is_active: $any($event.target).checked })"
+                    class="rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <span class="text-sm">Activo</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-2 mt-4">
+                <button
+                  (click)="saveAddon()"
+                  [disabled]="addonSavingId() !== null"
+                  data-testid="addon-edit-save"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
+                >
+                  @if (addonSavingId() !== null) {
+                    <i class="fas fa-spinner fa-spin"></i> Guardando...
+                  } @else {
+                    <i class="fas fa-save"></i> Guardar
+                  }
+                </button>
+                <button
+                  (click)="cancelAddonEdit()"
+                  [disabled]="addonSavingId() !== null"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl border border-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (addons().length > 0) {
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
@@ -524,6 +671,9 @@
                     <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
                     <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                    @if (isEditorEnabled()) {
+                      <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Acciones</th>
+                    }
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -560,13 +710,27 @@
                           +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
                         </span>
                       </td>
+                      @if (isEditorEnabled()) {
+                        <td class="px-5 py-3 text-right">
+                          <button
+                            (click)="startAddonEdit(addon)"
+                            [disabled]="isAddonEditorOpen()"
+                            [attr.data-testid]="'addon-edit-button-' + addon.id"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-wait transition-colors"
+                          >
+                            <i class="fas fa-pen text-xs"></i> Editar
+                          </button>
+                        </td>
+                      }
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
-          </div>
-        }
+          } @else if (!isAddonEditorOpen()) {
+            <p class="text-sm text-gray-500">Aún no hay add-ons definidos.</p>
+          }
+        </div>
 
         <!-- Footer info -->
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">

@@ -146,6 +146,49 @@ export class PlanService {
     return this.updatePlan(next);
   }
 
+  /**
+   * Admin: upsert an add-on (create or update). Requires super_admin.
+   *
+   * Mirrors the F-ADDON-002 / F-ADDON-003 / F-ADDON-004 contract:
+   *   - 42501 → "No tienes permisos de super_admin" (Spanish toast).
+   *   - 23505 (unique_violation on p_id) → "Ya existe un add-on con ese
+   *     identificador" so the create form can surface a clean message.
+   *   - On success, in-place merge into the cached addons signal so the
+   *     table re-renders without a refetch.
+   */
+  updateAddon(addon: PlanAddon): Observable<PlanAddon> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabase.rpc('admin_upsert_addon', {
+          p_id: addon.id,
+          p_name: addon.name,
+          p_description: addon.description,
+          p_icon: addon.icon,
+          p_price_cents: addon.price_cents,
+          p_currency: addon.currency,
+          p_billing_period: addon.billing_period,
+          p_applies_to_plans: addon.applies_to_plans ?? [],
+          p_sort_order: addon.sort_order,
+          p_is_active: addon.is_active,
+        });
+        if (error && (error as any).code === '42501') {
+          throw new Error('No tienes permisos de super_admin');
+        }
+        if (error && (error as any).code === '23505') {
+          throw new Error(`Ya existe un add-on con el identificador "${addon.id}".`);
+        }
+        if (error) throw error;
+        const fresh = data as PlanAddon;
+        this._addons.set(
+          (this._addons() ?? []).some((a) => a.id === fresh.id)
+            ? (this._addons() ?? []).map((a) => (a.id === fresh.id ? fresh : a))
+            : [...(this._addons() ?? []), fresh].sort((a, b) => a.sort_order - b.sort_order),
+        );
+        return fresh;
+      })()
+    );
+  }
+
   /** Format a price in cents as e.g. "39 €" or "39 €/mes". */
   static formatPrice(cents: number, currency = 'EUR', period: 'monthly' | 'yearly' = 'monthly'): string {
     const euros = (cents / 100).toLocaleString('es-ES', {

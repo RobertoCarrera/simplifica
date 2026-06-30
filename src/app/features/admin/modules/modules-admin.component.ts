@@ -413,4 +413,130 @@ export class ModulesAdminComponent implements OnInit {
       `${company?.name || 'Empresa'}: ${current} / ${max} plazas no-client usadas.`,
     );
   }
+
+  // ── Add-ons editor (F-ADDON-001..005) ─────────────────────────────────────
+
+  /** PR 4: which add-on is currently in the inline-edit form. null = no editor open. */
+  editingAddon = signal<PlanAddon | null>(null);
+  /** PR 4: working copy bound to the inline edit form ngModel controls. */
+  editingAddonDraft = signal<Partial<PlanAddon> | null>(null);
+  /** PR 4: true when the editor is in "new add-on" mode vs "edit existing". */
+  newAddonMode = signal<boolean>(false);
+  /** PR 4: which add-on row is currently saving (for spinner). null = idle. */
+  addonSavingId = signal<string | null>(null);
+
+  /** Open the editor for an existing add-on (PR 4, F-ADDON-002). */
+  startAddonEdit(addon: PlanAddon): void {
+    this.newAddonMode.set(false);
+    this.editingAddon.set(addon);
+    this.editingAddonDraft.set({ ...addon });
+  }
+
+  /** Open the editor in "create" mode for a brand-new add-on (F-ADDON-003). */
+  startNewAddon(): void {
+    const existingIds = this.addons().map((a) => a.id);
+    const maxSort = this.addons().reduce((m, a) => Math.max(m, a.sort_order), 0);
+    this.newAddonMode.set(true);
+    this.editingAddon.set(null);
+    this.editingAddonDraft.set({
+      id: '',
+      name: '',
+      description: '',
+      icon: 'fa-puzzle-piece',
+      price_cents: 0,
+      currency: 'EUR',
+      billing_period: 'monthly',
+      applies_to_plans: [],
+      sort_order: maxSort + 10,
+      is_active: true,
+      _existingIds: existingIds,
+    } as any);
+  }
+
+  /** Close the editor without saving. */
+  cancelAddonEdit(): void {
+    this.editingAddon.set(null);
+    this.editingAddonDraft.set(null);
+    this.newAddonMode.set(false);
+  }
+
+  /**
+   * Validate the add-on draft before saving. Returns the first error
+   * message or null. Mirrors the plan-edit validation style (F-PCA-002).
+   */
+  private validateAddonDraft(draft: Partial<PlanAddon> | null): string | null {
+    if (!draft) return 'No hay borrador para guardar.';
+    if (!draft.id || !String(draft.id).trim()) return 'El identificador (id) es obligatorio.';
+    if (!/^[a-z0-9_-]+$/i.test(String(draft.id))) return 'El identificador solo puede tener letras, números, guiones y guiones bajos.';
+    if (!draft.name || !String(draft.name).trim()) return 'El nombre es obligatorio.';
+    if (typeof draft.price_cents !== 'number' || !Number.isFinite(draft.price_cents) || draft.price_cents < 0) {
+      return 'El precio debe ser un número ≥ 0 (en céntimos).';
+    }
+    if (!draft.icon || !String(draft.icon).trim()) return 'El icono es obligatorio.';
+    return null;
+  }
+
+  /**
+   * Persist the add-on draft via planService.updateAddon(). Translates
+   * the typed 42501 + 23505 errors into Spanish toasts and updates the
+   * local addons signal optimistically on success.
+   */
+  async saveAddon(): Promise<void> {
+    const draft = this.editingAddonDraft() as Partial<PlanAddon> | null;
+    if (!draft) return;
+    const validation = this.validateAddonDraft(draft);
+    if (validation) {
+      this.toast.error('Validación', validation);
+      return;
+    }
+    const payload: PlanAddon = {
+      id: String(draft.id).trim(),
+      name: String(draft.name).trim(),
+      description: draft.description ?? null,
+      icon: String(draft.icon).trim(),
+      price_cents: Number(draft.price_cents),
+      currency: draft.currency ?? 'EUR',
+      billing_period: (draft.billing_period as 'monthly' | 'yearly') ?? 'monthly',
+      applies_to_plans: Array.isArray(draft.applies_to_plans) ? draft.applies_to_plans : [],
+      sort_order: Number(draft.sort_order ?? 0),
+      is_active: !!draft.is_active,
+      created_at: draft.created_at ?? '',
+      updated_at: draft.updated_at ?? '',
+    };
+    this.addonSavingId.set(payload.id);
+    try {
+      const fresh = await firstValueFrom(this.planService.updateAddon(payload));
+      this.toast.success(
+        this.newAddonMode() ? 'Add-on creado' : 'Add-on actualizado',
+        `${fresh.name} se ha guardado correctamente.`,
+      );
+      this.cancelAddonEdit();
+    } catch (e: any) {
+      console.error('Error saving add-on:', e);
+      this.toast.error('Error', e?.message || 'No se pudo guardar el add-on.');
+    } finally {
+      this.addonSavingId.set(null);
+    }
+  }
+
+  /** Toggle a plan_id in the addon's applies_to_plans multi-select. */
+  toggleAddonPlan(planId: string): void {
+    const draft = this.editingAddonDraft();
+    if (!draft) return;
+    const current = Array.isArray(draft.applies_to_plans) ? draft.applies_to_plans : [];
+    const next = current.includes(planId)
+      ? current.filter((p) => p !== planId)
+      : [...current, planId];
+    this.editingAddonDraft.set({ ...draft, applies_to_plans: next });
+  }
+
+  /** Convenience flag for the template: is the editor open in any mode? */
+  isAddonEditorOpen(): boolean {
+    return this.editingAddon() !== null || this.newAddonMode();
+  }
+
+  /** Convenience flag: is the editor open on a specific add-on row? */
+  isAddonEditorFor(addonId: string): boolean {
+    return !this.newAddonMode() && this.editingAddon()?.id === addonId;
+  }
 }
