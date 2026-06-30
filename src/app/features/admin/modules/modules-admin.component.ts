@@ -416,39 +416,103 @@ export class ModulesAdminComponent implements OnInit {
 
   /**
    * Toggle a module in/out of a plan's included_modules.
-   * Optimistic update: flips the local signal first, then calls the RPC.
-   * On error, reverts and shows a toast.
+   *
+   * Cascade promotion (F-PCA-006): when ADDING a module to plan P, the
+   * same module is also added to every plan with sort_order > P.sort_order.
+   * This enforces the invariant "every lower-tier plan is a subset of every
+   * higher-tier plan" so that toggling ON in Starter also activates the
+   * module in Pro, Business, etc. The cascade is one-way (lower → higher);
+   * removing a module only affects the current plan, never propagates up.
+   *
+   * All affected plans are persisted via admin_upsert_plan RPC in parallel.
+   * Each RPC inherits the canonical-key guard + is_highlighted mutex +
+   * 42501 super_admin check from migration 0004.
+   *
+   * Optimistic update: flips the local signal for every affected plan first,
+   * then awaits the parallel RPCs. On any failure, all optimistic updates
+   * are reverted in one shot.
    */
   async toggleModuleInPlan(plan: Plan, moduleKey: string) {
-    const wasIncluded = this.isModuleInPlan(plan, moduleKey);
-    const wantIncluded = !wasIncluded;
+    const wantIncluded = !this.isModuleInPlan(plan, moduleKey);
     const key = `${plan.id}:${moduleKey}`;
     this.pricingSavingKey.set(key);
 
-    // Optimistic local update
-    const updated: Plan = {
-      ...plan,
-      included_modules: wantIncluded
-        ? Array.from(new Set([...plan.included_modules, moduleKey]))
-        : plan.included_modules.filter((k) => k !== moduleKey),
-    };
-    this.plans.set(this.plans().map((p) => (p.id === plan.id ? updated : p)));
-
-    try {
-      await firstValueFrom(this.planService.togglePlanModule(plan, moduleKey, wantIncluded));
-      this.toast.success(
-        'Plan actualizado',
-        wantIncluded
-          ? `${this.moduleLabel(moduleKey)} añadido a ${plan.name}.`
-          : `${this.moduleLabel(moduleKey)} quitado de ${plan.name}.`,
+    if (wantIncluded) {
+      // Identify all plans that need the module added (current + higher tiers).
+      const higherPlans = this.plans().filter(
+        (p) => p.sort_order > plan.sort_order && !p.included_modules.includes(moduleKey),
       );
-    } catch (e: any) {
-      // Revert
-      this.plans.set(this.plans().map((p) => (p.id === plan.id ? plan : p)));
-      console.error('Error updating plan module:', e);
-      this.toast.error('Error', e?.message || 'No se pudo actualizar el plan.');
-    } finally {
-      this.pricingSavingKey.set(null);
+      const affectedPlans: Plan[] = [plan, ...higherPlans];
+
+      // Optimistic in-place merge for every affected plan.
+      this.plans.set(
+        this.plans().map((p) => {
+          if (p.id === plan.id) {
+            return {
+              ...p,
+              included_modules: Array.from(new Set([...p.included_modules, moduleKey])),
+            };
+          }
+          if (higherPlans.some((hp) => hp.id === p.id)) {
+            return {
+              ...p,
+              included_modules: Array.from(new Set([...p.included_modules, moduleKey])),
+            };
+          }
+          return p;
+        }),
+      );
+
+      try {
+        await Promise.all(
+          affectedPlans.map((p) =>
+            firstValueFrom(
+              this.planService.updatePlan({
+                ...p,
+                included_modules: Array.from(new Set([...p.included_modules, moduleKey])),
+              }),
+            ),
+          ),
+        );
+        const promotedNames = higherPlans.map((p) => p.name);
+        const message =
+          promotedNames.length > 0
+            ? `${this.moduleLabel(moduleKey)} añadido a ${plan.name} y promovido a ${promotedNames.join(', ')}.`
+            : `${this.moduleLabel(moduleKey)} añadido a ${plan.name}.`;
+        this.toast.success('Plan actualizado', message);
+      } catch (e: any) {
+        // Revert ALL optimistic updates on any failure.
+        this.plans.set(
+          this.plans().map((p) => {
+            const original = affectedPlans.find((ap) => ap.id === p.id);
+            return original ?? p;
+          }),
+        );
+        console.error('Error updating plan module:', e);
+        this.toast.error('Error', e?.message || 'No se pudo actualizar el plan.');
+      } finally {
+        this.pricingSavingKey.set(null);
+      }
+    } else {
+      // Demotion: removing a module is intentionally one-way (does not
+      // cascade to higher plans). Use case: super_admin needs to strip a
+      // module from Starter for a niche use without affecting Business.
+      const updated: Plan = {
+        ...plan,
+        included_modules: plan.included_modules.filter((k) => k !== moduleKey),
+      };
+      this.plans.set(this.plans().map((p) => (p.id === plan.id ? updated : p)));
+
+      try {
+        await firstValueFrom(this.planService.togglePlanModule(plan, moduleKey, false));
+        this.toast.success('Plan actualizado', `${this.moduleLabel(moduleKey)} quitado de ${plan.name}.`);
+      } catch (e: any) {
+        this.plans.set(this.plans().map((p) => (p.id === plan.id ? plan : p)));
+        console.error('Error updating plan module:', e);
+        this.toast.error('Error', e?.message || 'No se pudo actualizar el plan.');
+      } finally {
+        this.pricingSavingKey.set(null);
+      }
     }
   }
 

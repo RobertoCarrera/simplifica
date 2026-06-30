@@ -2183,8 +2183,8 @@ export class AuthService {
           return {
             success: false,
             error:
-              `Seat limit exceeded: ${current}/${max} seats used. ` +
-              `Free up a seat or upgrade plan.`,
+              `Has alcanzado el límite de plazas del plan (${current}/${max} ` +
+              `usuarios no-cliente ocupados). Libera una plaza o amplía el plan.`,
           };
         }
         // Fallback: intentar aceptar por email del usuario autenticado

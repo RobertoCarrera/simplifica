@@ -41,6 +41,10 @@ const SAMPLE_PLAN: Plan = {
   updated_at: '',
 };
 
+const PRO_PLAN: Plan = { ...SAMPLE_PLAN, id: 'pro', name: 'Pro', sort_order: 2, base_price_cents: 7900 };
+const BUSINESS_PLAN: Plan = { ...SAMPLE_PLAN, id: 'business', name: 'Business', sort_order: 3, base_price_cents: 19900 };
+const FREE_PLAN: Plan = { ...SAMPLE_PLAN, id: 'free', name: 'Free', sort_order: 0, base_price_cents: 0, included_users: 1 };
+
 function makeQueryParamMap(flagValue: string | null): ParamMap {
   const m: Record<string, string> = {};
   if (flagValue !== null) m['flag'] = flagValue;
@@ -50,7 +54,14 @@ function makeQueryParamMap(flagValue: string | null): ParamMap {
 function setup({
   flag,
   role = 'super_admin',
-}: { flag: string | null; role?: string }) {
+  plans = [SAMPLE_PLAN],
+  updatePlanOverride,
+}: {
+  flag: string | null;
+  role?: string;
+  plans?: Plan[];
+  updatePlanOverride?: (p: Plan) => any;
+} = {}) {
   // AuthService stub: only the methods the component touches in this spec.
   const authStub = {
     userRole: signal<string>(role),
@@ -58,13 +69,13 @@ function setup({
     isEmergencySuperAdmin: () => role === 'super_admin',
   };
 
-  // planService stub: getPlans returns one sample plan; togglePlanModule
+  // planService stub: getPlans returns the supplied plan list; togglePlanModule
   // resolves; updatePlan either succeeds or throws per the call.
-  const updatePlan = jasmine.createSpy('updatePlan').and.callFake((p: Plan) =>
-    of({ ...p, updated_at: 'now' } as Plan)
-  );
+  const updatePlan = jasmine
+    .createSpy('updatePlan')
+    .and.callFake(updatePlanOverride ?? ((p: Plan) => of({ ...p, updated_at: 'now' } as Plan)));
   const planServiceStub = {
-    getPlans: () => of([SAMPLE_PLAN]),
+    getPlans: () => of(plans),
     getAddons: () => of([]),
     togglePlanModule: () => of(SAMPLE_PLAN),
     updatePlan,
@@ -167,5 +178,161 @@ describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
     expect(toast.error).toHaveBeenCalled();
     const args = toast.error.calls.mostRecent().args;
     expect(args[1]).toContain('No tienes permisos de super_admin');
+  });
+});
+
+describe('ModulesAdminComponent — F-PCA-006 tier cascade promotion', () => {
+  const NEW_MODULE = 'core_/facturacion';
+
+  it('cascades a module toggle ON to every higher-tier plan (sort_order > current)', async () => {
+    const { component, updatePlan, toast } = setup({
+      flag: 'plan-edit-v2',
+      role: 'super_admin',
+      plans: [
+        { ...FREE_PLAN, included_modules: [] },
+        { ...SAMPLE_PLAN, included_modules: [] }, // Starter sort_order=1
+        { ...PRO_PLAN, included_modules: [] }, // Pro sort_order=2
+        { ...BUSINESS_PLAN, included_modules: [] }, // Business sort_order=3
+      ],
+    });
+    component.activeTab.set('pricing');
+    component.plans.set([
+      { ...FREE_PLAN, included_modules: [] },
+      { ...SAMPLE_PLAN, included_modules: [] },
+      { ...PRO_PLAN, included_modules: [] },
+      { ...BUSINESS_PLAN, included_modules: [] },
+    ]);
+    component.isEditorEnabled(); // ensure flag check runs
+
+    const starter = component.plans().find((p) => p.id === 'starter')!;
+    await component.toggleModuleInPlan(starter, NEW_MODULE);
+
+    // Optimistic: Starter + Pro + Business all have the new module; FREE does NOT.
+    const afterPlans = component.plans();
+    expect(afterPlans.find((p) => p.id === 'starter')!.included_modules).toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'pro')!.included_modules).toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'business')!.included_modules).toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'free')!.included_modules).not.toContain(NEW_MODULE);
+
+    // RPC was called once per affected plan (Starter, Pro, Business = 3 calls).
+    expect(updatePlan).toHaveBeenCalledTimes(3);
+    const calledIds = updatePlan.calls.allArgs().map((args) => (args[0] as Plan).id);
+    expect(calledIds.sort()).toEqual(['business', 'pro', 'starter']);
+
+    // Toast announces the promotion.
+    expect(toast.success).toHaveBeenCalled();
+    const toastMsg = toast.success.calls.mostRecent().args[1] as string;
+    expect(toastMsg).toContain(NEW_MODULE);
+    expect(toastMsg).toContain('Starter');
+    expect(toastMsg).toContain('promovido');
+    expect(toastMsg).toContain('Pro');
+    expect(toastMsg).toContain('Business');
+  });
+
+  it('does not cascade a module toggle OFF (one-way demotion)', async () => {
+    const { component, updatePlan, toast } = setup({
+      flag: 'plan-edit-v2',
+      role: 'super_admin',
+    });
+    component.activeTab.set('pricing');
+    const allWithModule = [NEW_MODULE];
+    component.plans.set([
+      { ...SAMPLE_PLAN, included_modules: allWithModule }, // Starter
+      { ...PRO_PLAN, included_modules: allWithModule },
+      { ...BUSINESS_PLAN, included_modules: allWithModule },
+    ]);
+
+    const starter = component.plans().find((p) => p.id === 'starter')!;
+    await component.toggleModuleInPlan(starter, NEW_MODULE);
+
+    // Starter removed it; Pro + Business untouched.
+    const afterPlans = component.plans();
+    expect(afterPlans.find((p) => p.id === 'starter')!.included_modules).not.toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'pro')!.included_modules).toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'business')!.included_modules).toContain(NEW_MODULE);
+
+    // Only Starter RPC was called (no cascade for removal).
+    expect(updatePlan).toHaveBeenCalledTimes(1);
+    expect((updatePlan.calls.mostRecent().args[0] as Plan).id).toBe('starter');
+
+    // Toast announces demotion without mentioning higher plans.
+    const toastMsg = toast.success.calls.mostRecent().args[1] as string;
+    expect(toastMsg).toContain('quitado');
+    expect(toastMsg).toContain('Starter');
+    expect(toastMsg).not.toContain('promovido');
+  });
+
+  it('does not cascade when toggling ON in the highest-tier plan', async () => {
+    const { component, updatePlan } = setup({
+      flag: 'plan-edit-v2',
+      role: 'super_admin',
+    });
+    component.activeTab.set('pricing');
+    component.plans.set([
+      { ...SAMPLE_PLAN, included_modules: [] },
+      { ...PRO_PLAN, included_modules: [] },
+      { ...BUSINESS_PLAN, included_modules: [] }, // highest
+    ]);
+
+    const business = component.plans().find((p) => p.id === 'business')!;
+    await component.toggleModuleInPlan(business, NEW_MODULE);
+
+    expect(updatePlan).toHaveBeenCalledTimes(1);
+    expect((updatePlan.calls.mostRecent().args[0] as Plan).id).toBe('business');
+  });
+
+  it('reverts ALL optimistic updates when one cascade RPC fails (atomic rollback)', async () => {
+    let proCallCount = 0;
+    const { component, toast } = setup({
+      flag: 'plan-edit-v2',
+      role: 'super_admin',
+      updatePlanOverride: (p: Plan) => {
+        if (p.id === 'pro' && proCallCount++ === 0) {
+          return throwError(() => new Error('No tienes permisos de super_admin'));
+        }
+        return of({ ...p, updated_at: 'now' } as Plan);
+      },
+    });
+    component.activeTab.set('pricing');
+    const beforePlans = [
+      { ...SAMPLE_PLAN, included_modules: [] }, // Starter empty
+      { ...PRO_PLAN, included_modules: [] },
+      { ...BUSINESS_PLAN, included_modules: [] },
+    ];
+    component.plans.set(beforePlans);
+
+    const starter = component.plans().find((p) => p.id === 'starter')!;
+    await component.toggleModuleInPlan(starter, NEW_MODULE);
+
+    // All three plans reverted to original (no module).
+    const afterPlans = component.plans();
+    expect(afterPlans.find((p) => p.id === 'starter')!.included_modules).not.toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'pro')!.included_modules).not.toContain(NEW_MODULE);
+    expect(afterPlans.find((p) => p.id === 'business')!.included_modules).not.toContain(NEW_MODULE);
+
+    // Error toast fires.
+    expect(toast.error).toHaveBeenCalled();
+    const errMsg = toast.error.calls.mostRecent().args[1] as string;
+    expect(errMsg).toContain('No tienes permisos de super_admin');
+  });
+
+  it('does not double-add when a higher plan already has the module', async () => {
+    const { component, updatePlan } = setup({
+      flag: 'plan-edit-v2',
+      role: 'super_admin',
+    });
+    component.activeTab.set('pricing');
+    component.plans.set([
+      { ...SAMPLE_PLAN, included_modules: [] }, // Starter empty
+      { ...PRO_PLAN, included_modules: [NEW_MODULE] }, // Pro already has it
+      { ...BUSINESS_PLAN, included_modules: [NEW_MODULE] }, // Business already has it
+    ]);
+
+    const starter = component.plans().find((p) => p.id === 'starter')!;
+    await component.toggleModuleInPlan(starter, NEW_MODULE);
+
+    // Starter RPC called (added the module). Pro and Business SKIPPED (already had it).
+    expect(updatePlan).toHaveBeenCalledTimes(1);
+    expect((updatePlan.calls.mostRecent().args[0] as Plan).id).toBe('starter');
   });
 });
