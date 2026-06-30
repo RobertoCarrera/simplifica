@@ -2172,6 +2172,21 @@ export class AuthService {
       }
 
       if (!result.success) {
+        // PR 2 (plans-pricing-freemium): translate the new SEAT_LIMIT_EXCEEDED
+        // JSON envelope from migration 0003 into a friendly Spanish error
+        // including the current/max counts (F-SEAT-003). The RPC preserves
+        // the existing `error` field for legacy callers, so we discriminate
+        // on the new `code` field instead of string-matching the message.
+        if (result.code === 'SEAT_LIMIT_EXCEEDED') {
+          const current = (result as any).current;
+          const max = (result as any).max;
+          return {
+            success: false,
+            error:
+              `Seat limit exceeded: ${current}/${max} seats used. ` +
+              `Free up a seat or upgrade plan.`,
+          };
+        }
         // Fallback: intentar aceptar por email del usuario autenticado
         // Cubre: token inválido/expirado Y usuario sin fila en public.users (new invite flow)
         if (result.error && (result.error.includes('Invalid or expired invitation') || result.error.includes('User not found'))) {

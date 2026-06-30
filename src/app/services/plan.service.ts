@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
+import { canonicalizeModules } from '../shared/module-keys';
 
 export interface Plan {
   id: string;
@@ -61,7 +62,15 @@ export class PlanService {
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
         if (error) throw error;
-        const plans = (data || []) as Plan[];
+        // Defensive: even though migration 0001 rewrites every plan's
+        // included_modules to canonical SIDEBAR_CATALOG keys, a DB row
+        // that pre-dates 0001 (or was edited outside the RPC) can still
+        // carry a legacy key. Canonicalize on read so the UI never
+        // displays a raw legacy key (F-PB-004).
+        const plans = ((data || []) as Plan[]).map((p) => ({
+          ...p,
+          included_modules: canonicalizeModules(p.included_modules ?? []),
+        }));
         this._plans.set(plans);
         return plans;
       })()
@@ -104,10 +113,24 @@ export class PlanService {
           p_is_active: plan.is_active,
           p_is_highlighted: plan.is_highlighted,
         });
+        // Translate the typed 42501 from migration 0004 into a friendly
+        // Spanish error so callers (ModulesAdminComponent) can show a
+        // toast without parsing Postgres error messages (F-PB-003,
+        // F-PCA-003).
+        if (error && (error as any).code === '42501') {
+          throw new Error('No tienes permisos de super_admin');
+        }
         if (error) throw error;
-        // Invalidate cache so the next getPlans() refetches.
-        this._plans.set(null);
-        return data as Plan;
+        const fresh = data as Plan;
+        // In-place merge so dependent signals (@for plans()) re-render
+        // immediately, instead of waiting for the next getPlans() call
+        // (F-PCA-002, F-PCA-003). Old behaviour was _plans.set(null)
+        // which forced a refetch and showed stale data during a fast
+        // toggle session.
+        this._plans.set(
+          (this._plans() ?? []).map((p) => (p.id === fresh.id ? fresh : p))
+        );
+        return fresh;
       })()
     );
   }

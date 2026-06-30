@@ -82,6 +82,7 @@ export interface Customer {
   // Granular Consents (New)
   health_data_consent?: boolean;
   privacy_policy_consent?: boolean;
+  privacy_policy_consent_date?: string | null;
   terms_of_service_consent?: boolean;
   terms_of_service_consent_date?: string | null;
 

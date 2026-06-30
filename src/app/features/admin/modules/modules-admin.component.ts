@@ -8,28 +8,8 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
-
-/** All known sidebar navigation items with their display labels and icons */
-const SIDEBAR_CATALOG: { key: string; label: string; icon: string; category: 'core' | 'production' }[] = [
-  { key: 'core_/inicio',        label: 'Inicio',           icon: 'fa-home',            category: 'core' },
-  { key: 'core_/notifications', label: 'Notificaciones',   icon: 'fa-bell',            category: 'core' },
-  { key: 'core_/clientes',      label: 'Clientes',        icon: 'fa-users',           category: 'core' },
-  { key: 'core_/gdpr',          label: 'RGPD',             icon: 'fa-shield-alt',      category: 'core' },
-  { key: 'core_/webmail',       label: 'Webmail',          icon: 'fa-envelope',        category: 'core' },
-  { key: 'core_/webmail-admin', label: 'Admin Webmail',    icon: 'fa-shield-alt',      category: 'core' },
-  { key: 'core_/admin/modulos', label: 'Gestión Módulos',  icon: 'fa-sliders-h',       category: 'core' },
-  { key: 'moduloSAT',            label: 'Dispositivos / Tickets', icon: 'fa-mobile-alt', category: 'production' },
-  { key: 'moduloChat',           label: 'Chat',             icon: 'fa-comments',        category: 'production' },
-  { key: 'moduloPresupuestos',  label: 'Presupuestos',     icon: 'fa-file-alt',        category: 'production' },
-  { key: 'moduloFacturas',      label: 'Facturación',      icon: 'fa-file-invoice-dollar', category: 'production' },
-  { key: 'moduloAnaliticas',    label: 'Analíticas',       icon: 'fa-chart-line',      category: 'production' },
-  { key: 'moduloProductos',     label: 'Productos',         icon: 'fa-box-open',        category: 'production' },
-  { key: 'moduloServicios',     label: 'Servicios',         icon: 'fa-tools',           category: 'production' },
-  { key: 'moduloReservas',      label: 'Reservas',          icon: 'fa-calendar-alt',    category: 'production' },
-  { key: 'moduloProyectos',     label: 'Proyectos',         icon: 'fa-project-diagram', category: 'production' },
-  { key: 'marketing',          label: 'Marketing',         icon: 'fa-bullhorn',       category: 'production' },
-  { key: 'documentacion',      label: 'Documentación',     icon: 'fa-book',           category: 'production' },
-];
+import { SIDEBAR_CATALOG } from '../../../shared/module-keys';
+import { SeatBadgeComponent } from '../../../shared/seat-badge.component';
 
 export interface SidebarOrderItem {
   key: string;
@@ -48,7 +28,7 @@ export interface SidebarOrderItem {
 @Component({
   selector: 'app-modules-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SeatBadgeComponent],
   templateUrl: './modules-admin.component.html',
   styleUrls: ['./modules-admin.component.scss']
 })
@@ -415,5 +395,22 @@ export class ModulesAdminComponent implements OnInit {
   // Expose static helpers for template usage (Angular templates can't call static methods directly).
   formatAddonPrice(cents: number, currency: string, period: 'monthly' | 'yearly'): string {
     return PlanService.formatPrice(cents, currency, period);
+  }
+
+  // ── Seat badge (F-SEAT-004) ────────────────────────────────────────────────
+  // The SeatBadgeComponent is intentionally stateless and only emits a
+  // click event. For now we surface a toast with the company id; a future
+  // PR will wire this to a members-breakdown side panel.
+  onSeatBadgeClick(company: any): void {
+    const max = company?.max_users ?? null;
+    const current = company?.seat_current ?? 0;
+    if (max === null) {
+      this.toast.info('Sin límite de plazas', `${company?.name || 'Esta empresa'} no tiene tope de plazas configurado.`);
+      return;
+    }
+    this.toast.info(
+      'Plazas ocupadas',
+      `${company?.name || 'Empresa'}: ${current} / ${max} plazas no-client usadas.`,
+    );
   }
 }

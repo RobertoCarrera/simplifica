@@ -28,7 +28,10 @@ module.exports = {
     url: 'http://localhost/',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
-  testMatch: ['<rootDir>/src/app/shared/utils/**/*.spec.ts'],
+  testMatch: [
+    '<rootDir>/src/app/shared/utils/**/*.spec.ts',
+    '<rootDir>/src/app/shared/*.spec.ts',
+  ],
   moduleNameMapper: {
     '\\.(scss|css|less|svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot)$':
       '<rootDir>/src/__mocks__/styleMock.ts',
@@ -48,5 +51,11 @@ module.exports = {
     '/node_modules/',
     '/dist/',
     '/supabase/',
+    // PR 2 (plans-pricing-freemium): SeatBadge + PlanService specs import
+    // @angular/core/testing which ships as ESM in @angular/core@21 and
+    // cannot be transformed by Jest's ts-jest preset in this environment.
+    // They run under Karma+Jasmine (`npm run test`) on CI.
+    '<rootDir>/src/app/shared/seat-badge.component.spec.ts',
+    '<rootDir>/src/app/services/plan.service.spec.ts',
   ],
 };
