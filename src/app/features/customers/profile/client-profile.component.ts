@@ -636,10 +636,37 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                           </dd>
                         </div>
                         <div class="flex flex-col gap-2">
+                          <!-- Términos de uso y servicio (mandatory) -->
                           <div class="flex items-center justify-between text-sm">
-                            <span class="text-slate-500 dark:text-slate-400"
-                              >Comunicaciones Marketing</span
-                            >
+                            <span class="text-slate-500 dark:text-slate-400">
+                              Términos de uso y servicio
+                              <span class="ml-1 text-[10px] uppercase font-semibold text-blue-600">requerido</span>
+                            </span>
+                            <i
+                              class="fas"
+                              [class.fa-check-circle]="customer()!.terms_of_service_consent"
+                              [class.text-emerald-500]="customer()!.terms_of_service_consent"
+                              [class.fa-times-circle]="!customer()!.terms_of_service_consent"
+                              [class.text-slate-300]="!customer()!.terms_of_service_consent"
+                            ></i>
+                          </div>
+                          <!-- Política de privacidad (mandatory) -->
+                          <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-500 dark:text-slate-400">
+                              {{ 'clients.gdpr.privacidadAceptacion' | transloco }}
+                              <span class="ml-1 text-[10px] uppercase font-semibold text-blue-600">requerido</span>
+                            </span>
+                            <i
+                              class="fas"
+                              [class.fa-check-circle]="customer()!.privacy_policy_consent"
+                              [class.text-emerald-500]="customer()!.privacy_policy_consent"
+                              [class.fa-times-circle]="!customer()!.privacy_policy_consent"
+                              [class.text-slate-300]="!customer()!.privacy_policy_consent"
+                            ></i>
+                          </div>
+                          <!-- Comunicaciones comerciales (optional) -->
+                          <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-500 dark:text-slate-400">Comunicaciones Marketing</span>
                             <i
                               class="fas"
                               [class.fa-check-circle]="customer()!.marketing_consent"
@@ -670,38 +697,14 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
                               }
                               <button
                                 (click)="markHasLeftReview(!customer()!.has_left_google_review)"
-                                class="text-xs px-2 py-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                [title]="customer()!.has_left_google_review ? 'Marcar como que NO ha dejado review' : 'Marcar como que ha dejado review'"
-                              >
-                                <i class="fas" [class.fa-check-circle]="customer()!.has_left_google_review" [class.fa-times-circle]="!customer()!.has_left_google_review"></i>
-                              </button>
-                            </div>
-                          </div>
-                          <div class="flex items-center justify-between text-sm">
-                            <span class="text-slate-500 dark:text-slate-400"
-                              >{{ 'clients.gdpr.datosSaludTratamiento' | transloco }}</span
-                            >
-                            <i
-                              class="fas"
-                              [class.fa-check-circle]="customer()!.health_data_consent"
-                              [class.text-emerald-500]="customer()!.health_data_consent"
-                              [class.fa-times-circle]="!customer()!.health_data_consent"
-                              [class.text-slate-300]="!customer()!.health_data_consent"
-                            ></i>
-                          </div>
-                          <div class="flex items-center justify-between text-sm">
-                            <span class="text-slate-500 dark:text-slate-400"
-                              >{{ 'clients.gdpr.privacidadAceptacion' | transloco }}</span
-                            >
-                            <i
-                              class="fas"
-                              [class.fa-check-circle]="customer()!.privacy_policy_consent"
-                              [class.text-emerald-500]="customer()!.privacy_policy_consent"
-                              [class.fa-times-circle]="!customer()!.privacy_policy_consent"
-                              [class.text-slate-300]="!customer()!.privacy_policy_consent"
-                            ></i>
-                          </div>
-                        </div>
+                                 class="text-xs px-2 py-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                 [title]="customer()!.has_left_google_review ? 'Marcar como que NO ha dejado review' : 'Marcar como que ha dejado review'"
+                               >
+                                 <i class="fas" [class.fa-check-circle]="customer()!.has_left_google_review" [class.fa-times-circle]="!customer()!.has_left_google_review"></i>
+                               </button>
+                             </div>
+                           </div>
+                         </div>
                       </dl>
                     </div>
                     }

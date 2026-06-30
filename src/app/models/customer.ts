@@ -82,6 +82,8 @@ export interface Customer {
   // Granular Consents (New)
   health_data_consent?: boolean;
   privacy_policy_consent?: boolean;
+  terms_of_service_consent?: boolean;
+  terms_of_service_consent_date?: string | null;
 
   // Google Review Fields
   has_left_google_review?: boolean;
