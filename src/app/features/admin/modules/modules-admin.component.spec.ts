@@ -112,16 +112,16 @@ function setup({
 }
 
 describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
-  it('hides the edit affordance when ?flag=plan-edit-v2 is absent (default OFF)', () => {
-    const { fixture } = setup({ flag: null });
-    fixture.componentInstance.activeTab.set('pricing');
+  it('shows the edit affordance by default for super_admin (no flag required)', () => {
+    const { fixture, component } = setup({ flag: null, role: 'super_admin' });
+    component.activeTab.set('pricing');
+    component.plans.set([SAMPLE_PLAN]);
     fixture.detectChanges();
-    expect(fixture.componentInstance.isEditorEnabled()).toBe(false);
-    expect(fixture.nativeElement.querySelector('[data-testid="plan-edit-button"]')).toBeNull();
+    expect(component.isEditorEnabled()).toBe(true);
   });
 
-  it('hides the edit affordance when the flag is set but the viewer is not super_admin', () => {
-    const { fixture, component } = setup({ flag: 'plan-edit-v2', role: 'admin' });
+  it('hides the edit affordance when the viewer is not super_admin', () => {
+    const { fixture, component } = setup({ flag: null, role: 'admin' });
     component.activeTab.set('pricing');
     component.plans.set([SAMPLE_PLAN]);
     fixture.detectChanges();
@@ -129,8 +129,15 @@ describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="plan-edit-button"]')).toBeNull();
   });
 
-  it('renders the Edit button + form for super_admin when the flag is set', () => {
-    const { fixture, component } = setup({ flag: 'plan-edit-v2', role: 'super_admin' });
+  it('respects ?flag=plan-edit-readonly as an explicit kill switch for super_admin', () => {
+    const { component } = setup({ flag: 'plan-edit-readonly', role: 'super_admin' });
+    component.activeTab.set('pricing');
+    component.plans.set([SAMPLE_PLAN]);
+    expect(component.isEditorEnabled()).toBe(false);
+  });
+
+  it('renders the Edit button + form for super_admin by default', () => {
+    const { fixture, component } = setup({ flag: null, role: 'super_admin' });
     component.activeTab.set('pricing');
     component.plans.set([SAMPLE_PLAN]);
     fixture.detectChanges();
@@ -148,7 +155,7 @@ describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
 
   it('calls planService.updatePlan() and toasts success when Save is clicked', async () => {
     const { fixture, component, updatePlan, toast } = setup({
-      flag: 'plan-edit-v2',
+      flag: null,
       role: 'super_admin',
     });
     component.activeTab.set('pricing');
@@ -163,7 +170,7 @@ describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
 
   it('surfaces 42501 RPC errors as "No tienes permisos de super_admin" toast', async () => {
     const { fixture, component, toast } = setup({
-      flag: 'plan-edit-v2',
+      flag: null,
       role: 'super_admin',
     });
     // Swap the spy to throw the same Error the service raises.

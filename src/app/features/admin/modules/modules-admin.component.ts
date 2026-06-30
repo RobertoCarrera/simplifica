@@ -314,9 +314,20 @@ export class ModulesAdminComponent implements OnInit {
   // not a security one — but it keeps the editorial surface quiet in normal
   // use and gives us a kill-switch for staging.
 
-  /** Read the feature flag from the current route query params. */
+  /**
+   * Editor gate. By default: any super_admin sees the Edit affordance.
+   * Pass `?flag=plan-edit-readonly` in the URL to lock the catalog to read-only
+   * (useful for demos, support sessions, or letting a super_admin preview
+   * the public view without exposing mutations).
+   *
+   * History: this used to require `?flag=plan-edit-v2` to enable the form,
+   * but that was over-engineered for a feature only super_admin touches.
+   * Reverting to "default ON for super_admin" simplifies the dev loop.
+   */
   isEditorEnabled(): boolean {
-    return this.route.snapshot.queryParamMap.get('flag') === 'plan-edit-v2' && this.isSuperAdmin();
+    if (!this.isSuperAdmin()) return false;
+    const flag = this.route.snapshot.queryParamMap.get('flag');
+    return flag !== 'plan-edit-readonly';
   }
 
   /** Open the editor for the given plan. Seeds the draft signal with a copy. */
