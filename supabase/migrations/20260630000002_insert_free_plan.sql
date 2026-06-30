@@ -9,6 +9,12 @@
 
 BEGIN;
 
+-- Per spec F-FREE-001 the FREE plan MUST include at minimum the
+-- canonical keys for the basic module set: dashboard (core_/inicio),
+-- clients (core_/clientes), and webmail (core_/webmail). The previous
+-- version omitted core_/inicio (dashboard), which left newly-assigned
+-- FREE companies without an entry point — the catalog rendered the
+-- plan but the dashboard never showed up as an included module.
 INSERT INTO public.plans (
   id, name, tagline, description,
   base_price_cents, currency, billing_period,
@@ -21,7 +27,7 @@ INSERT INTO public.plans (
   'Plan gratuito para probar el CRM: 1 usuario, módulos core.',
   0, 'EUR', 'monthly',
   1, 0,
-  ARRAY['core_/clientes','core_/webmail'],
+  ARRAY['core_/inicio','core_/clientes','core_/webmail'],
   0, true,
   false
 )

@@ -70,16 +70,27 @@ AS $$
 $$;
 
 -- Test fixtures: pre-migration rows (legacy keys) and their expected
--- post-migration rewrites.
+-- post-migration rewrites. `original_modules` is nullable so the NULL
+-- defensive path can be exercised; rows D–G cover the edge cases.
 CREATE TEMP TABLE __smoke_plans (
   id text PRIMARY KEY,
-  original_modules text[] NOT NULL
+  original_modules text[]
 );
 
 INSERT INTO __smoke_plans (id, original_modules) VALUES
   ('__smoke_a', ARRAY['clientes','reservas','webmail','analiticas']),
   ('__smoke_b', ARRAY['clientes','reservas','facturas','presupuestos','facturacion','productos','dispositivos']),
-  ('__smoke_c', ARRAY['marketing','facturacion']);
+  ('__smoke_c', ARRAY['marketing','facturacion']),
+  -- Edge case: NULL original array (the migration guards with
+  -- `IF r.included_modules IS NOT NULL`; result becomes `{}`).
+  ('__smoke_d', NULL),
+  -- Edge case: empty array (the FOREACH no-ops; result stays `{}`).
+  ('__smoke_e', ARRAY[]::text[]),
+  -- Edge case: duplicate legacy keys within one array (`DISTINCT`
+  -- in the UPDATE collapses them to a single canonical entry).
+  ('__smoke_f', ARRAY['clientes','clientes','reservas','reservas']),
+  -- Edge case: all-legacy-keys-not-in-map pass through verbatim.
+  ('__smoke_g', ARRAY['unknown1','unknown2']);
 
 CREATE TEMP TABLE __smoke_backup AS SELECT * FROM __smoke_plans;
 CREATE TEMP TABLE __smoke_rewritten (
@@ -165,14 +176,19 @@ BEGIN
   END IF;
 
   -- ──────────────────────────────────────────────────────────────────
-  -- F. Every rewritten key belongs to the canonical namespace.
+  -- F. Every rewritten key for rows A–F belongs to the canonical
+  --    namespace. Row G (`__smoke_g`) explicitly carries unknown keys
+  --    by design — that passthrough behavior is asserted separately
+  --    in M below.
   -- ──────────────────────────────────────────────────────────────────
   SELECT COALESCE(array_agg(k) FILTER (WHERE NOT EXISTS (SELECT 1 FROM __smoke_canonical_keys WHERE key = k.k)), ARRAY[]::text[])
     INTO v_unknown
-    FROM (SELECT DISTINCT unnest(rewritten_modules) AS k FROM __smoke_rewritten) k;
+    FROM (SELECT DISTINCT unnest(rewritten_modules) AS k
+            FROM __smoke_rewritten
+           WHERE id <> '__smoke_g') k;
 
   IF v_unknown = ARRAY[]::text[] THEN
-    RAISE NOTICE 'PASS: every rewritten key belongs to the canonical namespace';
+    RAISE NOTICE 'PASS: every rewritten key (except all-unknown row G) belongs to the canonical namespace';
     v_pass := v_pass + 1;
   ELSE
     RAISE EXCEPTION 'FAIL: keys not in canonical namespace: %', v_unknown;
@@ -223,6 +239,53 @@ BEGIN
     v_pass := v_pass + 1;
   ELSE
     RAISE EXCEPTION 'FAIL: rollback row B mismatch, got %', v_arr;
+  END IF;
+
+  -- ──────────────────────────────────────────────────────────────────
+  -- J. NULL `included_modules` row → rewrite is a no-op, result is `{}`.
+  -- ──────────────────────────────────────────────────────────────────
+  SELECT rewritten_modules INTO v_arr FROM __smoke_rewritten WHERE id = '__smoke_d';
+  IF v_arr = ARRAY[]::text[] THEN
+    RAISE NOTICE 'PASS: NULL row rewritten to empty array (defensive guard)';
+    v_pass := v_pass + 1;
+  ELSE
+    RAISE EXCEPTION 'FAIL: NULL row produced %, expected empty array', v_arr;
+  END IF;
+
+  -- ──────────────────────────────────────────────────────────────────
+  -- K. Empty array row → stays `{}` after rewrite.
+  -- ──────────────────────────────────────────────────────────────────
+  SELECT rewritten_modules INTO v_arr FROM __smoke_rewritten WHERE id = '__smoke_e';
+  IF v_arr = ARRAY[]::text[] THEN
+    RAISE NOTICE 'PASS: empty array stays empty after rewrite';
+    v_pass := v_pass + 1;
+  ELSE
+    RAISE EXCEPTION 'FAIL: empty array produced %, expected empty array', v_arr;
+  END IF;
+
+  -- ──────────────────────────────────────────────────────────────────
+  -- L. Duplicate legacy keys (`clientes`, `clientes`, `reservas`,
+  --    `reservas`) collapse via DISTINCT to one entry per canonical key.
+  -- ──────────────────────────────────────────────────────────────────
+  SELECT rewritten_modules INTO v_arr FROM __smoke_rewritten WHERE id = '__smoke_f';
+  IF (SELECT count(*) FROM unnest(v_arr) k WHERE k = 'core_/clientes') = 1
+     AND (SELECT count(*) FROM unnest(v_arr) k WHERE k = 'moduloReservas') = 1
+     AND array_length(v_arr, 1) = 2 THEN
+    RAISE NOTICE 'PASS: duplicates collapse via DISTINCT to %', v_arr;
+    v_pass := v_pass + 1;
+  ELSE
+    RAISE EXCEPTION 'FAIL: duplicate row produced %, expected de-duplicated canonical keys', v_arr;
+  END IF;
+
+  -- ──────────────────────────────────────────────────────────────────
+  -- M. All-unknown array (`unknown1`, `unknown2`) passes through verbatim.
+  -- ──────────────────────────────────────────────────────────────────
+  SELECT rewritten_modules INTO v_arr FROM __smoke_rewritten WHERE id = '__smoke_g';
+  IF v_arr = ARRAY['unknown1','unknown2'] THEN
+    RAISE NOTICE 'PASS: unknown keys pass through verbatim';
+    v_pass := v_pass + 1;
+  ELSE
+    RAISE EXCEPTION 'FAIL: unknown row produced %, expected [unknown1, unknown2]', v_arr;
   END IF;
 
   -- ──────────────────────────────────────────────────────────────────
