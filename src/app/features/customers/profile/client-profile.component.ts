@@ -1,7 +1,18 @@
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  ChangeDetectionStrategy,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
+import { Subject } from 'rxjs';
+import { filter, map, pairwise, takeUntil } from 'rxjs/operators';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { AuthService } from '../../../services/auth.service';
 import { Customer } from '../../../models/customer';
@@ -812,7 +823,7 @@ import { getClientDisplayName, getClientInitial } from '../../../models/quote.mo
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ClientProfileComponent implements OnInit {
+export class ClientProfileComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private location = inject(Location);
@@ -903,13 +914,19 @@ export class ClientProfileComponent implements OnInit {
   isLoading = signal(true);
   activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team' | 'servicios'>('ficha');
 
-  ngOnInit() {
-    // Subscribe to params and queryParams using combineLatest or separate subscriptions
-    this.route.params.subscribe((params) => {
-      const id = params['id'];
-      if (id) this.loadCustomer(id);
-    });
+  /**
+   * Cleanup subject for the Router.events subscription established in ngOnInit.
+   * Completed in ngOnDestroy to avoid leaks if the component is reused.
+   */
+  private destroy$ = new Subject<void>();
 
+  ngOnInit() {
+    // Initial load (one-shot from the route snapshot at mount time).
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.loadCustomer(id);
+
+    // Existing queryParams subscription — handles ?tab= deep-links and the
+    // 'notas' alias for backwards-compat with external URLs.
     this.route.queryParams.subscribe((params) => {
       const tab = params['tab'];
       // 'notas' is an alias for 'clinical' (backwards compat with external URLs)
@@ -926,6 +943,41 @@ export class ClientProfileComponent implements OnInit {
         }
       }
     });
+
+    // Re-fetch the customer on every navigation that lands on /customers/:id.
+    // This covers two cases that previously kept the card showing stale data:
+    //   1. Navigating away (e.g. /customers) and back to /customers/:id reuses
+    //      the component instance, so route.params does not re-emit.
+    //   2. The GDPR consent flow links back to /customers/:id?refresh=true —
+    //      same :id, only query params change, so route.params stays silent.
+    // pairwise() compares previous vs current URL and refetches only when they
+    // actually differ, which prevents infinite refetch loops. The optional
+    // ?refresh=true query param forces a refetch on initial load as well.
+    this.router.events
+      .pipe(
+        takeUntil(this.destroy$),
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        map(() => this.router.url),
+        pairwise(),
+        filter(([prev, curr]) => {
+          const isCustomerUrl = /\/customers\/[^/]+/.test(curr);
+          const isRefreshFlag =
+            this.route.snapshot.queryParamMap.get('refresh') === 'true';
+          // Refetch when the URL actually changed AND we landed on /customers/:id,
+          // OR when the active URL still carries ?refresh=true (belt-and-braces
+          // for cases where the URL did not change between two navigations).
+          return isCustomerUrl && (prev !== curr || isRefreshFlag);
+        }),
+      )
+      .subscribe(() => {
+        const newId = this.route.snapshot.paramMap.get('id');
+        if (newId) this.loadCustomer(newId);
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadCustomer(id: string) {
