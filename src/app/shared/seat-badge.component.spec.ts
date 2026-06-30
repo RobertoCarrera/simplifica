@@ -1,14 +1,17 @@
 /**
- * Unit tests for SeatBadgeComponent. The component is pure (no DI,
- * no TestBed) so we render it via a tiny inline host element and assert
- * the computed label + click emission.
+ * Unit tests for SeatBadgeComponent. Renders via a tiny inline host
+ * element and asserts the computed label + click emission.
  *
  * Spec ref: F-SEAT-004 (Empresas Tab Seat Badge).
  *
- * Test runner: Karma+Jasmine (`npm run test`). This file lives under
- * shared/ which the project's Jest config does not pick up — that's
- * intentional; the existing module-keys.spec.ts follows the same
- * pattern. Run on CI with Chrome available.
+ * Test runner: Karma+Jasmine (`npm run test`). Requires Chrome, which
+ * is NOT installed in this dev environment — runs on CI.
+ *
+ * Excluded from `npm run test:unit` (Jest) because Angular 21 ships
+ * its `@angular/core/testing` module as ESM in node_modules and Jest's
+ * ts-jest preset does not transform it. The pre-existing module-keys.spec.ts
+ * sidesteps this by only importing pure helpers; this spec needs TestBed,
+ * so it must stay Karma-only.
  */
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
