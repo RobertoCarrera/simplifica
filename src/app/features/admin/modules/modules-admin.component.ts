@@ -689,6 +689,17 @@ export class ModulesAdminComponent implements OnInit {
     this.editingAddonDraft.set({ ...draft, included_modules: next });
   }
 
+  /**
+   * Convert euros (decimal) to cents for the add-on price input. The
+   * template can't reach `Math` directly, so this is a thin component
+   * helper exposed to the (input) handler.
+   */
+  eurosToCents(eur: number | string): number {
+    const n = typeof eur === 'number' ? eur : Number(eur);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100);
+  }
+
   /** Convenience flag for the template: is the editor open in any mode? */
   isAddonEditorOpen(): boolean {
     return this.editingAddon() !== null || this.newAddonMode();
