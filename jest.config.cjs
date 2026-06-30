@@ -57,5 +57,11 @@ module.exports = {
     // They run under Karma+Jasmine (`npm run test`) on CI.
     '<rootDir>/src/app/shared/seat-badge.component.spec.ts',
     '<rootDir>/src/app/services/plan.service.spec.ts',
+    // PR 3 (plans-pricing-freemium): ModulesAdminComponent spec needs the
+    // full Angular TestBed + ActivatedRoute stub; AuthService spec spins
+    // up the full SupabaseClient + Router stack at construction time.
+    // Both run under Karma+Jasmine on CI.
+    '<rootDir>/src/app/features/admin/modules/modules-admin.component.spec.ts',
+    '<rootDir>/src/app/services/auth.service.spec.ts',
   ],
 };
