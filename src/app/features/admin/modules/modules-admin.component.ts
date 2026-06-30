@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthService } from '../../../services/auth.service';
@@ -38,6 +39,7 @@ export class ModulesAdminComponent implements OnInit {
   private modulesService = inject(SupabaseModulesService);
   private planService = inject(PlanService);
   private toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
 
   loading = signal(false);
   companies: any[] = [];
@@ -54,6 +56,10 @@ export class ModulesAdminComponent implements OnInit {
   plans = signal<Plan[]>([]);
   addons = signal<PlanAddon[]>([]);
   pricingSavingKey = signal<string | null>(null); // `${planId}:${moduleKey}` while RPC in flight
+  /** PR 3: which plan is currently in the inline-edit form. null = no editor open. */
+  editingPlan = signal<Plan | null>(null);
+  /** PR 3: working copy bound to the inline edit form ngModel controls. */
+  editingDraft = signal<Plan | null>(null);
 
   // Modules catalog for resolving module_key → label
   private moduleLabelMap: Record<string, string> = Object.fromEntries(
@@ -299,6 +305,71 @@ export class ModulesAdminComponent implements OnInit {
     this.activeTab.set(tab);
     if (tab === 'sidebar') this.loadSidebarOrder();
     if (tab === 'pricing') this.loadPricing();
+  }
+
+  // ── Inline plan editor (PR 3, F-PCA-001..003) ───────────────────────────────
+  // The editor is gated by `?flag=plan-edit-v2` per ADR-05 so it ships OFF by
+  // default. Even with the flag on, only super_admin sees the affordance. The
+  // RPC admin_upsert_plan is itself super_admin-gated, so this is a UX gate,
+  // not a security one — but it keeps the editorial surface quiet in normal
+  // use and gives us a kill-switch for staging.
+
+  /** Read the feature flag from the current route query params. */
+  isEditorEnabled(): boolean {
+    return this.route.snapshot.queryParamMap.get('flag') === 'plan-edit-v2' && this.isSuperAdmin();
+  }
+
+  /** Open the editor for the given plan. Seeds the draft signal with a copy. */
+  startEdit(plan: Plan): void {
+    this.editingPlan.set(plan);
+    this.editingDraft.set({ ...plan });
+  }
+
+  /** Close the editor without saving. */
+  cancelEdit(): void {
+    this.editingPlan.set(null);
+    this.editingDraft.set(null);
+  }
+
+  /**
+   * Persist the edit-form values via planService.updatePlan(). The RPC owns
+   * canonical-key + is_highlighted mutex + 42501 guards; the client only does
+   * lightweight numeric validation so the user gets fast feedback before
+   * round-tripping.
+   */
+  async updatePlanMetadata(): Promise<void> {
+    const draft = this.editingDraft();
+    const target = this.editingPlan();
+    if (!draft || !target) return;
+
+    if (!draft.name || !draft.name.trim()) {
+      this.toast.error('Validación', 'El nombre del plan es obligatorio.');
+      return;
+    }
+    if (draft.base_price_cents < 0 || !Number.isFinite(draft.base_price_cents)) {
+      this.toast.error('Validación', 'El precio base debe ser un número ≥ 0.');
+      return;
+    }
+    if (!Number.isInteger(draft.included_users) || draft.included_users < 1) {
+      this.toast.error('Validación', 'El plan debe incluir al menos 1 usuario.');
+      return;
+    }
+
+    // Optimistic in-place merge so the @for re-renders instantly; the RPC's
+    // success branch will overwrite with the canonical server response.
+    this.plans.set(this.plans().map((p) => (p.id === target.id ? { ...target, ...draft } : p)));
+
+    try {
+      const fresh = await firstValueFrom(this.planService.updatePlan({ ...target, ...draft }));
+      this.plans.set(this.plans().map((p) => (p.id === fresh.id ? fresh : p)));
+      this.toast.success('Plan actualizado', `${fresh.name} se ha guardado correctamente.`);
+      this.cancelEdit();
+    } catch (e: any) {
+      // Revert the optimistic update on error so the UI matches server state.
+      this.plans.set(this.plans().map((p) => (p.id === target.id ? target : p)));
+      console.error('Error updating plan metadata:', e);
+      this.toast.error('Error', e?.message || 'No se pudo guardar el plan.');
+    }
   }
 
   // ── Pricing tab ────────────────────────────────────────────────────────────
