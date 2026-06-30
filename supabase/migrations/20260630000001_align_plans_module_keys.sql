@@ -41,15 +41,6 @@ INSERT INTO public.module_key_canonical_map (legacy_key, canonical_key, note) VA
   ('tickets',       'moduloChat',          'legacy naming')
 ON CONFLICT (legacy_key) DO NOTHING;
 
--- Tripwire: this table is the server-side source of truth. Clients
--- MUST continue mirroring via src/app/shared/module-keys.ts;
--- DO NOT add GRANT EXECUTE / GRANT SELECT to authenticated or anon
--- roles here. Keeping the table server-only forces client traffic
--- through the canonical RPC paths (admin_upsert_plan canonical-key
--- guard + togglePlanModule RPC), which is the intended surface.
-COMMENT ON TABLE public.module_key_canonical_map IS
-  'Server-only; do not GRANT to authenticated — clients must mirror via module-keys.ts.';
-
 -- Snapshot the original column for rollback safety.
 CREATE TABLE IF NOT EXISTS public.plans_included_modules_backup AS
   SELECT id AS plan_id, included_modules
