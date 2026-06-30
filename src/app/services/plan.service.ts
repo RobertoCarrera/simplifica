@@ -30,6 +30,7 @@ export interface PlanAddon {
   currency: string;
   billing_period: 'monthly' | 'yearly';
   applies_to_plans: string[];
+  included_modules: string[];
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -149,12 +150,15 @@ export class PlanService {
   /**
    * Admin: upsert an add-on (create or update). Requires super_admin.
    *
-   * Mirrors the F-ADDON-002 / F-ADDON-003 / F-ADDON-004 contract:
+   * Mirrors the F-ADDON-002 / F-ADDON-003 / F-ADDON-004 / F-ADDON-006
+   * contract:
    *   - 42501 → "No tienes permisos de super_admin" (Spanish toast).
    *   - 23505 (unique_violation on p_id) → "Ya existe un add-on con ese
    *     identificador" so the create form can surface a clean message.
    *   - On success, in-place merge into the cached addons signal so the
    *     table re-renders without a refetch.
+   *   - F-ADDON-006: included_modules is the list of module keys this
+   *     add-on unlocks for the plans in applies_to_plans.
    */
   updateAddon(addon: PlanAddon): Observable<PlanAddon> {
     return from(
@@ -170,6 +174,7 @@ export class PlanService {
           p_applies_to_plans: addon.applies_to_plans ?? [],
           p_sort_order: addon.sort_order,
           p_is_active: addon.is_active,
+          p_included_modules: addon.included_modules ?? [],
         });
         if (error && (error as any).code === '42501') {
           throw new Error('No tienes permisos de super_admin');

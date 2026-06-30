@@ -63,6 +63,7 @@ const SAMPLE_ADDON: PlanAddon = {
   currency: 'EUR',
   billing_period: 'monthly',
   applies_to_plans: ['pro'],
+  included_modules: ['marketing'],
   sort_order: 10,
   is_active: true,
   created_at: '',
@@ -465,5 +466,32 @@ describe('ModulesAdminComponent — PR 4 add-on editor', () => {
     component.cancelAddonEdit();
     expect(component.isAddonEditorOpen()).toBe(false);
     expect(fixture.nativeElement.querySelector('[data-testid="addon-edit-form"]')).toBeNull();
+  });
+
+  it('F-ADDON-006: included_modules is sent in the RPC payload', async () => {
+    const { fixture, component, updateAddon } = setup({ flag: null, role: 'super_admin' });
+    component.activeTab.set('pricing');
+    component.plans.set([SAMPLE_PLAN]);
+    component.addons.set([SAMPLE_ADDON]);
+    component.startAddonEdit(SAMPLE_ADDON);
+    component.toggleAddonModule('core_/facturacion');
+    fixture.detectChanges();
+
+    await component.saveAddon();
+
+    expect(updateAddon).toHaveBeenCalled();
+    const payload = updateAddon.calls.mostRecent().args[0] as PlanAddon;
+    expect(payload.included_modules).toEqual(['marketing', 'core_/facturacion']);
+  });
+
+  it('F-ADDON-006: toggleAddonModule adds and removes module keys', () => {
+    const { component } = setup({ flag: null, role: 'super_admin' });
+    component.startNewAddon();
+    component.toggleAddonModule('marketing');
+    expect(component.editingAddonDraft()?.included_modules).toEqual(['marketing']);
+    component.toggleAddonModule('moduloFacturas');
+    expect(component.editingAddonDraft()?.included_modules).toEqual(['marketing', 'moduloFacturas']);
+    component.toggleAddonModule('marketing');
+    expect(component.editingAddonDraft()?.included_modules).toEqual(['moduloFacturas']);
   });
 });

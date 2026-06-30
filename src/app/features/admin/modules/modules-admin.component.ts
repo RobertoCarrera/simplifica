@@ -593,6 +593,7 @@ export class ModulesAdminComponent implements OnInit {
       currency: 'EUR',
       billing_period: 'monthly',
       applies_to_plans: [],
+      included_modules: [],
       sort_order: maxSort + 10,
       is_active: true,
       _existingIds: existingIds,
@@ -616,7 +617,7 @@ export class ModulesAdminComponent implements OnInit {
     if (!/^[a-z0-9_-]+$/i.test(String(draft.id))) return 'El identificador solo puede tener letras, números, guiones y guiones bajos.';
     if (!draft.name || !String(draft.name).trim()) return 'El nombre es obligatorio.';
     if (typeof draft.price_cents !== 'number' || !Number.isFinite(draft.price_cents) || draft.price_cents < 0) {
-      return 'El precio debe ser un número ≥ 0 (en céntimos).';
+      return 'El precio debe ser un número ≥ 0 (en euros).';
     }
     if (!draft.icon || !String(draft.icon).trim()) return 'El icono es obligatorio.';
     return null;
@@ -644,6 +645,7 @@ export class ModulesAdminComponent implements OnInit {
       currency: draft.currency ?? 'EUR',
       billing_period: (draft.billing_period as 'monthly' | 'yearly') ?? 'monthly',
       applies_to_plans: Array.isArray(draft.applies_to_plans) ? draft.applies_to_plans : [],
+      included_modules: Array.isArray(draft.included_modules) ? draft.included_modules : [],
       sort_order: Number(draft.sort_order ?? 0),
       is_active: !!draft.is_active,
       created_at: draft.created_at ?? '',
@@ -674,6 +676,17 @@ export class ModulesAdminComponent implements OnInit {
       ? current.filter((p) => p !== planId)
       : [...current, planId];
     this.editingAddonDraft.set({ ...draft, applies_to_plans: next });
+  }
+
+  /** F-ADDON-006: toggle a module_key in the addon's included_modules multi-select. */
+  toggleAddonModule(moduleKey: string): void {
+    const draft = this.editingAddonDraft();
+    if (!draft) return;
+    const current = Array.isArray(draft.included_modules) ? draft.included_modules : [];
+    const next = current.includes(moduleKey)
+      ? current.filter((k) => k !== moduleKey)
+      : [...current, moduleKey];
+    this.editingAddonDraft.set({ ...draft, included_modules: next });
   }
 
   /** Convenience flag for the template: is the editor open in any mode? */
