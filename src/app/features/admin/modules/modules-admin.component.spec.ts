@@ -494,4 +494,87 @@ describe('ModulesAdminComponent — PR 4 add-on editor', () => {
     component.toggleAddonModule('marketing');
     expect(component.editingAddonDraft()?.included_modules).toEqual(['moduloFacturas']);
   });
+
+  it('F-ADDON-007: unavailableModules excludes the add-on being edited', () => {
+    const addonA: PlanAddon = { ...SAMPLE_ADDON, id: 'a', included_modules: ['moduloFacturas'] };
+    const addonB: PlanAddon = { ...SAMPLE_ADDON, id: 'b', included_modules: ['core_/clientes'] };
+    const { component } = setup({ flag: null, role: 'super_admin', addons: [addonA, addonB] });
+    component.addons.set([addonA, addonB]);
+    const unavail = component.unavailableModules('a');
+    expect(unavail.has('moduloFacturas')).toBe(false); // A's own module
+    expect(unavail.has('core_/clientes')).toBe(true); // B's module is blocked
+  });
+
+  it('F-ADDON-007: unavailableModules for a new add-on (empty id) blocks every other add-on module', () => {
+    const addonA: PlanAddon = { ...SAMPLE_ADDON, id: 'a', included_modules: ['moduloFacturas'] };
+    const { component } = setup({ flag: null, role: 'super_admin', addons: [addonA] });
+    component.addons.set([addonA]);
+    const unavail = component.unavailableModules('');
+    expect(unavail.has('moduloFacturas')).toBe(true);
+  });
+
+  it('F-ADDON-007: inactive add-ons do NOT hold their modules', () => {
+    const inactiveA: PlanAddon = { ...SAMPLE_ADDON, id: 'a', included_modules: ['moduloFacturas'], is_active: false };
+    const activeB: PlanAddon = { ...SAMPLE_ADDON, id: 'b', included_modules: [] };
+    const { component } = setup({ flag: null, role: 'super_admin', addons: [inactiveA, activeB] });
+    component.addons.set([inactiveA, activeB]);
+    // B is being edited; A is inactive so moduloFacturas is free.
+    const unavail = component.unavailableModules('b');
+    expect(unavail.has('moduloFacturas')).toBe(false);
+  });
+
+  it('F-ADDON-007: moduleOwnerName returns the owning add-on name', () => {
+    const addonA: PlanAddon = { ...SAMPLE_ADDON, id: 'a', name: 'Add-on A', included_modules: ['moduloFacturas'] };
+    const { component } = setup({ flag: null, role: 'super_admin', addons: [addonA] });
+    component.addons.set([addonA]);
+    expect(component.moduleOwnerName('b', 'moduloFacturas')).toBe('Add-on A');
+    expect(component.moduleOwnerName('a', 'moduloFacturas')).toBeNull(); // excluded when editing itself
+  });
+
+  it('F-ADDON-008: filteredModuleKeys narrows the list by label substring (case-insensitive)', () => {
+    const { component } = setup({ flag: null, role: 'super_admin' });
+    component.addonModuleFilter.set('clien');
+    const filtered = component.filteredModuleKeys();
+    expect(filtered.every((k) => component.moduleLabel(k).toLowerCase().includes('clien'))).toBe(true);
+    expect(filtered.length).toBeGreaterThan(0);
+  });
+
+  it('F-ADDON-008: filteredModuleKeys returns the full catalog when the filter is empty', () => {
+    const { component } = setup({ flag: null, role: 'super_admin' });
+    component.addonModuleFilter.set('');
+    expect(component.filteredModuleKeys().length).toBe(component.availableModuleKeys.length);
+  });
+
+  it('F-ADDON-008: opening the editor resets the filter', () => {
+    const { component } = setup({ flag: null, role: 'super_admin' });
+    component.addonModuleFilter.set('facturacion');
+    component.startNewAddon();
+    expect(component.addonModuleFilter()).toBe('');
+    component.addonModuleFilter.set('cliente');
+    component.startAddonEdit(SAMPLE_ADDON);
+    expect(component.addonModuleFilter()).toBe('');
+    component.addonModuleFilter.set('chat');
+    component.cancelAddonEdit();
+    expect(component.addonModuleFilter()).toBe('');
+  });
+
+  it('F-ADDON-007: 23514 from updateAddon surfaces a Spanish conflict toast', async () => {
+    const { fixture, component, toast } = setup({
+      flag: null,
+      role: 'super_admin',
+      updateAddonOverride: () => throwError(() => new Error('El módulo "moduloFacturas" ya está incluido en el add-on "Verifactu extra". Desactívalo o quítalo de allí antes de poder reasignarlo.')),
+    });
+    component.activeTab.set('pricing');
+    component.plans.set([SAMPLE_PLAN]);
+    component.addons.set([SAMPLE_ADDON]);
+    component.startAddonEdit(SAMPLE_ADDON);
+    fixture.detectChanges();
+
+    await component.saveAddon();
+
+    expect(toast.error).toHaveBeenCalled();
+    const args = toast.error.calls.mostRecent().args;
+    expect(args[1]).toContain('ya está incluido');
+    expect(args[1]).toContain('Verifactu extra');
+  });
 });

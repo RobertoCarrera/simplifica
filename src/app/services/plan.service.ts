@@ -182,6 +182,11 @@ export class PlanService {
         if (error && (error as any).code === '23505') {
           throw new Error(`Ya existe un add-on con el identificador "${addon.id}".`);
         }
+        if (error && (error as any).code === '23514') {
+          // F-ADDON-007: module already owned by another active add-on.
+          // The RPC carries the conflict detail in the message verbatim.
+          throw new Error(error.message || 'Conflicto: el módulo ya está en otro add-on activo.');
+        }
         if (error) throw error;
         const fresh = data as PlanAddon;
         this._addons.set(

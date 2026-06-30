@@ -570,12 +570,15 @@ export class ModulesAdminComponent implements OnInit {
   newAddonMode = signal<boolean>(false);
   /** PR 4: which add-on row is currently saving (for spinner). null = idle. */
   addonSavingId = signal<string | null>(null);
+  /** F-ADDON-008: free-text filter for the modules multi-select. */
+  addonModuleFilter = signal<string>('');
 
   /** Open the editor for an existing add-on (PR 4, F-ADDON-002). */
   startAddonEdit(addon: PlanAddon): void {
     this.newAddonMode.set(false);
     this.editingAddon.set(addon);
     this.editingAddonDraft.set({ ...addon });
+    this.addonModuleFilter.set('');
   }
 
   /** Open the editor in "create" mode for a brand-new add-on (F-ADDON-003). */
@@ -598,6 +601,7 @@ export class ModulesAdminComponent implements OnInit {
       is_active: true,
       _existingIds: existingIds,
     } as any);
+    this.addonModuleFilter.set('');
   }
 
   /** Close the editor without saving. */
@@ -605,6 +609,7 @@ export class ModulesAdminComponent implements OnInit {
     this.editingAddon.set(null);
     this.editingAddonDraft.set(null);
     this.newAddonMode.set(false);
+    this.addonModuleFilter.set('');
   }
 
   /**
@@ -687,6 +692,52 @@ export class ModulesAdminComponent implements OnInit {
       ? current.filter((k) => k !== moduleKey)
       : [...current, moduleKey];
     this.editingAddonDraft.set({ ...draft, included_modules: next });
+  }
+
+  /**
+   * F-ADDON-007: set of module keys already assigned to another ACTIVE
+   * add-on. Pass the add-on currently being edited (or '' for new add-ons)
+   * so the editor can keep its own modules and only exclude the rest.
+   * Inactive add-ons do NOT hold their modules (so deactivating an add-on
+   * frees up its modules for re-assignment without a manual cleanup).
+   */
+  unavailableModules(currentAddonId: string): Set<string> {
+    const result = new Set<string>();
+    for (const a of this.addons()) {
+      if (a.id === currentAddonId) continue;
+      if (!a.is_active) continue;
+      for (const k of (a.included_modules ?? [])) {
+        result.add(k);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * F-ADDON-007: name of the active add-on that currently owns a module,
+   * or null if the module is not claimed. Used to render the
+   * "ya incluido en X" hint on disabled checkboxes.
+   */
+  moduleOwnerName(currentAddonId: string, moduleKey: string): string | null {
+    for (const a of this.addons()) {
+      if (a.id === currentAddonId) continue;
+      if (!a.is_active) continue;
+      if ((a.included_modules ?? []).includes(moduleKey)) {
+        return a.name;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * F-ADDON-008: free-text filter applied to the modules multi-select.
+   * Matches by module label (case-insensitive substring). Empty query
+   * returns the full catalog.
+   */
+  filteredModuleKeys(): string[] {
+    const q = this.addonModuleFilter().trim().toLowerCase();
+    if (!q) return this.availableModuleKeys;
+    return this.availableModuleKeys.filter((k) => this.moduleLabel(k).toLowerCase().includes(q));
   }
 
   /**
