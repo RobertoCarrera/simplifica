@@ -3,6 +3,11 @@ import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import {
+  CdkDragDrop,
+  DragDropModule,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthService } from '../../../services/auth.service';
@@ -105,7 +110,7 @@ export interface SidebarOrderItem {
 @Component({
   selector: 'app-modules-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, SeatBadgeComponent],
+  imports: [CommonModule, FormsModule, SeatBadgeComponent, DragDropModule],
   templateUrl: './modules-admin.component.html',
   styleUrls: ['./modules-admin.component.scss']
 })
@@ -850,5 +855,65 @@ export class ModulesAdminComponent implements OnInit {
    */
   get POPULAR_FA_ICONS(): readonly string[] {
     return POPULAR_FA_ICONS;
+  }
+
+  // ── Add-on reordering (drag-and-drop) ─────────────────────────────────────
+
+  /**
+   * Compute a new sort_order for the add-on currently being moved based
+   * on its neighbours in the post-reorder array. Sits before prev / after
+   * next; falls back to a 10-step increment at the boundaries. Avoids
+   * touching the other rows so the persisted RPC call is exactly one
+   * admin_upsert_addon for the moved item.
+   */
+  private computeAddonSortOrder(
+    prev: PlanAddon | undefined,
+    next: PlanAddon | undefined,
+  ): number {
+    if (!prev && !next) return 10;
+    if (!prev && next) return next.sort_order - 10;
+    if (prev && !next) return prev.sort_order + 10;
+    return Math.floor((prev!.sort_order + next!.sort_order) / 2);
+  }
+
+  /**
+   * CDK drop handler for the add-ons table. Reorders the local signal
+   * optimistically, then persists the moved add-on's new sort_order via
+   * planService.updateAddon. On RPC failure the order is reverted and a
+   * toast surfaces the error.
+   */
+  async onAddonDrop(event: CdkDragDrop<PlanAddon[]>): Promise<void> {
+    if (event.previousIndex === event.currentIndex) return;
+
+    const before = [...this.addons()];
+    moveItemInArray(before, event.previousIndex, event.currentIndex);
+    this.addons.set(before);
+
+    const moved = before[event.currentIndex];
+    const prev = before[event.currentIndex - 1];
+    const next = before[event.currentIndex + 1];
+    const newSortOrder = this.computeAddonSortOrder(prev, next);
+
+    // Skip the RPC when the chosen sort_order collides with a neighbour
+    // (possible if sort_orders were already tight). In that case bump by
+    // a safe delta and let the server rewrite via UPSERT.
+    const safeSortOrder =
+      (prev && newSortOrder === prev.sort_order) ||
+      (next && newSortOrder === next.sort_order)
+        ? (prev?.sort_order ?? next!.sort_order - 10) + 10
+        : newSortOrder;
+
+    const original = moved.sort_order;
+    moved.sort_order = safeSortOrder;
+
+    try {
+      await firstValueFrom(this.planService.updateAddon({ ...moved }));
+    } catch (e: any) {
+      // Revert the optimistic reorder and restore the moved item's sort_order.
+      moved.sort_order = original;
+      this.addons.set(this.addons().slice().sort((a, b) => a.sort_order - b.sort_order));
+      console.error('Error reordering add-on:', e);
+      this.toast.error('Error', e?.message || 'No se pudo reordenar el add-on.');
+    }
   }
 }

@@ -929,11 +929,34 @@
                     }
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody
+                  class="divide-y divide-gray-100"
+                  cdkDropList
+                  [cdkDropListData]="addons()"
+                  [cdkDropListDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
+                  (cdkDropListDropped)="onAddonDrop($event)"
+                  data-testid="addons-table-body"
+                >
                   @for (addon of addons(); track addon.id) {
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr
+                      class="hover:bg-gray-50 transition-colors"
+                      cdkDrag
+                      [cdkDragData]="addon"
+                      [cdkDragDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
+                      [class.cursor-grab]="isEditorEnabled() && !isAddonEditorOpen()"
+                      data-testid="addon-row"
+                    >
                       <td class="px-5 py-3">
                         <div class="flex items-center gap-3">
+                          @if (isEditorEnabled()) {
+                            <span
+                              cdkDragHandle
+                              class="text-gray-300 hover:text-gray-500"
+                              [title]="'Arrastra para reordenar'"
+                            >
+                              <i class="fas fa-grip-vertical text-xs"></i>
+                            </span>
+                          }
                           <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
                             <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
                           </div>
