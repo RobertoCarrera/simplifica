@@ -14,7 +14,8 @@
   },
   "include": [
     "src/app/shared/utils/**/*.ts",
-    "src/app/features/admin/modules/**/*.ts",
+    "src/app/shared/**/*.ts",
     "src/__mocks__/**/*.ts"
   ]
+}
 }

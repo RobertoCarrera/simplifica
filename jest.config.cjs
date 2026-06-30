@@ -30,7 +30,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json'],
   testMatch: [
     '<rootDir>/src/app/shared/utils/**/*.spec.ts',
-    '<rootDir>/src/app/features/admin/modules/**/*.spec.ts',
+    '<rootDir>/src/app/shared/**/*.spec.ts',
   ],
   moduleNameMapper: {
     '\\.(scss|css|less|svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot)$':

@@ -8,7 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
-import { SIDEBAR_CATALOG } from './module-keys';
+import { SIDEBAR_CATALOG } from '../../../shared/module-keys';
 
 export interface SidebarOrderItem {
   key: string;
