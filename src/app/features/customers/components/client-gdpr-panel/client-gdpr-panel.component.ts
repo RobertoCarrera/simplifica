@@ -678,7 +678,8 @@ export class ClientGdprPanelComponent implements OnInit {
   // Healthcare (Art. 9) consent visibility — only rendered when the company
   // has the 'historialClinico' (alias: 'historial_clinico') module active.
   // null = modules not yet loaded (hide during loading); true = render; false = hide.
-  private healthcareModuleEnabled = signal<boolean | null>(null);
+  // Public so the @if block in the template can read it.
+  readonly healthcareModuleEnabled = signal<boolean | null>(null);
 
   lastConsentUpdate: string = '';
   retentionPeriodYears: number = 5; // Updated to 5 years (Health Data Law)
