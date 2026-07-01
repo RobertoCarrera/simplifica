@@ -16,7 +16,7 @@ import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
 import { SIDEBAR_CATALOG } from '../../../shared/module-keys';
 import { SeatBadgeComponent } from '../../../shared/seat-badge.component';
-import { FA_FREE_SOLID_ICONS, POPULAR_FA_ICONS } from '../../../shared/fontawesome-icons';
+import { FA_FREE_SOLID_ICONS, FA_SPANISH_KEYWORDS, POPULAR_FA_ICONS, stripAccents } from '../../../shared/fontawesome-icons';
 
 /**
  * FA 6 free-solid icon catalog (~580 names) is imported from
@@ -796,14 +796,31 @@ export class ModulesAdminComponent implements OnInit {
    * can always type the exact name.
    */
   filteredFAIcons(query: string | undefined | null): string[] {
-    const q = (query ?? '').trim().toLowerCase();
+    const q = (query ?? '').trim();
     if (!q) {
-      // Default: first 40 of the full catalog so the grid always shows
-      // something browsable when the input is empty.
       return FA_FREE_SOLID_ICONS.slice(0, 40);
     }
-    const matches = FA_FREE_SOLID_ICONS.filter((k) => k.toLowerCase().includes(q));
-    return matches.slice(0, 40);
+    const qStripped = stripAccents(q);
+    const set = new Set<string>();
+
+    for (const k of FA_FREE_SOLID_ICONS) {
+      if (k.toLowerCase().includes(q.toLowerCase())) {
+        set.add(k);
+      }
+    }
+
+    for (const [keyword, icons] of Object.entries(FA_SPANISH_KEYWORDS)) {
+      const keyStripped = stripAccents(keyword);
+      if (qStripped.includes(keyStripped) || keyStripped.includes(qStripped)) {
+        for (const icon of icons) {
+          if (FA_FREE_SOLID_ICONS.includes(icon)) {
+            set.add(icon);
+          }
+        }
+      }
+    }
+
+    return Array.from(set).slice(0, 40);
   }
 
   // ── Add-on reordering (drag-and-drop) ─────────────────────────────────────
