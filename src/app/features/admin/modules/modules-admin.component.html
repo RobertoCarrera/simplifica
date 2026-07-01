@@ -119,6 +119,7 @@
               }
               <div class="text-[11px] text-gray-400 uppercase tracking-wide pt-1 border-t border-gray-100">Módulos configurables</div>
               @for (m of c.modules; track m) { @if (!isImplicitModule(m.key)) {
+                @let inPlan = isModuleInCompanyPlan(c, m.key);
                 <div class="flex items-center justify-between group">
                   <div class="flex items-center gap-3 overflow-hidden">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
@@ -128,12 +129,22 @@
                       }">
                       <i class="fas fa-cube text-xs"></i>
                     </div>
-                    <span class="text-sm font-medium text-gray-700 truncate" title="{{ getLabel(m) }}">{{ getLabel(m) }}</span>
+                    <span class="text-sm font-medium text-gray-700 truncate" [class.text-gray-400]="!inPlan" [title]="{{ getLabel(m) }}">{{ getLabel(m) }}</span>
+                    @if (!inPlan) {
+                      <span class="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5" title="Este modulo no esta en el plan actual. Cambia el plan o asigna un add-on para activarlo.">
+                        <i class="fas fa-lock text-[9px]"></i>
+                        fuera del plan
+                      </span>
+                    }
                   </div>
                   <button
-                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    [class.cursor-pointer]="inPlan"
+                    [class.cursor-not-allowed]="!inPlan"
+                    [class.opacity-50]="!inPlan"
                     [class.bg-green-500]="m.status === 'active' || m.status === 'activado'"
                     [class.bg-gray-200]="m.status !== 'active' && m.status !== 'activado'"
+                    [disabled]="!inPlan"
                     (click)="toggleCompanyModule(c, m.key)"
                   >
                     <span class="sr-only">Toggle module</span>
@@ -141,6 +152,10 @@
                       [class.translate-x-5]="m.status === 'active' || m.status === 'activado'"
                       [class.translate-x-0]="m.status !== 'active' && m.status !== 'activado'">
                     </span>
+                  </button>
+                </div>
+                }
+              }
                   </button>
                 </div>
                 }

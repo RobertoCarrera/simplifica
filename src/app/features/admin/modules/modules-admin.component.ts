@@ -816,6 +816,25 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   /**
+   * F-PB-006 strict: a module is "available" for a company only if it
+   * is in the company's current plan's included_modules. Anything
+   * else is locked: the toggle button is disabled and shows a hint that
+   * the module is not part of the plan (the super_admin must change the
+   * plan or assign an add-on to make it available).
+   *
+   * Implicit modules (Dashboard, F-PB-008) are always considered
+   * available because every plan includes them.
+   */
+  isModuleInCompanyPlan(company: any, moduleKey: string): boolean {
+    if (this.isImplicitModule(moduleKey)) return true;
+    const tier = company?.subscription_tier;
+    if (!tier) return false;
+    const plan = this.plans().find((p) => p.id === tier);
+    if (!plan) return false;
+    return (plan.included_modules ?? []).includes(moduleKey);
+  }
+
+  /**
    * Expose the full FontAwesome 6 free-solid icon list to the template
    * (used by the datalist autocomplete in the add-on edit form).
    */
