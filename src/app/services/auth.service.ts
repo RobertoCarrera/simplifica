@@ -712,6 +712,20 @@ export class AuthService {
       // broadcasts (from a different tab) are processed normally.
       this._logoutInProgress = false;
       await this.setCurrentUser(session.user);
+
+      // Fix: After login on a page that was loaded pre-auth (e.g. user clicked
+      // the modules admin link from a bookmark while signed out, then logged in),
+      // the current components have already initialized with no session and
+      // their data is empty. Force a re-resolve of the active route so the
+      // components re-init and re-fetch their data with the new session.
+      // Guard with ngZone so the navigation runs in the right context and
+      // skip the loop on the initial session load (no prior URL to refresh).
+      if (this.ngZone && this.router && this.router.url && this.router.url !== '/login') {
+        const currentUrl = this.router.url;
+        this.ngZone.run(() => {
+          this.router.navigateByUrl(currentUrl, { skipLocationChange: true });
+        });
+      }
     } else if (event === 'SIGNED_OUT') {
       // Fix #4: Clear auth state immediately on SIGNED_OUT to prevent guards from
       // allowing access during the debounce window. Then verify after 800ms — if the
