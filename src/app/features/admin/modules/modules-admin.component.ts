@@ -84,6 +84,11 @@ export class ModulesAdminComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCompanies();
+    // F-PB-007: preload plans + addons so the per-company plan
+    // selector dropdown in the Empresas tab is populated even when the
+    // user has not yet opened the Planes y Precios sub-tab.
+    this.loadPricing();
+
   }
 
   async loadCompanies() {
