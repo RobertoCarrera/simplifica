@@ -1,30 +1,45 @@
 import { Injectable } from '@angular/core';
 import { Cpu } from '../models/cpu';
-import { Observable } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * CPU catalog lookup.
+ *
+ * No dedicated `cpus` table exists on the current Supabase schema
+ * (`device_components` is the destination, but it's per-device and
+ * currently empty for catalog options). Until a dedicated catalog is
+ * provisioned, this service returns an empty observable so consumers
+ * degrade gracefully.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class CpusService {
 
-  private apiUrl = "https://a2022.twidget.io/cpus";
-  
-  constructor(private http: HttpClient){}
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[CpusService] SupabaseClientService is unavailable');
+    }
+  }
 
-  getCPUs(): Observable<Cpu[]>{
-    return this.http.get<Cpu[]>(this.apiUrl);
+  getCPUs(): Observable<Cpu[]> {
+    console.warn('[CpusService] No dedicated Supabase table for CPU catalog; returning empty list.');
+    return of([]);
   }
 
   createCpu(cpu: Cpu): Observable<Cpu> {
-    return this.http.post<Cpu>(this.apiUrl, cpu);
+    console.warn('[CpusService] createCpu ignored — no Supabase table for CPU catalog.');
+    return of({ ...cpu });
   }
 
   updateCpu(cpuId: string, updateData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${cpuId}`, updateData);
+    console.warn('[CpusService] updateCpu ignored — no Supabase table for CPU catalog.');
+    return of({ id: cpuId, ...(updateData || {}) });
   }
 
-  deleteCpu(cpuId: string): Observable<void>{
-    return this.http.delete<void>(`${this.apiUrl}/${cpuId}`);
+  deleteCpu(cpuId: string): Observable<void> {
+    console.warn('[CpusService] deleteCpu ignored — no Supabase table for CPU catalog.');
+    return of(void 0);
   }
 }

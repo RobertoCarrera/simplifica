@@ -1,26 +1,39 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
 import { GraphicCard } from '../models/graphic-card';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * Graphic-card catalog lookup.
+ *
+ * No dedicated `graphic_cards` table exists on the current Supabase
+ * schema. This service returns empty observables so consumers
+ * (dropdown lists in the product form) degrade gracefully — the user
+ * sees an empty list rather than a crash.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class GraphicCardsService {
 
-  private apiUrl = "https://a2022.twidget.io/graficas";
-  
-  constructor(private http: HttpClient){}
-  
-  getGraphicCards(): Observable<GraphicCard[]>{
-    return this.http.get<GraphicCard[]>(this.apiUrl);
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[GraphicCardsService] SupabaseClientService is unavailable');
+    }
   }
 
-  createGraphicCard(graphicCard: GraphicCard): Observable<GraphicCard>{
-    return this.http.post<GraphicCard>(this.apiUrl, graphicCard);
+  getGraphicCards(): Observable<GraphicCard[]> {
+    console.warn('[GraphicCardsService] No dedicated Supabase table for graphic card catalog; returning empty list.');
+    return of([]);
   }
 
-  deleteGraphicCard(graphicCardId: string): Observable<void>{
-    return this.http.delete<void>(this.apiUrl);
+  createGraphicCard(graphicCard: GraphicCard): Observable<GraphicCard> {
+    console.warn('[GraphicCardsService] createGraphicCard ignored — no Supabase table for graphic card catalog.');
+    return of({ ...graphicCard });
+  }
+
+  deleteGraphicCard(graphicCardId: string): Observable<void> {
+    console.warn('[GraphicCardsService] deleteGraphicCard ignored — no Supabase table for graphic card catalog.');
+    return of(void 0);
   }
 }

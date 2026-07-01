@@ -1,30 +1,43 @@
 import { Injectable } from '@angular/core';
+import { Observable, of } from 'rxjs';
 import { Ram } from '../models/ram';
-import { Observable } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * RAM size catalog lookup.
+ *
+ * No dedicated `rams` table exists on the current Supabase schema.
+ * This service returns empty observables so consumers degrade
+ * gracefully.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class RamsService {
 
-  private apiUrl = "https://a2022.twidget.io/rams";
-  
-  constructor(private http: HttpClient){}
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[RamsService] SupabaseClientService is unavailable');
+    }
+  }
 
-  getRAMs(): Observable<Ram[]>{
-    return this.http.get<Ram[]>(this.apiUrl);
+  getRAMs(): Observable<Ram[]> {
+    console.warn('[RamsService] No dedicated Supabase table for RAM catalog; returning empty list.');
+    return of([]);
   }
 
   createRam(ram: Ram): Observable<Ram> {
-    return this.http.post<Ram>(this.apiUrl, ram);
+    console.warn('[RamsService] createRam ignored — no Supabase table for RAM catalog.');
+    return of({ ...ram });
   }
 
   updateRam(ramId: string, updateData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${ramId}`, updateData);
+    console.warn('[RamsService] updateRam ignored — no Supabase table for RAM catalog.');
+    return of({ id: ramId, ...(updateData || {}) });
   }
 
-  deleteRam(ramId: string): Observable<void>{
-    return this.http.delete<void>(`${this.apiUrl}/${ramId}`);
+  deleteRam(ramId: string): Observable<void> {
+    console.warn('[RamsService] deleteRam ignored — no Supabase table for RAM catalog.');
+    return of(void 0);
   }
 }

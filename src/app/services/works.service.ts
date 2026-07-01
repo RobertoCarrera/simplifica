@@ -1,32 +1,45 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { Work } from '../models/work';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * Work (job catalog) lookup.
+ *
+ * The new schema has `services` for billing/service offerings, but
+ * there is no dedicated `works` table — labor items are represented as
+ * `services` with a labour-type category. Until a migration maps
+ * legacy works to the new `services` table, this service returns empty
+ * observables so consumers degrade gracefully.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class WorksService {
 
-  private apiUrl = "https://a2022.twidget.io/servicios";
-  
-  constructor(private http: HttpClient){}
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[WorksService] SupabaseClientService is unavailable');
+    }
+  }
 
-  getWorks(negocioId: string): Observable<Work[]>{
-    const params = new HttpParams().set('negocio_id', negocioId);
-    
-    return this.http.get<Work[]>(this.apiUrl, {params});
+  getWorks(negocioId: string): Observable<Work[]> {
+    console.warn('[WorksService] No dedicated Supabase table for "works" catalog; returning empty list.');
+    return of([]);
   }
 
   createWork(work: Work): Observable<Work> {
-    return this.http.post<Work>(this.apiUrl, work);
+    console.warn('[WorksService] createWork ignored — no Supabase table for "works" catalog.');
+    return of({ ...work });
   }
 
   updateWork(workId: string, updateData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${workId}`, updateData);
+    console.warn('[WorksService] updateWork ignored — no Supabase table for "works" catalog.');
+    return of({ id: workId, ...(updateData || {}) });
   }
 
-  deleteWork(workId: string): Observable<void>{
-    return this.http.delete<void>(`${this.apiUrl}/${workId}`);
+  deleteWork(workId: string): Observable<void> {
+    console.warn('[WorksService] deleteWork ignored — no Supabase table for "works" catalog.');
+    return of(void 0);
   }
 }

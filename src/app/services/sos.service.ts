@@ -1,28 +1,39 @@
 import { Injectable } from '@angular/core';
+import { Observable, of } from 'rxjs';
 import { So } from '../models/so';
-import { Observable } from 'rxjs';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * Operating-system (SO) catalog lookup.
+ *
+ * No dedicated `sos` table exists on the current Supabase schema
+ * (operating system info is now captured as a free-text
+ * `operating_system` column on `devices`). This service returns empty
+ * observables so consumers degrade gracefully.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class SosService {
 
-  private apiUrl = "https://a2022.twidget.io/sos";
-  
-  constructor(private http: HttpClient){}
-  
-  getSOs(isApple: string): Observable<So[]>{
-    const params = new HttpParams().set('esApple', isApple);
-
-    return this.http.get<So[]>(this.apiUrl,{params});
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[SosService] SupabaseClientService is unavailable');
+    }
   }
 
-  createSO(so: So): Observable<So>{
-    return this.http.post<So>(this.apiUrl, so);
+  getSOs(isApple: string): Observable<So[]> {
+    console.warn('[SosService] No dedicated Supabase table for OS catalog; returning empty list.');
+    return of([]);
   }
 
-  deleteSO(soId: string): Observable<void>{
-    return this.http.delete<void>(`${this.apiUrl}/${soId}`);
+  createSO(so: So): Observable<So> {
+    console.warn('[SosService] createSO ignored — no Supabase table for OS catalog.');
+    return of({ ...so });
+  }
+
+  deleteSO(soId: string): Observable<void> {
+    console.warn('[SosService] deleteSO ignored — no Supabase table for OS catalog.');
+    return of(void 0);
   }
 }

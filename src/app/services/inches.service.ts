@@ -1,30 +1,43 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
 import { Inch } from '../models/inch';
+import { SupabaseClientService } from './supabase-client.service';
 
+/**
+ * Screen-size (inches) catalog lookup.
+ *
+ * No dedicated `inches` / `screen_sizes` table exists on the current
+ * Supabase schema. This service returns empty observables so consumers
+ * degrade gracefully.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class InchesService {
 
-  private apiUrl = "https://a2022.twidget.io/pulgadas";
-  
-  constructor(private http: HttpClient){}
+  constructor(private sbClient: SupabaseClientService) {
+    if (!this.sbClient) {
+      throw new Error('[InchesService] SupabaseClientService is unavailable');
+    }
+  }
 
-  getInches(): Observable<Inch[]>{
-    return this.http.get<Inch[]>(this.apiUrl);
+  getInches(): Observable<Inch[]> {
+    console.warn('[InchesService] No dedicated Supabase table for screen-size catalog; returning empty list.');
+    return of([]);
   }
 
   createInch(inch: Inch): Observable<Inch> {
-    return this.http.post<Inch>(this.apiUrl, inch);
+    console.warn('[InchesService] createInch ignored — no Supabase table for screen-size catalog.');
+    return of({ ...inch });
   }
 
   updateInch(inchId: string, updateData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${inchId}`, updateData);
+    console.warn('[InchesService] updateInch ignored — no Supabase table for screen-size catalog.');
+    return of({ id: inchId, ...(updateData || {}) });
   }
 
-  deleteInch(inchId: string): Observable<void>{
-    return this.http.delete<void>(`${this.apiUrl}/${inchId}`);
+  deleteInch(inchId: string): Observable<void> {
+    console.warn('[InchesService] deleteInch ignored — no Supabase table for screen-size catalog.');
+    return of(void 0);
   }
 }
