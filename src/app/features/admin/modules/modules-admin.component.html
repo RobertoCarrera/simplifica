@@ -720,40 +720,62 @@
                       <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1 align-middle'" [title]="editingAddonDraft()?.icon"></i>
                     }
                   </span>
-                  <input
-                    type="text"
-                    list="fa-icon-picker"
-                    [value]="editingAddonDraft()?.icon ?? ''"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
-                    placeholder="fa-bullhorn"
-                    data-testid="addon-edit-icon"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                  />
-                  <datalist id="fa-icon-picker">
-                    @for (icon of CURATED_FA_ICONS; track icon) {
-                      <option [value]="icon">{{ icon }}</option>
-                    }
-                  </datalist>
 
-                  <!-- Quick-pick grid for the most common add-on icons -->
+                  <!-- Searchable icon picker: filter input + live grid (FA 6 free-solid, ~580 names) -->
+                  <div class="relative">
+                    <i class="fas fa-search absolute left-2.5 top-2.5 text-xs text-gray-400 pointer-events-none"></i>
+                    <input
+                      type="text"
+                      [value]="editingAddonDraft()?.icon ?? ''"
+                      (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
+                      placeholder="Buscar icono... ej: fa-bullhorn"
+                      data-testid="addon-edit-icon"
+                      class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+
+                  <!-- F-ADDMORE-008: live-search grid. Shows popular when filter is empty, otherwise filtered results. -->
                   <div class="mt-2">
-                    <span class="block text-[11px] font-medium text-gray-500 mb-1">
-                      Populares (click para seleccionar)
-                    </span>
-                    <div class="flex flex-wrap gap-1.5" data-testid="addon-edit-icon-grid">
-                      @for (icon of POPULAR_FA_ICONS; track icon) {
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="block text-[11px] font-medium text-gray-500">
+                        @if (editingAddonDraft()?.icon && filteredFAIcons(editingAddonDraft()!.icon).length > 0) {
+                          {{ filteredFAIcons(editingAddonDraft()!.icon).length }} resultado(s) para "{{ editingAddonDraft()!.icon }}"
+                        } @else {
+                          {{ POPULAR_FA_ICONS.length }} populares (o escribe para filtrar los {{ CURATED_FA_ICONS.length }} disponibles)
+                        }
+                      </span>
+                      @if (editingAddonDraft()?.icon) {
+                        <button
+                          type="button"
+                          (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: '' })"
+                          class="text-[10px] text-gray-400 hover:text-gray-600 underline"
+                        >
+                          Limpiar
+                        </button>
+                      }
+                    </div>
+                    <div
+                      class="flex flex-wrap gap-1 max-h-40 overflow-y-auto p-1.5 border border-gray-200 rounded-lg bg-gray-50"
+                      data-testid="addon-edit-icon-grid"
+                    >
+                      @for (icon of (editingAddonDraft()?.icon ? filteredFAIcons(editingAddonDraft()!.icon) : POPULAR_FA_ICONS); track icon) {
                         <button
                           type="button"
                           (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })"
                           [attr.aria-label]="icon"
                           [title]="icon"
-                          class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                          class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 hover:border-purple-300 transition-colors flex-shrink-0"
                           [class.border-purple-500]="editingAddonDraft()?.icon === icon"
                           [class.bg-purple-50]="editingAddonDraft()?.icon === icon"
                           [class.border-gray-200]="editingAddonDraft()?.icon !== icon"
                         >
                           <i [class]="'fas ' + icon + ' text-gray-700'"></i>
                         </button>
+                      }
+                      @if (editingAddonDraft()?.icon && filteredFAIcons(editingAddonDraft()!.icon).length === 0) {
+                        <span class="text-[11px] text-gray-400 italic px-2 py-1">
+                          Sin coincidencias. Escribe el nombre exacto (ej. fa-bullhorn) o déjalo vacío.
+                        </span>
                       }
                     </div>
                   </div>
@@ -780,15 +802,6 @@
                     <option value="monthly">Mensual</option>
                     <option value="yearly">Anual</option>
                   </select>
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Orden</span>
-                  <input
-                    type="number"
-                    [value]="editingAddonDraft()?.sort_order ?? 0"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, sort_order: +$any($event.target).value })"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
                 </label>
                 <div class="md:col-span-2">
                   <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>

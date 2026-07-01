@@ -16,82 +16,13 @@ import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
 import { SIDEBAR_CATALOG } from '../../../shared/module-keys';
 import { SeatBadgeComponent } from '../../../shared/seat-badge.component';
+import { FA_FREE_SOLID_ICONS, POPULAR_FA_ICONS } from '../../../shared/fontawesome-icons';
 
 /**
- * Curated list of FontAwesome free-solid icons useful for add-on catalog
- * entries. Powers the datalist autocomplete (browser-native typeahead)
- * in the add-on edit form. ~80 icons cover the common add-on vocabulary
- * without forcing the user to remember exact names.
+ * FA 6 free-solid icon catalog (~580 names) is imported from
+ * '../../../shared/fontawesome-icons' (FA_FREE_SOLID_ICONS, POPULAR_FA_ICONS).
+ * See that file for the full list and category annotations.
  */
-const CURATED_FA_ICONS: readonly string[] = [
-  'fa-bullhorn', 'fa-megaphone', 'fa-ad', 'fa-mail-bulk',
-  'fa-robot', 'fa-microchip', 'fa-brain', 'fa-magic', 'fa-wand-magic-sparkles',
-  'fa-cogs', 'fa-cog', 'fa-gears', 'fa-sliders', 'fa-screwdriver-wrench',
-  'fa-bolt', 'fa-bolt-lightning', 'fa-plug', 'fa-power-off',
-  'fa-file-invoice', 'fa-file-invoice-dollar', 'fa-file-alt', 'fa-file-lines',
-  'fa-file-contract', 'fa-receipt', 'fa-money-bill', 'fa-credit-card', 'fa-coins',
-  'fa-ticket-alt', 'fa-ticket', 'fa-headset', 'fa-life-ring',
-  'fa-mobile-alt', 'fa-mobile-screen', 'fa-tablet-screen-button', 'fa-laptop',
-  'fa-box', 'fa-box-open', 'fa-boxes-stacked', 'fa-archive',
-  'fa-tools', 'fa-screwdriver', 'fa-wrench', 'fa-hammer',
-  'fa-project-diagram', 'fa-diagram-project', 'fa-sitemap', 'fa-network-wired',
-  'fa-puzzle-piece', 'fa-shapes', 'fa-cubes', 'fa-cube',
-  'fa-star', 'fa-gem', 'fa-crown', 'fa-trophy', 'fa-award', 'fa-medal',
-  'fa-rocket', 'fa-rocket-launch', 'fa-bolt-lightning', 'fa-fire',
-  'fa-shield-alt', 'fa-shield-halved', 'fa-lock', 'fa-key', 'fa-user-shield',
-  'fa-chart-line', 'fa-chart-bar', 'fa-chart-pie', 'fa-chart-area',
-  'fa-tachometer-alt', 'fa-gauge-high', 'fa-gauge', 'fa-gauge-simple',
-  'fa-users', 'fa-people-group', 'fa-people-roof', 'fa-user-tie', 'fa-user-group',
-  'fa-handshake', 'fa-handshake-simple', 'fa-briefcase', 'fa-building',
-  'fa-bell', 'fa-bell-concierge', 'fa-bullhorn', 'fa-envelope',
-  'fa-comments', 'fa-comment', 'fa-comment-dots', 'fa-message',
-  'fa-headset', 'fa-phone-volume', 'fa-phone', 'fa-mobile',
-  'fa-calendar', 'fa-calendar-days', 'fa-calendar-check', 'fa-calendar-plus',
-  'fa-clock', 'fa-stopwatch', 'fa-hourglass-half', 'fa-hourglass',
-  'fa-magnifying-glass', 'fa-search', 'fa-filter', 'fa-sort',
-  'fa-cloud', 'fa-cloud-arrow-up', 'fa-cloud-arrow-down', 'fa-server',
-  'fa-database', 'fa-hard-drive', 'fa-memory', 'fa-microchip',
-  'fa-code', 'fa-code-branch', 'fa-terminal', 'fa-bug', 'fa-wrench',
-  'fa-link', 'fa-share-nodes', 'fa-paper-plane', 'fa-envelope-open-text',
-  'fa-book', 'fa-book-open', 'fa-bookmark', 'fa-graduation-cap',
-  'fa-tags', 'fa-tag', 'fa-bookmark', 'fa-folder', 'fa-folder-open',
-  'fa-list', 'fa-list-check', 'fa-list-ul', 'fa-table-list',
-  'fa-image', 'fa-images', 'fa-camera', 'fa-video', 'fa-microphone',
-  'fa-music', 'fa-headphones', 'fa-play', 'fa-pause',
-  'fa-globe', 'fa-earth-americas', 'fa-map', 'fa-map-marker', 'fa-location-dot',
-  'fa-heart', 'fa-thumbs-up', 'fa-thumbs-down', 'fa-face-smile',
-  'fa-flag', 'fa-bookmark', 'fa-thumbtack', 'fa-paperclip',
-  'fa-trash', 'fa-trash-can', 'fa-edit', 'fa-pen', 'fa-pen-to-square',
-  'fa-plus', 'fa-minus', 'fa-xmark', 'fa-check',
-  'fa-arrow-up', 'fa-arrow-down', 'fa-arrow-right', 'fa-arrow-left',
-  'fa-circle-info', 'fa-circle-question', 'fa-circle-exclamation',
-  'fa-triangle-exclamation', 'fa-circle-check', 'fa-circle-xmark',
-  'fa-spinner', 'fa-arrows-rotate', 'fa-arrows-spin',
-];
-
-/**
- * Quick-pick grid for the most common add-on icons (12 entries). User
- * can click to select without typing. The full curated list (~180
- * entries above) is also exposed via the datalist autocomplete.
- */
-const POPULAR_FA_ICONS: readonly string[] = [
-  'fa-bullhorn',
-  'fa-robot',
-  'fa-cogs',
-  'fa-file-invoice',
-  'fa-file-alt',
-  'fa-ticket-alt',
-  'fa-mobile-alt',
-  'fa-box',
-  'fa-tools',
-  'fa-project-diagram',
-  'fa-puzzle-piece',
-  'fa-rocket',
-  'fa-shield-alt',
-  'fa-chart-line',
-  'fa-tachometer-alt',
-  'fa-headset',
-];
 
 export interface SidebarOrderItem {
   key: string;
@@ -843,11 +774,11 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   /**
-   * Expose the curated FontAwesome icon list to the template (used by
-   * the datalist autocomplete in the add-on edit form).
+   * Expose the full FontAwesome 6 free-solid icon list to the template
+   * (used by the datalist autocomplete in the add-on edit form).
    */
   get CURATED_FA_ICONS(): readonly string[] {
-    return CURATED_FA_ICONS;
+    return FA_FREE_SOLID_ICONS;
   }
 
   /**
@@ -855,6 +786,24 @@ export class ModulesAdminComponent implements OnInit {
    */
   get POPULAR_FA_ICONS(): readonly string[] {
     return POPULAR_FA_ICONS;
+  }
+
+  /**
+   * F-ADDON-ICON-PICKER: substring filter over the full FA 6 free-solid
+   * catalog. Returns up to 40 matches (capped for grid rendering perf).
+   * Empty query returns the first 40 icons alphabetically as a sample.
+   * The datalist autocomplete uses the full list (no cap) so the user
+   * can always type the exact name.
+   */
+  filteredFAIcons(query: string): string[] {
+    const q = (query ?? '').trim().toLowerCase();
+    if (!q) {
+      // Default: first 40 of the full catalog so the grid always shows
+      // something browsable when the input is empty.
+      return FA_FREE_SOLID_ICONS.slice(0, 40);
+    }
+    const matches = FA_FREE_SOLID_ICONS.filter((k) => k.toLowerCase().includes(q));
+    return matches.slice(0, 40);
   }
 
   // ── Add-on reordering (drag-and-drop) ─────────────────────────────────────
