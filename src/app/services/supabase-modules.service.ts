@@ -261,19 +261,22 @@ export class SupabaseModulesService {
     companyId: string,
     moduleKey: string,
     status: string,
+    force: boolean = false,
   ): Observable<{ success: boolean }> {
-    return from(this.executeAdminSetCompanyModule(companyId, moduleKey, status));
+    return from(this.executeAdminSetCompanyModule(companyId, moduleKey, status, force));
   }
 
   private async executeAdminSetCompanyModule(
     companyId: string,
     moduleKey: string,
     status: string,
+    force: boolean = false,
   ): Promise<{ success: boolean }> {
     const { data, error } = await this.supabaseClient.instance.rpc('admin_set_company_module', {
       p_target_company_id: companyId,
       p_module_key: moduleKey,
       p_status: status,
+      p_force: force,
     });
 
     if (error) {

@@ -114,25 +114,37 @@ export class ModulesAdminComponent implements OnInit {
     );
   }
 
-  async toggleCompanyModule(company: any, moduleKey: string) {
-    // Find the module in the company's list
+  async toggleCompanyModule(company: any, moduleKey: string, force: boolean = false) {
     const mod = company.modules.find((m: any) => m.key === moduleKey);
     if (!mod) return;
 
     const currentStatus = mod.status;
     const newStatus = (currentStatus === 'active' || currentStatus === 'activado') ? 'inactive' : 'active';
 
-    // Optimistic update
+    if (force && newStatus === 'inactive') {
+      this.toast.info('Sin override', 'Desactivar no requiere override. Usa el toggle normal para apagar módulos activos del plan.');
+      return;
+    }
+
+    if (force) {
+      const ok = window.confirm(
+        `Override del plan para activar "${moduleKey}" en la empresa "${company.name || company.id}"?
+
+` +
+        `Esto se registra en company_module_overrides (audit trail).`
+      );
+      if (!ok) return;
+    }
+
     mod.status = newStatus;
 
     try {
-      await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus));
+      await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus, force));
       this.toast.success('Módulo actualizado', `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente.`);
     } catch (e) {
       console.error('Error toggling module:', e);
-      // Revert on error
       mod.status = currentStatus;
-      this.toast.error('Error', 'No se pudo actualizar el módulo.');
+      this.toast.error('Error', (e as any)?.message || 'No se pudo actualizar el módulo.');
     }
   }
 
