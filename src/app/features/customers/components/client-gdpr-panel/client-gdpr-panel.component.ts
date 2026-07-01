@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, ViewChild, ChangeDetectorRef, computed, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { GdprRequestModalComponent } from '../gdpr-request-modal/gdpr-request-modal.component';
 import { CommonModule } from '@angular/common';
@@ -13,6 +13,7 @@ import {
 } from '../../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../../services/toast.service';
 import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
+import { SupabaseModulesService } from '../../../../services/supabase-modules.service';
 import { AuthService } from '../../../../services/auth.service';
 import { firstValueFrom, filter, switchMap, take } from 'rxjs';
 
@@ -116,32 +117,34 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       </p>
                     </div>
                   </div>
-                  <!-- 2. Health Data (Sensitive - Art. 9) -->
-                  <div
-                    class="relative flex items-start p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800"
-                  >
-                    <div class="flex items-center h-5">
-                      <input
-                        type="checkbox"
-                        [(ngModel)]="healthDataConsent"
-                        (change)="updateHealthDataConsent()"
-                        [disabled]="updatingConsent || readOnly"
-                        class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600"
-                      />
+                  <!-- 2. Health Data (Sensitive - Art. 9) — only when historial_clinico module is active -->
+                  @if (healthcareModuleEnabled()) {
+                    <div
+                      class="relative flex items-start p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800"
+                    >
+                      <div class="flex items-center h-5">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="healthDataConsent"
+                          (change)="updateHealthDataConsent()"
+                          [disabled]="updatingConsent || readOnly"
+                          class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600"
+                        />
+                      </div>
+                      <div class="ml-3 text-sm">
+                        <label class="font-bold text-gray-800 dark:text-gray-100 cursor-pointer">
+                          {{ 'clients.gdpr.datosSalud' | transloco }}
+                          <span
+                            class="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded border border-emerald-200"
+                            >{{ 'clients.gdpr.requerido' | transloco }}</span
+                          >
+                        </label>
+                        <p class="text-gray-600 dark:text-gray-300 text-xs mt-1">
+                          {{ 'clients.gdpr.datosSaludDesc' | transloco }}
+                        </p>
+                      </div>
                     </div>
-                    <div class="ml-3 text-sm">
-                      <label class="font-bold text-gray-800 dark:text-gray-100 cursor-pointer">
-                        {{ 'clients.gdpr.datosSalud' | transloco }}
-                        <span
-                          class="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded border border-emerald-200"
-                          >{{ 'clients.gdpr.requerido' | transloco }}</span
-                        >
-                      </label>
-                      <p class="text-gray-600 dark:text-gray-300 text-xs mt-1">
-                        {{ 'clients.gdpr.datosSaludDesc' | transloco }}
-                      </p>
-                    </div>
-                  </div>
+                  }
                   <!-- 3. Privacy Policy -->
                   <div
                     class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700"
@@ -672,6 +675,11 @@ export class ClientGdprPanelComponent implements OnInit {
   privacyPolicyConsent: boolean = false;
   marketingConsent: boolean = false;
 
+  // Healthcare (Art. 9) consent visibility — only rendered when the company
+  // has the 'historialClinico' (alias: 'historial_clinico') module active.
+  // null = modules not yet loaded (hide during loading); true = render; false = hide.
+  private healthcareModuleEnabled = signal<boolean | null>(null);
+
   lastConsentUpdate: string = '';
   retentionPeriodYears: number = 5; // Updated to 5 years (Health Data Law)
 
@@ -700,6 +708,7 @@ export class ClientGdprPanelComponent implements OnInit {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private customersService = inject(SupabaseCustomersService);
+  private modulesService = inject(SupabaseModulesService);
   private cdr = inject(ChangeDetectorRef);
 
   async ngOnInit() {
@@ -707,6 +716,25 @@ export class ClientGdprPanelComponent implements OnInit {
       this.error = 'Email de cliente no proporcionado';
       this.loading = false;      this.cdr.markForCheck();      return;
     }
+
+    // Resolve the healthcare-module flag before deciding whether to render
+    // the Datos de Salud (Art. 9) consent block. The form-new-customer uses
+    // the same key — `historial_clinico` — see SupabaseModulesService.
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: () => {
+        // Subscribe to the modules signal so the template refreshes when
+        // modules load asynchronously on a cold session.
+        const flag = this.modulesService.isModuleEnabled('historial_clinico');
+        this.healthcareModuleEnabled.set(flag === true);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        // If we can't resolve modules, default to hiding the Art. 9 block
+        // (it's an extra consent, not a required one).
+        this.healthcareModuleEnabled.set(false);
+        this.cdr.markForCheck();
+      },
+    });
 
     // Wait for auth service to be ready and have company context
     this.authService.userProfile$
