@@ -28,7 +28,7 @@ export interface GdprConsentRecord {
   id?: string;
   subject_id?: string;
   subject_email: string;
-  consent_type: 'marketing' | 'analytics' | 'data_processing' | 'third_party_sharing' | 'health_data' | 'privacy_policy';
+  consent_type: 'marketing' | 'analytics' | 'data_processing' | 'third_party_sharing' | 'health_data' | 'privacy_policy' | 'terms_of_service';
   purpose: string;
   consent_given: boolean;
   consent_method: 'form' | 'email' | 'phone' | 'in_person' | 'website' | 'physical_document' | 'portal_digital';

@@ -90,7 +90,33 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                   {{ 'clients.gdpr.consentimientos' | transloco }}
                 </h4>
                 <div class="space-y-4">
-                  <!-- 1. Health Data (Sensitive - Art. 9) -->
+                  <!-- 1. Terms of Service (mandatory) -->
+                  <div
+                    class="relative flex items-start p-4 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800"
+                  >
+                    <div class="flex items-center h-5">
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="termsOfServiceConsent"
+                        (change)="updateTermsOfServiceConsent()"
+                        [disabled]="updatingConsent || readOnly"
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </div>
+                    <div class="ml-3 text-sm">
+                      <label class="font-bold text-gray-800 dark:text-gray-100 cursor-pointer">
+                        {{ 'clients.gdpr.terminosServicio' | transloco }}
+                        <span
+                          class="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded border border-blue-200"
+                          >{{ 'clients.gdpr.requerido' | transloco }}</span
+                        >
+                      </label>
+                      <p class="text-gray-600 dark:text-gray-300 text-xs mt-1">
+                        {{ 'clients.gdpr.terminosServicioDesc' | transloco }}
+                      </p>
+                    </div>
+                  </div>
+                  <!-- 2. Health Data (Sensitive - Art. 9) -->
                   <div
                     class="relative flex items-start p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800"
                   >
@@ -116,7 +142,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       </p>
                     </div>
                   </div>
-                  <!-- 2. Privacy Policy -->
+                  <!-- 3. Privacy Policy -->
                   <div
                     class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700"
                   >
@@ -147,7 +173,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       </p>
                     </div>
                   </div>
-                  <!-- 3. Marketing Consent -->
+                  <!-- 4. Marketing Consent -->
                   <div
                     class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700"
                   >
@@ -641,6 +667,7 @@ export class ClientGdprPanelComponent implements OnInit {
   @ViewChild('requestModal') requestModal!: GdprRequestModalComponent;
 
   // Estado de consentimientos
+  termsOfServiceConsent: boolean = false;
   healthDataConsent: boolean = false;
   privacyPolicyConsent: boolean = false;
   marketingConsent: boolean = false;
@@ -746,6 +773,11 @@ export class ClientGdprPanelComponent implements OnInit {
     this.gdprService.getConsentRecords(this.clientEmail).subscribe({
       next: (records) => {
         // Find latest for each type
+        const terms = records
+          .filter((r) => r.consent_type === 'terms_of_service')
+          .sort(
+            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
+          )[0];
         const health = records
           .filter((r) => r.consent_type === 'health_data')
           .sort(
@@ -762,6 +794,7 @@ export class ClientGdprPanelComponent implements OnInit {
             (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
           )[0];
 
+        if (terms) this.termsOfServiceConsent = terms.consent_given;
         if (health) this.healthDataConsent = health.consent_given;
         if (privacy) this.privacyPolicyConsent = privacy.consent_given;
         if (marketing) this.marketingConsent = marketing.consent_given;
@@ -827,6 +860,10 @@ export class ClientGdprPanelComponent implements OnInit {
 
   // OK, I will cancel this and do the imports first.
 
+  updateTermsOfServiceConsent() {
+    this.recordConsent('terms_of_service', this.termsOfServiceConsent);
+  }
+
   updateHealthDataConsent() {
     this.recordConsent('health_data', this.healthDataConsent);
   }
@@ -839,7 +876,7 @@ export class ClientGdprPanelComponent implements OnInit {
     this.recordConsent('marketing', this.marketingConsent);
   }
 
-  private recordConsent(type: 'marketing' | 'health_data' | 'privacy_policy', given: boolean) {
+  private recordConsent(type: 'marketing' | 'health_data' | 'privacy_policy' | 'terms_of_service', given: boolean) {
     this.updatingConsent = true;
 
     const record: GdprConsentRecord = {
@@ -859,8 +896,10 @@ export class ClientGdprPanelComponent implements OnInit {
         if (type === 'marketing') updatePayload.marketing_consent = given;
         // DEPRECATED MAPPING (2026-04): privacy_policy was wrongly mapped to data_processing_consent.
         // After migration 20260422000001 runs, use privacy_policy_consent column.
-        // The trigger (20260422000002) will sync this to gdpr_consent_records automatically.
+        // The trigger (20260422000002 + 20260701000000) will sync this to gdpr_consent_records automatically.
         if (type === 'privacy_policy') updatePayload.privacy_policy_consent = given;
+        // Terms of Service: synced via trigger (20260701000000) to terms_of_service_consent column
+        if (type === 'terms_of_service') updatePayload.terms_of_service_consent = given;
         // Health data consent: no direct column in clients table (canonical is gdpr_consent_records)
 
         this.customersService.updateCustomer(this.clientId, updatePayload).subscribe({
@@ -879,6 +918,7 @@ export class ClientGdprPanelComponent implements OnInit {
         if (type === 'marketing') this.marketingConsent = !given;
         if (type === 'health_data') this.healthDataConsent = !given;
         if (type === 'privacy_policy') this.privacyPolicyConsent = !given;
+        if (type === 'terms_of_service') this.termsOfServiceConsent = !given;
         this.updatingConsent = false;
       },
     });
@@ -886,6 +926,8 @@ export class ClientGdprPanelComponent implements OnInit {
 
   private getPurposeLabel(type: string): string {
     switch (type) {
+      case 'terms_of_service':
+        return 'Términos de Servicio y Uso';
       case 'health_data':
         return 'Tratamiento de Datos de Salud (Asistencial)';
       case 'privacy_policy':

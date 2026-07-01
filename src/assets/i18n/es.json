@@ -227,6 +227,8 @@
       "datosSalud": "Datos de Salud (Asistencial)",
       "datosSaludTratamiento": "Tratamiento Datos Salud",
       "datosSaludDesc": "Autorizo el tratamiento de mis datos de salud para la prestación de servicios asistenciales (Historia Clínica).",
+      "terminosServicio": "Términos de Servicio",
+      "terminosServicioDesc": "Acepto los términos de uso y condiciones del servicio.",
       "requerido": "Requerido",
       "contratoFirmado": "Contrato Firmado",
       "consentimientos": "Consentimientos (RGPD)",
