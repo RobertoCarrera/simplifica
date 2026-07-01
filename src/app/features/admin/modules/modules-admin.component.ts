@@ -804,6 +804,16 @@ export class ModulesAdminComponent implements OnInit {
   isAddonEditorFor(addonId: string): boolean {
     return !this.newAddonMode() && this.editingAddon()?.id === addonId;
   }
+  /**
+   * F-PB-008: modules that are always-on and never toggleable.
+   * Just Dashboard (core_/inicio) for now; extend to add more
+   * intrinsic modules (auth, etc.) by adding keys to the predicate.
+   * The toggle matrix skips them and the implicit list shows them
+   * as a read-only badge above the configurable modules.
+   */
+  isImplicitModule(moduleKey: string): boolean {
+    return moduleKey === 'core_/inicio';
+  }
 
   /**
    * Expose the full FontAwesome 6 free-solid icon list to the template
