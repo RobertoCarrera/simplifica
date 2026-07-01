@@ -366,7 +366,7 @@ export class SupabaseCustomersService implements OnDestroy {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))');
+      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
@@ -426,7 +426,7 @@ export class SupabaseCustomersService implements OnDestroy {
 
           let filteredQuery = this.supabase
             .from('clients')
-            .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+            .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id')
             .eq('company_id', this.authService.companyId())
             .in('id', assignedClientIds)
             .is('deleted_at', filters.showDeleted ? null : null)
@@ -479,7 +479,7 @@ export class SupabaseCustomersService implements OnDestroy {
 
         // Schema cache may lack relation: fallback without address embed
         devLog('Reintentando consulta sin embed de dirección...');
-        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, clients_tags(global_tags(id,name,color))');
+        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id');
 
         const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
@@ -570,7 +570,7 @@ export class SupabaseCustomersService implements OnDestroy {
         // Paso 2: Construir y ejecutar query con filter in
         let query = this.supabase
           .from('clients')
-          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, address, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id')
           .in('id', assignedClientIds);
 
         // Aplicar filtros de búsqueda
@@ -701,13 +701,29 @@ export class SupabaseCustomersService implements OnDestroy {
       marketing_consent: client.marketing_consent ?? undefined,
       marketing_consent_date: client.marketing_consent_date ?? undefined,
       marketing_consent_method: client.marketing_consent_method ?? undefined,
+      terms_of_service_consent: client.terms_of_service_consent ?? undefined,
+      terms_of_service_consent_date: client.terms_of_service_consent_date ?? undefined,
+      privacy_policy_consent: client.privacy_policy_consent ?? undefined,
+      privacy_policy_consent_date: client.privacy_policy_consent_date ?? undefined,
+      has_left_google_review: client.has_left_google_review ?? undefined,
+      google_review_date: client.google_review_date ?? undefined,
+      consent_status: client.consent_status ?? undefined,
+      consent_date: client.consent_date ?? undefined,
+      consent_ip: client.consent_ip ?? undefined,
+      consent_migration_sent_at: client.consent_migration_sent_at ?? undefined,
+      invitation_token: client.invitation_token ?? undefined,
+      invitation_status: client.invitation_status ?? undefined,
+      invitation_sent_at: client.invitation_sent_at ?? undefined,
+      health_data_consent: client.health_data_consent ?? undefined,
+      health_data_consent_date: client.health_data_consent_date ?? undefined,
+      birth_date: client.birth_date ?? undefined,
+      anonymized_at: client.anonymized_at ?? undefined,
       data_processing_consent: client.data_processing_consent ?? undefined,
       data_processing_consent_date: client.data_processing_consent_date ?? undefined,
       data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
       data_retention_until: client.data_retention_until ?? undefined,
       deletion_requested_at: client.deletion_requested_at ?? undefined,
       deletion_reason: client.deletion_reason ?? undefined,
-      anonymized_at: client.anonymized_at ?? undefined,
       is_minor: client.is_minor ?? undefined,
       parental_consent_verified: client.parental_consent_verified ?? undefined,
       parental_consent_date: client.parental_consent_date ?? undefined,
@@ -734,7 +750,7 @@ export class SupabaseCustomersService implements OnDestroy {
       return this.getCustomersForProfessional(professionalId, filters, null, updateState);
     }
 
-    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(id,name,color))');
+    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -3056,7 +3072,7 @@ export class SupabaseCustomersService implements OnDestroy {
           // Fetch the full client record
           const { data, error } = await this.supabase
             .from('clients')
-            .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))')
+            .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color)), terms_of_service_consent, terms_of_service_consent_date, privacy_policy_consent, privacy_policy_consent_date, has_left_google_review, google_review_date, consent_status, consent_date, consent_ip, consent_migration_sent_at, invitation_token, invitation_status, invitation_sent_at, health_data_consent, health_data_consent_date, birth_date, anonymized_at, gdpr_audit_log_id')
             .eq('id', clientId)
             .maybeSingle();
           if (error || !data) return;

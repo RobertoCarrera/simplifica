@@ -88,7 +88,7 @@
                   <h3 class="font-bold text-gray-900 truncate" title="{{ c.name }}">{{ c.name || 'Sin Nombre' }}</h3>
                   <p class="text-xs text-gray-500 font-mono truncate" title="{{ c.id }}">ID: {{ c.id }}</p>
                 </div>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800">{{ c.subscription_tier || 'Basic' }}</span>
+                <div class="flex flex-col items-end gap-1"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800">{{ c.subscription_tier || 'Sin plan' }}</span><select [value]="c.subscription_tier || ''" (change)="changeCompanyPlan(c, $any($event.target).value)" data-testid="company-plan-selector" title="Cambiar plan de la empresa" class="text-[11px] border border-gray-300 rounded px-1.5 py-0.5 bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"><option value="" disabled>Cambiar plan…</option>@for (p of plans(); track p.id) {<option [value]="p.id">{{ p.name }} ({{ p.included_users }} plaza/s)</option>}</select></div>
               </div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="inline-block w-2 h-2 rounded-full" [ngClass]="c.is_active ? 'bg-green-500' : 'bg-red-500'"></span>

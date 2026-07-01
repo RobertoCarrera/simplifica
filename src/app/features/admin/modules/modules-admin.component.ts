@@ -131,6 +131,33 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
+  /**
+   * F-PB-007: change a company's plan from the Empresas tab.
+   * Server syncs companies.max_users + company_modules to the new plan
+   * (migration 0008). On success, refresh the company list so the
+   * plan chip, seat badge, and module toggles all reflect the new state.
+   */
+  async changeCompanyPlan(company: any, planId: string): Promise<void> {
+    if (!planId || planId === company.subscription_tier) return;
+    const previous = company.subscription_tier;
+    company.subscription_tier = planId; // optimistic
+    try {
+      const res = await firstValueFrom(
+        this.modulesService.adminChangeCompanyPlan(company.id, planId),
+      );
+      this.toast.success(
+        'Plan actualizado',
+        `La empresa ahora está en el plan "${planId}". Los módulos se han sincronizado.`,
+      );
+      // Reload to pull the freshly-synced company_modules + max_users.
+      await this.loadCompanies();
+    } catch (e: any) {
+      console.error('Error changing plan:', e);
+      company.subscription_tier = previous;
+      this.toast.error('Error', e?.message || 'No se pudo cambiar el plan.');
+    }
+  }
+
   getLabel(mod: any) {
     return mod.label || mod.key;
   }

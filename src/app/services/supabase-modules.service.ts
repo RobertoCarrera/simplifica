@@ -283,6 +283,35 @@ export class SupabaseModulesService {
     return { success: true };
   }
 
+  /**
+   * F-PB-007: change a company's plan via admin_assign_company_plan RPC.
+   * Server-side syncs companies.max_users + company_modules to the new
+   * plan (see migration 0008). Returns the updated subscription row.
+   */
+  adminChangeCompanyPlan(
+    companyId: string,
+    planId: string,
+    notes?: string,
+  ): Observable<{ success: boolean; subscription: any }> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc(
+          'admin_assign_company_plan',
+          {
+            p_company_id: companyId,
+            p_plan_id: planId,
+            p_notes: notes ?? null,
+          },
+        );
+        if (error) {
+          console.error('Error changing company plan:', error);
+          throw new Error(error.message || 'No se pudo cambiar el plan de la empresa');
+        }
+        return { success: true, subscription: data };
+      })(),
+    );
+  }
+
   // ── Sidebar Navigation Order ─────────────────────────────────────────────
 
   /** Cached sidebar order entries (module_key → order, visible, devMode, visibleToClients, visibleToTeam) */
