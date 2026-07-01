@@ -858,7 +858,6 @@
 
                   <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50" data-testid="addon-edit-modules">
                     @let currentAddonId = editingAddon()?.id ?? '';
-                    @let unavailable = unavailableModules(currentAddonId);
                     @if (filteredModuleKeys().length === 0) {
                       <span class="text-xs text-gray-400 italic px-2 py-1">
                         Ningún módulo coincide con "{{ addonModuleFilter() }}"

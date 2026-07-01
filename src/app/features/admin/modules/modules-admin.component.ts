@@ -795,7 +795,7 @@ export class ModulesAdminComponent implements OnInit {
    * The datalist autocomplete uses the full list (no cap) so the user
    * can always type the exact name.
    */
-  filteredFAIcons(query: string): string[] {
+  filteredFAIcons(query: string | undefined | null): string[] {
     const q = (query ?? '').trim().toLowerCase();
     if (!q) {
       // Default: first 40 of the full catalog so the grid always shows
