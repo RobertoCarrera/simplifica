@@ -371,11 +371,26 @@
                   [class.from-blue-500]="plan.is_highlighted"
                   [class.to-purple-600]="plan.is_highlighted"
                   [class.text-white]="plan.is_highlighted">
-                  <h4 class="text-xl font-bold"
-                    [class.text-gray-900]="!plan.is_highlighted"
-                    [class.text-white]="plan.is_highlighted">
-                    {{ plan.name }}
-                  </h4>
+                  <div class="flex items-start justify-between gap-2">
+                    <h4 class="text-xl font-bold"
+                      [class.text-gray-900]="!plan.is_highlighted"
+                      [class.text-white]="plan.is_highlighted">
+                      {{ plan.name }}
+                    </h4>
+                    <!-- PR 3: editor gate — only renders when ?flag=plan-edit-v2 AND super_admin.
+                         The flag defaults to OFF so normal admins never see this affordance. -->
+                    @if (isEditorEnabled() && editingPlan()?.id !== plan.id) {
+                      <button
+                        type="button"
+                        (click)="startEdit(plan)"
+                        class="text-xs px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors flex-shrink-0"
+                        title="Editar plan"
+                        data-testid="plan-edit-button"
+                      >
+                        <i class="fas fa-pen mr-1"></i>Editar
+                      </button>
+                    }
+                  </div>
                   <p class="text-sm mt-1"
                     [class.text-gray-500]="!plan.is_highlighted"
                     [class.text-blue-100]="plan.is_highlighted">
@@ -400,7 +415,133 @@
                       + {{ formatExtraUserPrice(plan.extra_user_cents, plan.currency) }}
                     </p>
                   }
+                  <!-- PR 3: per-card "X / Y seats" line. Inline (not SeatBadgeComponent)
+                       because SeatBadgeComponent is reserved for the companies tab;
+                       here we only need a static count display. -->
+                  <p class="text-xs mt-1 font-medium"
+                    [class.text-gray-500]="!plan.is_highlighted"
+                    [class.text-blue-100]="plan.is_highlighted">
+                    <i class="fas fa-users mr-1"></i>{{ plan.included_users }} / {{ plan.included_users }} plazas incluidas
+                  </p>
                 </div>
+
+                <!-- PR 3: inline edit form (only when flag is on, viewer is super_admin,
+                     and THIS plan is currently being edited). Replace the modules list
+                     with the form while editing; the rest of the page stays interactive. -->
+                @if (isEditorEnabled() && editingPlan()?.id === plan.id && editingDraft(); as draft) {
+                  <div class="p-6 flex-1 flex flex-col gap-3 bg-blue-50/40 border-t border-blue-100" data-testid="plan-edit-form">
+                    <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                      <i class="fas fa-pen mr-1"></i>Editar plan
+                    </p>
+                    <label class="block">
+                      <span class="text-xs text-gray-600">Nombre</span>
+                      <input
+                        type="text"
+                        name="name"
+                        [(ngModel)]="draft.name"
+                        required
+                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </label>
+                    <label class="block">
+                      <span class="text-xs text-gray-600">Tagline</span>
+                      <input
+                        type="text"
+                        name="tagline"
+                        [(ngModel)]="draft.tagline"
+                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label class="block">
+                        <span class="text-xs text-gray-600">Precio base (€)</span>
+                        <input
+                          type="number"
+                          name="base_price_euros"
+                          [ngModel]="draft.base_price_cents / 100"
+                          (ngModelChange)="draft.base_price_cents = $event * 100"
+                          min="0"
+                          step="0.01"
+                          required
+                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </label>
+                      <label class="block">
+                        <span class="text-xs text-gray-600">Moneda</span>
+                        <select
+                          name="currency"
+                          [(ngModel)]="draft.currency"
+                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                          <option value="EUR">EUR</option>
+                          <option value="USD">USD</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label class="block">
+                      <span class="text-xs text-gray-600">Periodicidad</span>
+                      <select
+                        name="billing_period"
+                        [(ngModel)]="draft.billing_period"
+                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      >
+                        <option value="monthly">Mensual</option>
+                        <option value="yearly">Anual</option>
+                      </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label class="block">
+                        <span class="text-xs text-gray-600">Usuarios incluidos</span>
+                        <input
+                          type="number"
+                          name="included_users"
+                          [(ngModel)]="draft.included_users"
+                          min="1"
+                          required
+                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </label>
+                      <label class="block">
+                        <span class="text-xs text-gray-600">Precio usuario extra (€)</span>
+                        <input
+                          type="number"
+                          name="extra_user_euros"
+                          [ngModel]="draft.extra_user_cents / 100"
+                          (ngModelChange)="draft.extra_user_cents = $event * 100"
+                          min="0"
+                          step="0.01"
+                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </label>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        name="is_highlighted"
+                        [(ngModel)]="draft.is_highlighted"
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Destacado (mutex: solo 1 plan a la vez)</span>
+                    </label>
+                    <div class="flex items-center gap-2 pt-2 border-t border-blue-100">
+                      <button
+                        type="button"
+                        (click)="updatePlanMetadata()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        data-testid="plan-edit-save"
+                      >
+                        <i class="fas fa-save"></i>Guardar
+                      </button>
+                      <button
+                        type="button"
+                        (click)="cancelEdit()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                } @else {
 
                 <!-- Modules included -->
                 <div class="p-6 flex-1 flex flex-col gap-3">
@@ -416,7 +557,7 @@
                     }
                   </ul>
 
-                  <!-- Add-ons available for this plan -->
+<!-- Add-ons available for this plan -->
                   @if (addonsForPlan(plan.id).length > 0) {
                     <div class="mt-4 pt-4 border-t border-gray-100">
                       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -426,7 +567,7 @@
                         @for (addon of addonsForPlan(plan.id); track addon.id) {
                           <li class="flex items-center justify-between text-sm">
                             <span class="flex items-center gap-2 text-gray-600">
-                              <i [class]="'fas ' + addon.icon + ' text-xs text-purple-500'"></i>
+                              <i [class]="'fas ' + addon.icon + 'text-xs text-purple-500'"></i>
                               {{ addon.name }}
                             </span>
                             <span class="text-xs font-medium text-gray-500">
@@ -438,10 +579,11 @@
                     </div>
                   }
                 </div>
+                }
               </div>
             }
           </div>
-        </div>
+</div>
 
         <!-- Plan × Module toggle matrix -->
         <div>
@@ -512,11 +654,269 @@
         </div>
 
         <!-- Add-ons standalone table -->
-        @if (addons().length > 0) {
-          <div>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-gray-900">
               <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
             </h3>
+            @if (isEditorEnabled()) {
+              <button
+                (click)="startNewAddon()"
+                [disabled]="isAddonEditorOpen()"
+                data-testid="addon-new-button"
+                class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                <i class="fas fa-plus"></i> Nuevo add-on
+              </button>
+            }
+          </div>
+
+          <!-- Inline add-on form (PR 4, F-ADDON-002 + F-ADDON-003) -->
+          @if (isEditorEnabled() && isAddonEditorOpen()) {
+            <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4" data-testid="addon-edit-form">
+              <h4 class="text-sm font-semibold text-gray-900 mb-3">
+                <i class="fas fa-puzzle-piece mr-1 text-purple-500"></i>
+                {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Identificador (id)</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.id ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })"
+                    [disabled]="!newAddonMode()"
+                    placeholder="marketing_pro"
+                    data-testid="addon-edit-id"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
+                  />
+                  <span class="block text-[11px] text-gray-400 mt-1">Inmutable tras crear. Letras, números, - y _.</span>
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Nombre</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.name ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })"
+                    placeholder="Marketing avanzado"
+                    data-testid="addon-edit-name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block md:col-span-2">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Descripción</span>
+                  <input
+                    type="text"
+                    [value]="editingAddonDraft()?.description ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })"
+                    placeholder="Campañas, automatizaciones, segmentación"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">
+                    Icono (FontAwesome)
+                    @if (editingAddonDraft()?.icon) {
+                      <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1 align-middle'" [title]="editingAddonDraft()?.icon"></i>
+                    }
+                  </span>
+                  <input
+                    type="text"
+                    list="fa-icon-picker"
+                    [value]="editingAddonDraft()?.icon ?? ''"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
+                    placeholder="fa-bullhorn"
+                    data-testid="addon-edit-icon"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                  <datalist id="fa-icon-picker">
+                    @for (icon of CURATED_FA_ICONS; track icon) {
+                      <option [value]="icon">{{ icon }}</option>
+                    }
+                  </datalist>
+
+                  <!-- Quick-pick grid for the most common add-on icons -->
+                  <div class="mt-2">
+                    <span class="block text-[11px] font-medium text-gray-500 mb-1">
+                      Populares (click para seleccionar)
+                    </span>
+                    <div class="flex flex-wrap gap-1.5" data-testid="addon-edit-icon-grid">
+                      @for (icon of POPULAR_FA_ICONS; track icon) {
+                        <button
+                          type="button"
+                          (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })"
+                          [attr.aria-label]="icon"
+                          [title]="icon"
+                          class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                          [class.border-purple-500]="editingAddonDraft()?.icon === icon"
+                          [class.bg-purple-50]="editingAddonDraft()?.icon === icon"
+                          [class.border-gray-200]="editingAddonDraft()?.icon !== icon"
+                        >
+                          <i [class]="'fas ' + icon + ' text-gray-700'"></i>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Precio (€)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [value]="(editingAddonDraft()?.price_cents ?? 0) / 100"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_cents: eurosToCents($any($event.target).value) })"
+                    data-testid="addon-edit-price"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Periodo</span>
+                  <select
+                    [value]="editingAddonDraft()?.billing_period ?? 'monthly'"
+                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, billing_period: $any($event.target).value })"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  >
+                    <option value="monthly">Mensual</option>
+                    <option value="yearly">Anual</option>
+                  </select>
+                </label>
+                <label class="block">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Orden</span>
+                  <input
+                    type="number"
+                    [value]="editingAddonDraft()?.sort_order ?? 0"
+                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, sort_order: +$any($event.target).value })"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </label>
+                <div class="md:col-span-2">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>
+                  <div class="flex flex-wrap gap-2">
+                    @for (p of plans(); track p.id) {
+                      <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)"
+                          (change)="toggleAddonPlan(p.id)"
+                          class="rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span class="capitalize">{{ p.name }}</span>
+                      </label>
+                    }
+                  </div>
+                  <span class="block text-[11px] text-gray-400 mt-1">Si no marcas ninguno, el add-on aplica a todos los planes.</span>
+                </div>
+
+                <div class="md:col-span-2">
+                  <span class="block text-xs font-medium text-gray-600 mb-1">
+                    <i class="fas fa-cube text-purple-500 mr-1"></i>Módulos que incluye este add-on
+                  </span>
+
+                  <!-- F-ADDON-008: filter input -->
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="relative flex-1">
+                      <i class="fas fa-search absolute left-2.5 top-2.5 text-xs text-gray-400 pointer-events-none"></i>
+                      <input
+                        type="text"
+                        [value]="addonModuleFilter()"
+                        (input)="addonModuleFilter.set($any($event.target).value)"
+                        placeholder="Filtrar módulos por nombre..."
+                        data-testid="addon-edit-modules-filter"
+                        class="w-full pl-7 pr-7 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      @if (addonModuleFilter()) {
+                        <button
+                          type="button"
+                          (click)="addonModuleFilter.set('')"
+                          aria-label="Limpiar filtro"
+                          class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                        >
+                          <i class="fas fa-times text-xs"></i>
+                        </button>
+                      }
+                    </div>
+                    @if (addonModuleFilter()) {
+                      <span class="text-xs text-gray-500 whitespace-nowrap" data-testid="addon-edit-modules-count">
+                        {{ filteredModuleKeys().length }} / {{ availableModuleKeys.length }}
+                      </span>
+                    }
+                  </div>
+
+                  <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50" data-testid="addon-edit-modules">
+                    @let currentAddonId = editingAddon()?.id ?? '';
+                    @let unavailable = unavailableModules(currentAddonId);
+                    @if (filteredModuleKeys().length === 0) {
+                      <span class="text-xs text-gray-400 italic px-2 py-1">
+                        Ningún módulo coincide con "{{ addonModuleFilter() }}"
+                      </span>
+                    }
+                    @for (m of filteredModuleKeys(); track m) {
+                      @let owner = moduleOwnerName(currentAddonId, m);
+                      @let isUnavailable = owner !== null;
+                      <label
+                        class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 text-sm"
+                        [class.bg-white]="!isUnavailable"
+                        [class.bg-gray-50]="isUnavailable"
+                        [class.text-gray-400]="isUnavailable"
+                        [class.cursor-not-allowed]="isUnavailable"
+                        [class.cursor-pointer]="!isUnavailable"
+                        [title]="isUnavailable ? 'Ya incluido en el add-on «' + owner + '». Desactívalo o quítalo de allí para reasignarlo.' : ''"
+                      >
+                        <input
+                          type="checkbox"
+                          [checked]="(editingAddonDraft()?.included_modules ?? []).includes(m)"
+                          [disabled]="isUnavailable"
+                          (change)="toggleAddonModule(m)"
+                          class="rounded text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                        />
+                        <i class="fas fa-cube text-xs" [class.text-gray-400]="!isUnavailable" [class.text-gray-300]="isUnavailable"></i>
+                        <span>{{ moduleLabel(m) }}</span>
+                        @if (isUnavailable) {
+                          <span class="text-[10px] text-amber-600 font-medium ml-1">({{ owner }})</span>
+                        }
+                      </label>
+                    }
+                  </div>
+                  <span class="block text-[11px] text-gray-400 mt-1">
+                    El add-on concede acceso a los módulos marcados para los planes que lo tengan contratado. Si no marcas ninguno, el add-on no concede módulos extra.
+                  </span>
+                </div>
+                <label class="inline-flex items-center gap-2 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    [checked]="editingAddonDraft()?.is_active ?? true"
+                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, is_active: $any($event.target).checked })"
+                    class="rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <span class="text-sm">Activo</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-2 mt-4">
+                <button
+                  (click)="saveAddon()"
+                  [disabled]="addonSavingId() !== null"
+                  data-testid="addon-edit-save"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
+                >
+                  @if (addonSavingId() !== null) {
+                    <i class="fas fa-spinner fa-spin"></i> Guardando...
+                  } @else {
+                    <i class="fas fa-save"></i> Guardar
+                  }
+                </button>
+                <button
+                  (click)="cancelAddonEdit()"
+                  [disabled]="addonSavingId() !== null"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl border border-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (addons().length > 0) {
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
@@ -524,13 +924,39 @@
                     <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
                     <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                    @if (isEditorEnabled()) {
+                      <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Acciones</th>
+                    }
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody
+                  class="divide-y divide-gray-100"
+                  cdkDropList
+                  [cdkDropListData]="addons()"
+                  [cdkDropListDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
+                  (cdkDropListDropped)="onAddonDrop($event)"
+                  data-testid="addons-table-body"
+                >
                   @for (addon of addons(); track addon.id) {
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr
+                      class="hover:bg-gray-50 transition-colors"
+                      cdkDrag
+                      [cdkDragData]="addon"
+                      [cdkDragDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
+                      [class.cursor-grab]="isEditorEnabled() && !isAddonEditorOpen()"
+                      data-testid="addon-row"
+                    >
                       <td class="px-5 py-3">
                         <div class="flex items-center gap-3">
+                          @if (isEditorEnabled()) {
+                            <span
+                              cdkDragHandle
+                              class="text-gray-300 hover:text-gray-500"
+                              [title]="'Arrastra para reordenar'"
+                            >
+                              <i class="fas fa-grip-vertical text-xs"></i>
+                            </span>
+                          }
                           <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
                             <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
                           </div>
@@ -560,13 +986,27 @@
                           +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
                         </span>
                       </td>
+                      @if (isEditorEnabled()) {
+                        <td class="px-5 py-3 text-right">
+                          <button
+                            (click)="startAddonEdit(addon)"
+                            [disabled]="isAddonEditorOpen()"
+                            [attr.data-testid]="'addon-edit-button-' + addon.id"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-wait transition-colors"
+                          >
+                            <i class="fas fa-pen text-xs"></i> Editar
+                          </button>
+                        </td>
+                      }
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
-          </div>
-        }
+          } @else if (!isAddonEditorOpen()) {
+            <p class="text-sm text-gray-500">Aún no hay add-ons definidos.</p>
+          }
+        </div>
 
         <!-- Footer info -->
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
