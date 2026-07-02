@@ -197,12 +197,24 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
 
   setupRealtimeSubscription() {
     if (this.realtimeChannel) return;
+    // Rafter v0.59: scope the postgres_changes subscription to the caller's
+    // company. Without this filter, an authenticated user (e.g. Company A's
+    // owner) would receive realtime payloads for tickets belonging to other
+    // tenants. Realtime is server-side broadcast and does NOT go through RLS.
+    const filter = this.selectedCompanyId
+      ? `company_id=eq.${this.selectedCompanyId}`
+      : undefined;
     this.realtimeChannel = this.simpleSupabase
       .getClient()
       .channel("tickets-changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tickets" },
+        {
+          event: "*",
+          schema: "public",
+          table: "tickets",
+          ...(filter ? { filter } : {}),
+        },
         () => {
           this.loadTickets(this.currentPage);
           this.loadStats();
