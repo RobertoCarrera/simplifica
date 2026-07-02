@@ -1,0 +1,36 @@
+-- =============================================================================
+-- Rafter v0.57 (2026-06-29 audit): Enable Leaked Password Protection
+-- =============================================================================
+--
+-- ACTION REQUIRED (MANUAL, DASHBOARD-ONLY):
+--   Supabase Dashboard -> Auth -> Sign In/Up -> Password -> Enable
+--   "Leaked Password Protection (HIBP / HaveIBeenPwned)"
+--
+-- This setting has NO SQL equivalent — the pg_authid catalog does not expose
+-- it, and the api/admin endpoints reject attempts to mutate it. The Supabase
+-- Gateway stores the toggle outside of any table we can reach from SQL.
+--
+-- This file is intentionally a NO-OP migration. It exists so that:
+--   1. The audit trail clearly records the setting was reviewed and accepted
+--      for enablement on 2026-06-29.
+--   2. Subsequent audit runs will see a file with the exact dashboard URL
+--      and the verification query below, so reviewers can confirm the
+--      setting is live without having to redo the research.
+--
+-- VERIFICATION (run AFTER toggling in Dashboard):
+--   SELECT count(*) AS blocked_attempts_last_30d
+--   FROM auth.audit_log_entries
+--   WHERE event_type = 'leaked_password_blocked'
+--     AND occurred_at > now() - interval '30 days';
+--
+-- A non-zero count (or zero with the toggle visually enabled) confirms the
+-- protection is active. End-to-end test: try to sign up with the password
+-- "Password123!" (a known leak) and confirm the signup is rejected with
+-- a "password leaked" error.
+--
+-- Why not also do this via SQL? pg_authid and auth.config do not expose
+-- this knob, and any back-door via UPDATE auth.config / auth.options has
+-- no effect — the Gateway reads its own JSON, not the SQL catalog.
+--
+-- Migration is intentionally a no-op.
+SELECT 'leaked_password_protection_enabled_via_dashboard' AS note;

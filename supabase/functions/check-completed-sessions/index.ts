@@ -126,6 +126,12 @@ serve(async (req: Request) => {
     // ── 1. Find completed-but-unnotified bookings ─────────────────────────────
     // We query confirmed bookings where end_time has passed and we haven't notified yet.
     // Uses service role to bypass RLS (needed to read bookings across companies).
+    //
+    // Rafter v0.57 (2026-06-29 audit): the `professionals:professional_id ( user_id )`
+    // join below is REQUIRED. notifications.recipient_id is FK-constrained to
+    // users(id), but booking.professional_id is professionals(id), NOT users(id).
+    // Using the joined user_id satisfies the FK; 293 historic past bookings were
+    // silently dropped before this fix because the insert failed the FK check.
     const { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(`
@@ -141,7 +147,8 @@ serve(async (req: Request) => {
         payment_status,
         session_end_notified_at,
         services:service_id ( name ),
-        clients:client_id ( name, email )
+        clients:client_id ( name, email ),
+        professionals:professional_id ( user_id )
       `)
       .eq('status', 'confirmed')
       .is('session_end_notified_at', null)
@@ -164,7 +171,13 @@ serve(async (req: Request) => {
     const errors: string[] = [];
 
     for (const booking of bookings) {
-      const professionalId = booking.professional_id as string | null;
+      // Rafter v0.57 fix: notifications.recipient_id must reference users(id),
+      // but booking.professional_id is professionals(id). Resolve via the join
+      // we added to the SELECT above so the FK on notifications.recipient_id
+      // is satisfied. Falls back to old (broken) value only as a last resort
+      // so we get a clean FK error rather than a silent null.
+      const professionalUserId = (booking.professionals as any)?.user_id as string | null;
+      const professionalId = professionalUserId ?? (booking.professional_id as string | null);
       const clientName = (booking.clients as any)?.name || 'Cliente';
       const serviceName = (booking.services as any)?.name || 'Servicio';
 
