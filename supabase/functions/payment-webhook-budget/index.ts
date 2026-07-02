@@ -80,6 +80,15 @@ async function verifyStripeSignature(
   const v1 = parts['v1'];
   if (!t || !v1) return false;
 
+  // Rafter v0.61 F-02 fix: enforce Stripe's recommended 300s (5 minute)
+  // timestamp tolerance. Without this check, an attacker who obtains a single
+  // (valid, signed) webhook payload from logs can replay it indefinitely.
+  // Ref: https://stripe.com/docs/webhooks#verify-manually
+  const webhookTs = parseInt(t, 10);
+  if (!Number.isFinite(webhookTs)) return false;
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - webhookTs) > 300) return false;
+
   const signed = `${t}.${rawBody}`;
   const enc = new TextEncoder();
   const keyData = enc.encode(secret);
@@ -115,6 +124,59 @@ interface PayPalEvent {
   id?: string;
   event_type?: string;
   resource?: any;
+}
+
+// ── PayPal header validation ────────────────────────────────────────────────
+// Rafter v0.61 F-03 fix (minimum viable). The full RSA-SHA256 certificate
+// verification requires an X509 parser (Deno has no built-in X509 support).
+// This pass closes the trivial attack surface (forged headers from anyone
+// who only has a payment_link_token) by enforcing:
+//
+//   1. All five required PayPal transmission headers are present
+//   2. The cert_url host is paypal.com (allowlist; prevents an attacker
+//      from pointing us at their own cert and forging a "valid" signature)
+//   3. The transmission_time is within 5 minutes of now() (replay protection)
+//
+// TODO(security): implement full RSA-SHA256 verification using either
+//   • esm.sh/jsrsasign (X509 + RSA-SHA256 verify), OR
+//   • PayPal's /v1/notifications/verify-webhook-signature REST endpoint
+//   (requires PayPal OAuth client_credentials and a stored webhook_id).
+function verifyPayPalHeaders(
+  req: Request,
+): { valid: boolean; reason?: string } {
+  const transmissionId = req.headers.get('paypal-transmission-id');
+  const transmissionTime = req.headers.get('paypal-transmission-time');
+  const transmissionSig = req.headers.get('paypal-transmission-sig');
+  const certUrl = req.headers.get('paypal-cert-url');
+  const authAlgo = req.headers.get('paypal-auth-algo');
+
+  if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl || !authAlgo) {
+    return { valid: false, reason: 'missing one or more PAYPAL-TRANSMISSION-* headers' };
+  }
+
+  // Cert URL origin check: must be a paypal.com subdomain (api-m.paypal.com
+  // for live, api-m.sandbox.paypal.com for sandbox). Rejects look-alike hosts.
+  let certHost: string;
+  try {
+    certHost = new URL(certUrl).hostname.toLowerCase();
+  } catch {
+    return { valid: false, reason: 'cert_url is not a valid URL' };
+  }
+  if (certHost !== 'paypal.com' && !certHost.endsWith('.paypal.com')) {
+    return { valid: false, reason: `cert_url host is not paypal.com (got ${certHost})` };
+  }
+
+  // Replay protection: transmission_time must be within 5 minutes of now.
+  const webhookMs = Date.parse(transmissionTime);
+  if (!Number.isFinite(webhookMs)) {
+    return { valid: false, reason: 'transmission_time is not a valid timestamp' };
+  }
+  const drift = Math.abs(Date.now() - webhookMs);
+  if (drift > 5 * 60 * 1000) {
+    return { valid: false, reason: `transmission_time outside tolerance (drift ${Math.round(drift / 1000)}s)` };
+  }
+
+  return { valid: true };
 }
 
 function eventAmount(event: StripeEvent): { amount: number; currency: string } {
@@ -335,6 +397,18 @@ async function handleStripe(req: Request, rawBody: string, corsHeaders: HeadersI
 }
 
 async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersInit): Promise<Response> {
+  // Rafter v0.61 F-03 fix: enforce PayPal transmission header validation
+  // BEFORE any budget lookup. Closes the payment-bypass vulnerability where
+  // anyone with a payment_link_token (visible in the payment email) could
+  // forge a PAYMENT.CAPTURE.COMPLETED event and mark a budget as paid.
+  const ppCheck = verifyPayPalHeaders(req);
+  if (!ppCheck.valid) {
+    console.warn('[payment-webhook-budget] paypal header validation failed:', ppCheck.reason);
+    return new Response(JSON.stringify({ error: 'PayPal signature verification failed', reason: ppCheck.reason }), {
+      status: 401, headers: withSecurityHeaders(corsHeaders),
+    });
+  }
+
   let event: PayPalEvent;
   try {
     event = JSON.parse(rawBody);
@@ -371,12 +445,10 @@ async function handlePayPal(req: Request, rawBody: string, corsHeaders: HeadersI
     });
   }
 
-  // Verify the event with PayPal — manual transmission-sig check is out of
-  // scope for the first cut; we rely on the Webhook ID stored in the
-  // integration and the fact that the request originates from PayPal IPs
-  // (Supabase edge network does not expose source IP reliably, so for the
-  // initial release we accept the well-known event types and validate the
-  // amount matches the budget's total).
+  // Verify the event with PayPal — see verifyPayPalHeaders() above. The header
+  // check (presence + paypal.com cert URL + 5-minute timestamp tolerance) was
+  // added in Rafter v0.61 F-03. Full RSA-SHA256 cert verification is still
+  // pending (see TODO inside verifyPayPalHeaders).
   const eventType = event.event_type || '';
   if (!['CHECKOUT.ORDER.COMPLETED', 'PAYMENT.CAPTURE.COMPLETED'].includes(eventType)) {
     return new Response(JSON.stringify({ received: true, ignored: eventType }), {
