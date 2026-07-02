@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
+import { QuoteItemsEditorComponent } from './components/quote-items-editor/quote-items-editor.component';
 
 interface ClientOption {
   id: string;
@@ -101,7 +102,7 @@ interface QuoteTemplate {
 
 @Component({
   selector: 'app-quote-form',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe, ServiceTranslatePipe],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe, ServiceTranslatePipe, QuoteItemsEditorComponent],
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss',
 })
