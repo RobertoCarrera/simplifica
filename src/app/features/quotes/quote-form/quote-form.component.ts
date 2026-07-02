@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
+import { QuoteItemsEditorComponent } from './components/quote-items-editor/quote-items-editor.component';
 
 interface ClientOption {
   id: string;
@@ -101,7 +102,7 @@ interface QuoteTemplate {
 
 @Component({
   selector: 'app-quote-form',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe, ServiceTranslatePipe],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe, ServiceTranslatePipe, QuoteItemsEditorComponent],
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss',
 })
@@ -213,77 +214,6 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const template = this.templates().find((t) => t.id === value);
     return template?.name || 'Sin plantilla';
   }
-
-  // Dropdown de IVA (Tax Rate) - por ítem
-  taxDropdownOpenIndex = signal<number | null>(null);
-  taxOptions = [
-    { value: 0, label: '0%' },
-    { value: 4, label: '4%' },
-    { value: 10, label: '10%' },
-    { value: 21, label: '21%' },
-  ];
-
-  toggleTaxDropdown(index: number) {
-    if (this.taxDropdownOpenIndex() === index) {
-      this.taxDropdownOpenIndex.set(null);
-    } else {
-      this.taxDropdownOpenIndex.set(index);
-    }
-  }
-
-  selectTax(value: number, index: number) {
-    this.items.at(index).get('tax_rate')?.setValue(value);
-    this.taxDropdownOpenIndex.set(null);
-    this.calculateTotals();
-  }
-
-  getItemTaxRate(index: number): number {
-    return this.items.at(index).get('tax_rate')?.value ?? 21;
-  }
-
-  getItemTaxLabel(index: number): string {
-    const rate = this.getItemTaxRate(index);
-    const option = this.taxOptions.find((o) => o.value === rate);
-    return option?.label || '21%';
-  }
-
-  // Selector de servicios
-  services = signal<ServiceOption[]>([]);
-  serviceSearch = signal('');
-  selectedItemIndex = signal<number | null>(null);
-  serviceDropdownOpen = signal(false);
-  filteredServices = computed(() => {
-    const search = this.serviceSearch().toLowerCase();
-    if (!search) return this.services();
-    return this.services().filter(
-      (s) =>
-        s.name.toLowerCase().includes(search) ||
-        s.description?.toLowerCase().includes(search) ||
-        s.category?.toLowerCase().includes(search),
-    );
-  });
-
-  // Selector de productos
-  products = signal<ProductOption[]>([]);
-  productSearch = signal('');
-  productDropdownOpen = signal(false);
-  selectedProductIndex = signal<number | null>(null);
-  filteredProducts = computed(() => {
-    const search = this.productSearch().toLowerCase();
-    if (!search) return this.products();
-    return this.products().filter(
-      (p) =>
-        p.name.toLowerCase().includes(search) ||
-        (p.description || '').toLowerCase().includes(search) ||
-        (p.brand || '').toLowerCase().includes(search) ||
-        (p.model || '').toLowerCase().includes(search) ||
-        (p.category || '').toLowerCase().includes(search),
-    );
-  });
-
-  // Selector de variantes
-  variantDropdownOpen = signal(false);
-  selectedVariantIndex = signal<number | null>(null);
 
   // Recurrence lock (when variant has billing_period)
   recurrenceLocked = signal(false);
