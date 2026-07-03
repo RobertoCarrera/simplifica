@@ -208,7 +208,7 @@ export class SuppliersListComponent {
   }
 
   viewCache(supplier: any): void {
-    this.router.navigate(['/productos/importar'], { queryParams: { supplier: supplier.id } });
+    this.router.navigate(['/productos/cache'], { queryParams: { supplier: supplier.id } });
   }
 
   goToImport(): void {

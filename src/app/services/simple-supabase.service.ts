@@ -37,7 +37,7 @@ export interface SimpleUser {
     moduloFacturas: boolean;
     moduloPresupuestos: boolean;
     moduloServicios: boolean;
-    moduloMaterial: boolean;
+    moduloProductos: boolean;
   };
   created_at?: string;
 }
@@ -502,13 +502,13 @@ export class SimpleSupabaseService {
           company_id: michinanny.id,
           email: 'marina@michinanny.es',
           name: 'Marina Casado García',
-          permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: true, moduloMaterial: false }
+          permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: true, moduloProductos: false }
         },
         {
           company_id: michinanny.id,
           email: 'eva@michinanny.es',
           name: 'Eva Marín',
-          permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: true, moduloMaterial: false }
+          permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: true, moduloProductos: false }
         }
       ]);
 
@@ -532,13 +532,13 @@ export class SimpleSupabaseService {
           company_id: anscarr.id,
           email: 'roberto@anscarr.es',
           name: 'Roberto Hugo Carrera',
-          permissions: { moduloFacturas: true, moduloPresupuestos: true, moduloServicios: true, moduloMaterial: true }
+          permissions: { moduloFacturas: true, moduloPresupuestos: true, moduloServicios: true, moduloProductos: true }
         },
         {
           company_id: anscarr.id,
           email: 'carlosanscarr@gmail.com',
           name: 'Carlos José Anaya Escalante',
-          permissions: { moduloFacturas: true, moduloPresupuestos: true, moduloServicios: true, moduloMaterial: true }
+          permissions: { moduloFacturas: true, moduloPresupuestos: true, moduloServicios: true, moduloProductos: true }
         }
       ]);
 
@@ -561,7 +561,7 @@ export class SimpleSupabaseService {
         company_id: libera.id,
         email: 'vanesa@liberatuscreencias.com',
         name: 'Vanesa Santa Maria Garibaldi',
-        permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloMaterial: false }
+        permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloProductos: false }
       });
 
       if (errorUsersLibera) throw errorUsersLibera;
@@ -583,7 +583,7 @@ export class SimpleSupabaseService {
         company_id: satpcgo.id,
         email: 'jesus@satpcgo.es',
         name: 'Jesus',
-        permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloMaterial: false }
+        permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloProductos: false }
       });
 
       if (errorUsersSatpcgo) throw errorUsersSatpcgo;

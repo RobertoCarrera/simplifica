@@ -321,7 +321,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const s = this.allowedModuleKeysSet();
     // If modules not loaded yet, be conservative and treat as disabled
     if (!s) return false;
-    return s.has('moduloMaterial');
+    return s.has('moduloProductos');
   }
 
   ngOnInit() {

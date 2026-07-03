@@ -72,7 +72,7 @@ export class HomeComponent implements OnInit {
           if (this.hasModule('moduloPresupuestos')) {
             this.loadQuoteStats();
           }
-          if (this.hasModule('moduloMaterial')) {
+          if (this.hasModule('moduloProductos')) {
             this.loadTopProducts();
           }
         }

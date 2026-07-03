@@ -1100,7 +1100,7 @@ async updateProfile() {
                 { key: 'moduloFacturas', name: 'Facturación' },
                 { key: 'moduloPresupuestos', name: 'Presupuestos' },
                 { key: 'moduloServicios', name: 'Servicios' },
-                { key: 'moduloMaterial', name: 'Material' },
+                { key: 'moduloProductos', name: 'Productos' },
                 { key: 'moduloSAT', name: 'Tickets' }
             ];
         }
@@ -1189,7 +1189,7 @@ async updateProfile() {
           true,
           '{
             "moduloFacturas": true,
-            "moduloMaterial": true,
+            "moduloProductos": true,
             "moduloServicios": true,
             "moduloPresupuestos": true,
             "isDev": true,

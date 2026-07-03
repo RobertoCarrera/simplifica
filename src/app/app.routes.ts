@@ -143,6 +143,15 @@ export const routes: Routes = [
     data: { moduleKey: "moduloProductos" },
   },
   {
+    path: "productos/cache",
+    loadComponent: () =>
+      import("./features/products/supplier-import/supplier-cache-preview.component").then(
+        (m) => m.SupplierCachePreviewComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
+    data: { moduleKey: "moduloProductos" },
+  },
+  {
     path: "productos/conectar-api",
     loadComponent: () =>
       import("./features/products/supplier-import/supplier-api-config.component").then(
