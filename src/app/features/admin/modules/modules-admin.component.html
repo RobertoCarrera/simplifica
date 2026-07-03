@@ -21,36 +21,27 @@
     <button
       (click)="switchTab('companies')"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
-      [class.border-blue-600]="activeTab() === 'companies'"
-      [class.text-blue-600]="activeTab() === 'companies'"
-      [class.border-transparent]="activeTab() !== 'companies'"
-      [class.text-gray-500 dark:text-gray-400]="activeTab() !== 'companies'"
+      [ngClass]="activeTab() === 'companies' ? 'text-blue-600 dark:text-blue-400 border-blue-600' : 'text-gray-500 dark:text-gray-400 border-transparent'"
     >
       <i class="fas fa-building mr-2"></i>Empresas
     </button>
     <button
       (click)="switchTab('sidebar')"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
-      [class.border-blue-600]="activeTab() === 'sidebar'"
-      [class.text-blue-600]="activeTab() === 'sidebar'"
-      [class.border-transparent]="activeTab() !== 'sidebar'"
-      [class.text-gray-500 dark:text-gray-400]="activeTab() !== 'sidebar'"
+      [ngClass]="activeTab() === 'sidebar' ? 'text-blue-600 dark:text-blue-400 border-blue-600' : 'text-gray-500 dark:text-gray-400 border-transparent'"
     >
       <i class="fas fa-list-ul mr-2"></i>Orden del Sidebar
     </button>
-    <button (click)="switchTab('modules')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'modules'" [class.text-blue-600]="activeTab() === 'modules'" [class.border-transparent]="activeTab() !== 'modules'" [class.text-gray-500 dark:text-gray-400]="activeTab() !== 'modules'">
+    <button (click)="switchTab('modules')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [ngClass]="activeTab() === 'modules' ? 'text-blue-600 dark:text-blue-400 border-blue-600' : 'text-gray-500 dark:text-gray-400 border-transparent'">
       <i class="fas fa-cubes mr-2"></i>Módulos
     </button>
-    <button (click)="switchTab('addons')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'addons'" [class.text-blue-600]="activeTab() === 'addons'" [class.border-transparent]="activeTab() !== 'addons'" [class.text-gray-500 dark:text-gray-400]="activeTab() !== 'addons'">
+    <button (click)="switchTab('addons')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [ngClass]="activeTab() === 'addons' ? 'text-blue-600 dark:text-blue-400 border-blue-600' : 'text-gray-500 dark:text-gray-400 border-transparent'">
       <i class="fas fa-puzzle-piece mr-2"></i>Add-ons
     </button>
     <button
       (click)="switchTab('pricing')"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
-      [class.border-blue-600]="activeTab() === 'pricing'"
-      [class.text-blue-600]="activeTab() === 'pricing'"
-      [class.border-transparent]="activeTab() !== 'pricing'"
-      [class.text-gray-500 dark:text-gray-400]="activeTab() !== 'pricing'"
+      [ngClass]="activeTab() === 'pricing' ? 'text-blue-600 dark:text-blue-400 border-blue-600' : 'text-gray-500 dark:text-gray-400 border-transparent'"
     >
       <i class="fas fa-tags mr-2"></i>Planes y Precios
     </button>
