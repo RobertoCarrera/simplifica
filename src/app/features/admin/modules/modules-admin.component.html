@@ -1,8 +1,8 @@
-<div class="p-6 space-y-8 bg-gray-50 min-h-screen">
+<div class="p-6 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
   <!-- Header Section -->
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
         <span
           class="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30"
         >
@@ -10,21 +10,21 @@
         </span>
         Gestión de Módulos
       </h1>
-      <p class="mt-2 text-gray-600 max-w-2xl">
+      <p class="mt-2 text-gray-600 dark:text-gray-300 max-w-2xl">
         Administra los módulos activados por empresa y el orden de los elementos en el menú lateral.
       </p>
     </div>
   </div>
 
   <!-- Tab Navigation -->
-  <div class="flex gap-2 border-b border-gray-200">
+  <div class="flex gap-2 border-b border-gray-200 dark:border-gray-700">
     <button
       (click)="switchTab('companies')"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
       [class.border-blue-600]="activeTab() === 'companies'"
       [class.text-blue-600]="activeTab() === 'companies'"
       [class.border-transparent]="activeTab() !== 'companies'"
-      [class.text-gray-500]="activeTab() !== 'companies'"
+      [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="activeTab() !== 'companies'"
     >
       <i class="fas fa-building mr-2"></i>Empresas
     </button>
@@ -34,14 +34,14 @@
       [class.border-blue-600]="activeTab() === 'sidebar'"
       [class.text-blue-600]="activeTab() === 'sidebar'"
       [class.border-transparent]="activeTab() !== 'sidebar'"
-      [class.text-gray-500]="activeTab() !== 'sidebar'"
+      [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="activeTab() !== 'sidebar'"
     >
       <i class="fas fa-list-ul mr-2"></i>Orden del Sidebar
     </button>
-    <button (click)="switchTab('modules')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'modules'" [class.text-blue-600]="activeTab() === 'modules'" [class.border-transparent]="activeTab() !== 'modules'" [class.text-gray-500]="activeTab() !== 'modules'">
+    <button (click)="switchTab('modules')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'modules'" [class.text-blue-600]="activeTab() === 'modules'" [class.border-transparent]="activeTab() !== 'modules'" [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="activeTab() !== 'modules'">
       <i class="fas fa-cubes mr-2"></i>Módulos
     </button>
-    <button (click)="switchTab('addons')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'addons'" [class.text-blue-600]="activeTab() === 'addons'" [class.border-transparent]="activeTab() !== 'addons'" [class.text-gray-500]="activeTab() !== 'addons'">
+    <button (click)="switchTab('addons')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'addons'" [class.text-blue-600]="activeTab() === 'addons'" [class.border-transparent]="activeTab() !== 'addons'" [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="activeTab() !== 'addons'">
       <i class="fas fa-puzzle-piece mr-2"></i>Add-ons
     </button>
     <button
@@ -50,7 +50,7 @@
       [class.border-blue-600]="activeTab() === 'pricing'"
       [class.text-blue-600]="activeTab() === 'pricing'"
       [class.border-transparent]="activeTab() !== 'pricing'"
-      [class.text-gray-500]="activeTab() !== 'pricing'"
+      [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="activeTab() !== 'pricing'"
     >
       <i class="fas fa-tags mr-2"></i>Planes y Precios
     </button>
@@ -60,15 +60,15 @@
   @if (activeTab() === 'companies') {
 
     <!-- Filters Section -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-      <label class="block text-sm font-semibold text-gray-700 mb-2">Buscar Empresa</label>
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 p-5">
+      <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Buscar Empresa</label>
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <i class="fas fa-search text-gray-400"></i>
+          <i class="fas fa-search text-gray-400 dark:text-gray-500"></i>
         </div>
         <input
           [(ngModel)]="companyQuery"
-          class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm transition-all"
+          class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-900 text-sm transition-all"
           placeholder="Nombre de la empresa, ID..."
         />
       </div>
@@ -76,7 +76,7 @@
 
     <!-- Loading State -->
     @if (loading()) {
-      <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+      <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
         <div class="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p>Cargando empresas...</p>
       </div>
@@ -86,13 +86,13 @@
     @if (!loading()) {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
         @for (c of filteredCompanies; track c) {
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all hover:shadow-md">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col transition-all hover:shadow-md">
             <!-- Company Card Header -->
-            <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+            <div class="p-5 border-b border-gray-100 bg-gray-50 dark:bg-gray-900/50">
               <div class="flex items-start justify-between gap-3 mb-2">
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-bold text-gray-900 truncate" title="{{ c.name }}">{{ c.name || 'Sin Nombre' }}</h3>
-                  <p class="text-xs text-gray-500 font-mono truncate" title="{{ c.id }}">ID: {{ c.id }}</p>
+                  <h3 class="font-bold text-gray-900 dark:text-white truncate" title="{{ c.name }}">{{ c.name || 'Sin Nombre' }}</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-mono truncate" title="{{ c.id }}">ID: {{ c.id }}</p>
                 </div>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800">{{ c.subscription_tier || 'Basic' }}</span>
               </div>
@@ -109,11 +109,11 @@
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
                        [ngClass]="{
                          'bg-green-100 text-green-600': m.status === 'active' || m.status === 'activado',
-                         'bg-gray-100 text-gray-400': m.status !== 'active' && m.status !== 'activado',
+                         'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500': m.status !== 'active' && m.status !== 'activado',
                        }">
                       <i [class]="'fas ' + moduleIcon(m.key) + ' text-xs'"></i>
                     </div>
-                    <span class="text-sm font-medium text-gray-700 truncate" title="{{ getLabel(m) }}">{{ getLabel(m) }}</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" title="{{ getLabel(m) }}">{{ getLabel(m) }}</span>
                   </div>
                   <button
                     class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -122,7 +122,7 @@
                     (click)="toggleCompanyModule(c, m.key)"
                   >
                     <span class="sr-only">Toggle module</span>
-                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-800 shadow ring-0 transition duration-200 ease-in-out"
                       [class.translate-x-5]="m.status === 'active' || m.status === 'activado'"
                       [class.translate-x-0]="m.status !== 'active' && m.status !== 'activado'">
                     </span>
@@ -137,12 +137,12 @@
 
     <!-- Empty State -->
     @if (!loading() && filteredCompanies.length === 0) {
-      <div class="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
-        <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fas fa-building text-gray-400 text-2xl"></i>
+      <div class="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300">
+        <div class="w-16 h-16 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-building text-gray-400 dark:text-gray-500 text-2xl"></i>
         </div>
-        <h3 class="text-lg font-medium text-gray-900">No se encontraron empresas</h3>
-        <p class="text-gray-500">Prueba con otro término de búsqueda.</p>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">No se encontraron empresas</h3>
+        <p class="text-gray-500 dark:text-gray-400 dark:text-gray-500">Prueba con otro término de búsqueda.</p>
       </div>
     }
   }
@@ -157,11 +157,11 @@
       </div>
     } @else {
       <div class="space-y-6">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h2 class="text-lg font-semibold text-gray-900">Orden de navegación</h2>
-              <p class="text-sm text-gray-500 mt-1">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Orden de navegación</h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
                 Arrastra o usa las flechas para cambiar el orden. Los cambios afectan al menú lateral y a la barra inferior en móvil.
               </p>
             </div>
@@ -179,7 +179,7 @@
           </div>
 
           <!-- Legend -->
-          <div class="flex items-center gap-4 mb-4 text-xs text-gray-500">
+          <div class="flex items-center gap-4 mb-4 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
             <div class="flex items-center gap-1.5">
               <span class="w-3 h-3 rounded-sm bg-blue-100 border border-blue-200 inline-block"></span>
               <span>Core</span>
@@ -211,7 +211,7 @@
                 (dragover)="onDragOver($event, item)"
                 (drop)="onDrop(item)"
                 (dragend)="onDragEnd()"
-                class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group cursor-grab active:cursor-grabbing"
+                class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:bg-gray-700 rounded-xl transition-colors group cursor-grab active:cursor-grabbing"
                 [class.ring-2]="dragOverKey() === item.key"
                 [class.ring-blue-400]="dragOverKey() === item.key"
                 [class.opacity-40]="draggedKey() === item.key"
@@ -219,7 +219,7 @@
                 <!-- Top row (mobile): drag handle + icon + label + DEV badge + DEV toggle -->
                 <div class="flex items-center gap-3 min-w-0">
                   <!-- Drag handle -->
-                  <div class="text-gray-300 group-hover:text-gray-400 transition-colors flex-shrink-0">
+                  <div class="text-gray-300 group-hover:text-gray-400 dark:text-gray-500 transition-colors flex-shrink-0">
                     <i class="fas fa-grip-vertical text-sm"></i>
                   </div>
 
@@ -235,14 +235,14 @@
                   </div>
 
                   <!-- Label -->
-                  <span class="flex-1 text-sm font-medium text-gray-700 truncate min-w-0">{{ item.label }}</span>
+                  <span class="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200 truncate min-w-0">{{ item.label }}</span>
 </div>
 
                 <!-- Bottom row (mobile) / right (desktop): visibility toggles stacked vertically on mobile, side by side on sm+ -->
-                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pl-8 sm:pl-0 border-t sm:border-t-0 border-gray-200 pt-2 sm:pt-0">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pl-8 sm:pl-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-700 pt-2 sm:pt-0">
                   <!-- Visible to Clients toggle -->
                   <div class="flex items-center justify-between sm:justify-start gap-2 sm:gap-1.5" title="{{ item.visibleToClients ? 'Visible para clientes. Click para ocultar a clientes.' : 'Oculto para clientes. Click para mostrar a clientes.' }}">
-                    <span class="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1.5">
                       <i class="fas fa-user text-green-600 text-xs"></i>
                       Visible clientes
                     </span>
@@ -256,7 +256,7 @@
                       [attr.aria-label]="item.visibleToClients ? 'Ocultar a clientes' : 'Mostrar a clientes'"
                     >
                       <span class="sr-only">Visible para clientes</span>
-                      <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                      <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-800 shadow ring-0 transition duration-200 ease-in-out"
                         [class.translate-x-5]="item.visibleToClients"
                         [class.translate-x-0]="!item.visibleToClients">
                       </span>
@@ -265,7 +265,7 @@
 
                   <!-- Visible to Team toggle -->
                   <div class="flex items-center justify-between sm:justify-start gap-2 sm:gap-1.5" title="{{ item.visibleToTeam ? 'Visible para el equipo. Click para ocultar al equipo.' : 'Oculto para el equipo. Click para mostrar al equipo.' }}">
-                    <span class="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1.5">
                       <i class="fas fa-users text-blue-600 text-xs"></i>
                       Visible equipo
                     </span>
@@ -279,7 +279,7 @@
                       [attr.aria-label]="item.visibleToTeam ? 'Ocultar al equipo' : 'Mostrar al equipo'"
                     >
                       <span class="sr-only">Visible para el equipo</span>
-                      <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                      <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-800 shadow ring-0 transition duration-200 ease-in-out"
                         [class.translate-x-5]="item.visibleToTeam"
                         [class.translate-x-0]="!item.visibleToTeam">
                       </span>
@@ -291,7 +291,7 @@
           </div>
 
           <div class="mt-4 pt-4 border-t border-gray-100">
-            <p class="text-xs text-gray-400">
+            <p class="text-xs text-gray-400 dark:text-gray-500">
               <i class="fas fa-info-circle mr-1"></i>
               Los cambios se guardan al hacer clic en "Guardar". El orden afecta a la barra lateral y al menú móvil.
               Usa los switches <span class="text-green-600 font-medium">Clientes</span> y <span class="text-blue-600 font-medium">Team</span> para controlar qué audiencia ve cada módulo.
@@ -305,13 +305,13 @@
 
   @if (activeTab() === 'modules') {
     <div class="space-y-6">
-      <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <header class="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-gray-100">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-cubes text-blue-500"></i>Catálogo de módulos
             </h2>
-            <p class="text-sm text-gray-500 mt-1">
+            <p class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
               Edita el nombre visible de cada módulo y márcalo como DEV para que solo lo vean los superadministradores.
             </p>
           </div>
@@ -320,27 +320,27 @@
           </button>
         </header>
         @if (modulesCatalog().length === 0) {
-          <p class="text-sm text-gray-400 italic">Cargando catálogo…</p>
+          <p class="text-sm text-gray-400 dark:text-gray-500 italic">Cargando catálogo…</p>
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             @for (m of modulesCatalog(); track m.key) {
               @let draft = editingCatalogDraft()[m.key];
               @let editing = !!draft;
-              <div class="flex items-center gap-2 p-2.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors" [class.ring-2]="editing" [class.ring-blue-300]="editing">
-                <i [class]="'fas ' + ($any(m).icon || 'fa-cube') + ' text-xs flex-shrink-0 ' + (editing ? 'text-blue-600' : 'text-gray-400')"></i>
+              <div class="flex items-center gap-2 p-2.5 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors" [class.ring-2]="editing" [class.ring-blue-300]="editing">
+                <i [class]="'fas ' + ($any(m).icon || 'fa-cube') + ' text-xs flex-shrink-0 ' + (editing ? 'text-blue-600' : 'text-gray-400 dark:text-gray-500')"></i>
                 @if (!editing) {
                   <span class="flex-1 min-w-0">
                     <span class="block text-sm font-medium text-gray-800 truncate">{{ m.label }}</span>
-                    <span class="block text-[10px] font-mono text-gray-400 truncate">{{ m.key }}</span>
+                    <span class="block text-[10px] font-mono text-gray-400 dark:text-gray-500 truncate">{{ m.key }}</span>
                   </span>
                   @if (m.is_dev_mode) {
                     <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
                   }
                   @if (isEditorEnabled()) {
-                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Editar módulo">
+                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors flex-shrink-0" title="Editar módulo">
                       <i class="fas fa-pen text-[10px]"></i>
                     </button>
-                    <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="text-xs px-2 py-0.5 rounded border border-red-200 text-red-600 bg-white hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
+                    <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="text-xs px-2 py-0.5 rounded border border-red-200 text-red-600 bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
                       <i class="fas fa-trash text-[10px]"></i>
                     </button>
                   }
@@ -349,23 +349,23 @@
                   <div class="relative flex-shrink-0">
                     <button type="button"
                       (click)="toggleCatalogIconPicker(m.key); $event.stopPropagation()"
-                      class="w-6 h-6 flex items-center justify-center rounded border bg-white hover:bg-blue-50"
+                      class="w-6 h-6 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
                       [class.border-blue-500]="catalogIconPickerOpen() === m.key"
-                      [class.border-gray-200]="catalogIconPickerOpen() !== m.key"
+                      [class.border-gray-200 dark:border-gray-700]="catalogIconPickerOpen() !== m.key"
                       [title]="'Cambiar icono'">
                       <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-xs text-blue-600'"></i>
                     </button>
                     @if (catalogIconPickerOpen() === m.key) {
-                      <div class="absolute right-0 top-7 z-[60] w-[420px] bg-white border border-gray-200 rounded-lg shadow-xl p-2" (click)="$event.stopPropagation()">
+                      <div class="absolute right-0 top-7 z-[60] w-[420px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2" (click)="$event.stopPropagation()">
                         <div class="relative mb-2">
-                          <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-[10px]"></i>
-                          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
+                          <i class="fas fa-search absolute left-2 top-2 text-gray-400 dark:text-gray-500 text-[10px]"></i>
+                          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
                         </div>
                         <div class="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto p-1">
                           @for (entry of filteredIcons(); track entry.class) {
                             <button type="button"
                               (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null)"
-                              [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-blue-50')"
+                              [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50')"
                               [title]="entry.class">
                               <i [class]="'fas ' + entry.class"></i>
                             </button>
@@ -374,14 +374,14 @@
                       </div>
                     }
                   </div>
-                  <label class="flex items-center gap-1 text-[10px] text-gray-700 flex-shrink-0 cursor-pointer">
+                  <label class="flex items-center gap-1 text-[10px] text-gray-700 dark:text-gray-200 flex-shrink-0 cursor-pointer">
                     <input type="checkbox" [checked]="draft!.isDevMode" (change)="updateCatalogDraft(m.key, { isDevMode: $any($event.target).checked })" class="rounded text-amber-600" />
                     <span class="font-medium">DEV</span>
                   </label>
                   <button (click)="saveCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
                     <i class="fas fa-save text-[10px]"></i>
                   </button>
-                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Cancelar">
+                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors flex-shrink-0" title="Cancelar">
                     <i class="fas fa-times text-[10px]"></i>
                   </button>
                 }
@@ -398,7 +398,7 @@
     <div class="space-y-6">
       <div>
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold text-gray-900">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
             <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
           </h3>
           @if (isEditorEnabled()) {
@@ -410,24 +410,24 @@
 
         @if (isEditorEnabled() && isAddonEditorOpen()) {
           <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4">
-            <h4 class="text-sm font-semibold text-gray-900 mb-3">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
               {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
             </h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label class="block">
-                <span class="block text-xs font-medium text-gray-600 mb-1">Identificador (id)</span>
-                <input type="text" [value]="editingAddonDraft()?.id ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })" [disabled]="!newAddonMode()" placeholder="marketing_pro" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100" />
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Identificador (id)</span>
+                <input type="text" [value]="editingAddonDraft()?.id ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })" [disabled]="!newAddonMode()" placeholder="marketing_pro" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 dark:bg-gray-700" />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-600 mb-1">Nombre</span>
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre</span>
                 <input type="text" [value]="editingAddonDraft()?.name ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </label>
               <label class="block md:col-span-2">
-                <span class="block text-xs font-medium text-gray-600 mb-1">Descripción</span>
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Descripción</span>
                 <input type="text" [value]="editingAddonDraft()?.description ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-600 mb-1">
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                   Icono
                   @if (editingAddonDraft()?.icon) {
                     <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1'"></i>
@@ -440,15 +440,15 @@
                   }
                 </datalist>
                 <div class="mt-2 relative">
-                  <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
-                  <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono: marketing, casa, robot..." class="w-full pl-7 pr-3 py-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-purple-500" />
+                  <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-400 dark:text-gray-500 text-xs"></i>
+                  <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono: marketing, casa, robot..." class="w-full pl-7 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded text-xs focus:ring-1 focus:ring-purple-500" />
                 </div>
-                <div class="mt-1 max-h-32 overflow-y-auto p-1 border border-gray-200 rounded bg-gray-50">
+                <div class="mt-1 max-h-32 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-900">
                   <div class="grid grid-cols-10 gap-0.5">
                     @for (entry of filteredIcons(); track entry.class) {
                       <button type="button"
                         (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: entry.class })"
-                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (editingAddonDraft()?.icon === entry.class ? 'bg-purple-100 border border-purple-500 text-purple-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-purple-50')"
+                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (editingAddonDraft()?.icon === entry.class ? 'bg-purple-100 border border-purple-500 text-purple-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-purple-50')"
                         [title]="entry.class + ' — ' + entry.keywords">
                         <i [class]="'fas ' + entry.class"></i>
                       </button>
@@ -457,14 +457,14 @@
                 </div>
               </label>
               <label class="block">
-                <span class="block text-xs font-medium text-gray-600 mb-1">Precio (€)</span>
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Precio (€)</span>
                 <input type="number" min="0" step="0.01" [value]="(editingAddonDraft()?.price_eur_cents ?? 0) / 100" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_eur_cents: eurosToCents($any($event.target).value) })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </label>
               <div class="md:col-span-2">
-                <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Aplica a planes</span>
                 <div class="flex flex-wrap gap-2">
                   @for (p of plans(); track p.id) {
-                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm">
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm">
                       <input type="checkbox" [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)" (change)="toggleAddonPlan(p.id)" class="rounded text-purple-600" />
                       <span class="capitalize">{{ p.name }}</span>
                     </label>
@@ -472,27 +472,27 @@
                 </div>
               </div>
               <div class="md:col-span-2">
-                <span class="block text-xs font-medium text-gray-600 mb-1">
+                <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                   <i class="fas fa-cubes text-purple-500 mr-1"></i>Módulos que incluye
                 </span>
-                <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
                   @for (m of addableAddonModules(); track m.key) {
                     @let isChecked = (editingAddonDraft()?.included_modules ?? []).includes(m.key);
-                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm hover:bg-purple-50">
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm hover:bg-purple-50">
                       <input type="checkbox" [checked]="isChecked" (change)="toggleAddonModule(m.key)" class="rounded text-purple-600" />
-                      <i [class]="'fas ' + (m.icon || 'fa-cube') + ' text-xs text-gray-500'"></i>
+                      <i [class]="'fas ' + (m.icon || 'fa-cube') + ' text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500'"></i>
                       <span>{{ m.label }}</span>
                     </label>
                   }
                 </div>
-                <span class="block text-[11px] text-gray-400 mt-1">Módulos disponibles del catálogo de planes. Los marcados como DEV no aparecen.</span>
+                <span class="block text-[11px] text-gray-400 dark:text-gray-500 mt-1">Módulos disponibles del catálogo de planes. Los marcados como DEV no aparecen.</span>
               </div>
             </div>
             <div class="flex items-center gap-2 pt-3 mt-3 border-t border-purple-100">
               <button type="button" (click)="saveAddon()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl">
                 <i class="fas fa-save"></i> Guardar
               </button>
-              <button type="button" (click)="cancelAddonEdit()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-xl">
+              <button type="button" (click)="cancelAddonEdit()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-xl">
                 Cancelar
               </button>
               @if (editingAddon() && !newAddonMode()) {
@@ -505,31 +505,31 @@
         }
 
         @if (addons().length > 0) {
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table class="min-w-full divide-y divide-gray-100">
-              <thead class="bg-gray-50">
+              <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
-                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
-                  <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
-                  @if (isEditorEnabled()) { <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th> }
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">Módulo</th>
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">Aplica a</th>
+                  <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">Precio</th>
+                  @if (isEditorEnabled()) { <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">Acciones</th> }
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
                 @for (addon of addons(); track addon.id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
                     <td class="px-5 py-3">
                       <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
                           <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
                         </div>
                         <div>
-                          <p class="text-sm font-medium text-gray-900">{{ addon.name }}</p>
-                          <p class="text-xs text-gray-500">{{ addon.description }}</p>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ addon.name }}</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{{ addon.description }}</p>
                         </div>
                       </div>
                     </td>
-                    <td class="px-5 py-3 text-sm text-gray-600">
+                    <td class="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">
                       @if (addon.applies_to_plans.length === 0) {
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Todos los planes</span>
                       } @else {
@@ -541,7 +541,7 @@
                       }
                     </td>
                     <td class="px-5 py-3 text-right">
-                      <span class="text-sm font-semibold text-gray-900">+{{ formatAddonPrice(addon.price_eur_cents, addon.currency) }}/mes</span>
+                      <span class="text-sm font-semibold text-gray-900 dark:text-white">+{{ formatAddonPrice(addon.price_eur_cents, addon.currency) }}/mes</span>
                     </td>
                     @if (isEditorEnabled()) {
                       <td class="px-5 py-3 text-right whitespace-nowrap">
@@ -559,7 +559,7 @@
             </table>
           </div>
         } @else {
-          <p class="text-sm text-gray-500">Aún no hay add-ons definidos.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Aún no hay add-ons definidos.</p>
         }
       </div>
     </div>
@@ -568,7 +568,7 @@
   <!-- ═══════════════════════════════════════════════════════ PRICING TAB -->
   @if (activeTab() === 'pricing') {
     @if (pricingLoading()) {
-      <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+      <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
         <div class="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
         <p>Cargando planes...</p>
       </div>
@@ -576,11 +576,11 @@
       <div class="space-y-8">
         <!-- Header / context -->
         <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-blue-100 p-6">
-          <h2 class="text-lg font-semibold text-gray-900">Catálogo de planes</h2>
-          <p class="text-sm text-gray-600 mt-1">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Catálogo de planes</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
             Vista de los planes y add-ons disponibles. Los precios y los módulos incluidos se leen de la base de datos y pueden editarse desde aquí mismo.
           </p>
-          <p class="text-xs text-gray-400 mt-3">
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
             <i class="fas fa-info-circle mr-1"></i>
             Los cambios de precio se aplican a las próximas contrataciones, no a clientes existentes. Integración con Stripe pendiente (fase 2).
           </p>
@@ -591,31 +591,31 @@
       <section class="mb-6">
         <header class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
-            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-th text-blue-500"></i>Módulos incluidos por plan
             </h2>
-            <p class="text-sm text-gray-600 mt-1">Marca qué módulos lleva cada plan de serie. El cambio se persiste al instante.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Marca qué módulos lleva cada plan de serie. El cambio se persiste al instante.</p>
           </div>
           <button type="button" (click)="showVisibleModulePicker.set(true); visibleModulePickerQuery.set('')" data-testid="open-visible-module-picker" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
             <i class="fas fa-plus text-xs"></i> Añadir nuevo
           </button>
         </header>
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-100">
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-50 z-10">Módulo</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-50 dark:bg-gray-900 z-10">Módulo</th>
                 @for (plan of plans(); track plan.id) {
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ plan.name }}</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">{{ plan.name }}</th>
                 }
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               @for (key of availableModuleKeys; track key) {
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800 z-10">
                     <div class="flex items-center gap-2">
-                      <i [class]="'fas ' + moduleIcon(key) + ' text-xs text-gray-500'"></i>
+                      <i [class]="'fas ' + moduleIcon(key) + ' text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500'"></i>
                       <span class="truncate">{{ moduleLabel(key) }}</span>
                       <button type="button" (click)="removeVisibleModule(key)" class="ml-1 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0" [attr.aria-label]="'Quitar ' + moduleLabel(key)">
                         <i class="fas fa-times text-xs"></i>
@@ -626,7 +626,7 @@
                     <td class="px-4 py-3 text-center">
                       <button (click)="toggleModuleInPlan(plan, key)" [disabled]="isPricingCellSaving(plan.id, key)" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-wait" [class.bg-blue-500]="isModuleInPlan(plan, key)" [class.bg-gray-200]="!isModuleInPlan(plan, key)" role="switch" [attr.aria-checked]="isModuleInPlan(plan, key)">
                         <span class="sr-only">Toggle</span>
-                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" [class.translate-x-5]="isModuleInPlan(plan, key)" [class.translate-x-0]="!isModuleInPlan(plan, key)"></span>
+                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-800 shadow ring-0 transition duration-200 ease-in-out" [class.translate-x-5]="isModuleInPlan(plan, key)" [class.translate-x-0]="!isModuleInPlan(plan, key)"></span>
                       </button>
                     </td>
                   }
@@ -638,15 +638,15 @@
       </section>
 
       <div>
-          <h3 class="text-base font-semibold text-gray-900 mb-4">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">
             <i class="fas fa-layer-group mr-2 text-blue-500"></i>Planes base
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             @for (plan of plans(); track plan.id) {
               <div
-                class="bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col transition-all hover:shadow-md relative"
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col transition-all hover:shadow-md relative"
                 [class.border-blue-500]="plan.is_highlighted"
-                [class.border-gray-200]="!plan.is_highlighted"
+                [class.border-gray-200 dark:border-gray-700]="!plan.is_highlighted"
               >
                 @if (plan.is_highlighted) {
                   <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
@@ -654,7 +654,7 @@
                   </div>
                 }
                 @if (isEditorEnabled() && editingPlan()?.id !== plan.id) {
-                  <button type="button" (click)="startEdit(plan)" [attr.data-testid]="'plan-edit-button-' + plan.id" class="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">
+                  <button type="button" (click)="startEdit(plan)" [attr.data-testid]="'plan-edit-button-' + plan.id" class="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors shadow-sm">
                     <i class="fas fa-pen text-[10px]"></i> Editar
                   </button>
                 }
@@ -665,30 +665,30 @@
                   [class.to-purple-600]="plan.is_highlighted"
                   [class.text-white]="plan.is_highlighted">
                   <h4 class="text-xl font-bold"
-                    [class.text-gray-900]="!plan.is_highlighted"
+                    [class.text-gray-900 dark:text-white]="!plan.is_highlighted"
                     [class.text-white]="plan.is_highlighted">
                     {{ plan.name }}
                   </h4>
                   <p class="text-sm mt-1"
-                    [class.text-gray-500]="!plan.is_highlighted"
+                    [class.text-gray-500 dark:text-gray-400 dark:text-gray-500]="!plan.is_highlighted"
                     [class.text-blue-100]="plan.is_highlighted">
                     {{ plan.tagline }}
                   </p>
                   <div class="mt-4">
                     <span class="text-4xl font-extrabold"
-                      [class.text-gray-900]="!plan.is_highlighted"
+                      [class.text-gray-900 dark:text-white]="!plan.is_highlighted"
                       [class.text-white]="plan.is_highlighted">
                       {{ formatPrice(plan.base_price_eur_cents, plan.currency) }}
                     </span>
                   </div>
                   <p class="text-xs mt-1"
-                    [class.text-gray-400]="!plan.is_highlighted"
+                    [class.text-gray-400 dark:text-gray-500]="!plan.is_highlighted"
                     [class.text-blue-100]="plan.is_highlighted">
                     {{ plan.included_users }} usuario{{ plan.included_users === 1 ? '' : 's' }} incluido{{ plan.included_users === 1 ? '' : 's' }}
                   </p>
                   @if (plan.extra_user_cents > 0) {
                     <p class="text-xs mt-0.5"
-                      [class.text-gray-400]="!plan.is_highlighted"
+                      [class.text-gray-400 dark:text-gray-500]="!plan.is_highlighted"
                       [class.text-blue-100]="plan.is_highlighted">
                       + {{ formatExtraUserPrice(plan.extra_user_cents, plan.currency) }}
                     </p>
@@ -697,12 +697,12 @@
 
                 <!-- Modules included -->
                 <div class="p-6 flex-1 flex flex-col gap-3">
-                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide">
                     Módulos incluidos
                   </p>
                   <ul class="space-y-2 flex-1">
                     @for (key of plan.included_modules; track key) {
-                      <li class="flex items-start gap-2 text-sm text-gray-700">
+                      <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
                         <span>{{ moduleLabel(key) }}</span>
                       </li>
@@ -712,17 +712,17 @@
                   <!-- Add-ons available for this plan -->
                   @if (addonsForPlan(plan.id).length > 0) {
                     <div class="mt-4 pt-4 border-t border-gray-100">
-                      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
                         Add-ons disponibles
                       </p>
                       <ul class="space-y-1.5">
                         @for (addon of addonsForPlan(plan.id); track addon.id) {
                           <li class="flex items-center justify-between text-sm">
-                            <span class="flex items-center gap-2 text-gray-600">
+                            <span class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                               <i [class]="'fas ' + addon.icon + ' text-xs text-purple-500'"></i>
                               {{ addon.name }}
                             </span>
-                            <span class="text-xs font-medium text-gray-500">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                               +{{ formatAddonPrice(addon.price_eur_cents, addon.currency) }}/mes
                             </span>
                           </li>
@@ -738,32 +738,32 @@
                       <i class="fas fa-pen mr-1"></i>Editar plan
                     </p>
                     <label class="block">
-                      <span class="text-[10px] text-gray-600">Nombre</span>
+                      <span class="text-[10px] text-gray-600 dark:text-gray-300">Nombre</span>
                       <input type="text" name="name" [(ngModel)]="draft.name" required class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
                     </label>
                     <label class="block">
-                      <span class="text-[10px] text-gray-600">Tagline</span>
+                      <span class="text-[10px] text-gray-600 dark:text-gray-300">Tagline</span>
                       <input type="text" name="tagline" [(ngModel)]="draft.tagline" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
                     </label>
                     <label class="block">
-                      <span class="text-[10px] text-gray-600">Descripción</span>
+                      <span class="text-[10px] text-gray-600 dark:text-gray-300">Descripción</span>
                       <textarea name="description" [(ngModel)]="draft.description" rows="2" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1"></textarea>
                     </label>
                     <div class="grid grid-cols-2 gap-1.5">
                       <label class="block">
-                        <span class="text-[10px] text-gray-600">Precio (€)</span>
+                        <span class="text-[10px] text-gray-600 dark:text-gray-300">Precio (€)</span>
                         <input type="number" min="0" step="0.01" [ngModel]="draft.base_price_eur_cents / 100" (ngModelChange)="draft.base_price_eur_cents = $event * 100" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
                       </label>
                       <label class="block">
-                        <span class="text-[10px] text-gray-600">Usuarios incl.</span>
+                        <span class="text-[10px] text-gray-600 dark:text-gray-300">Usuarios incl.</span>
                         <input type="number" min="0" [(ngModel)]="draft.included_users" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
                       </label>
                     </div>
                     <label class="block">
-                      <span class="text-[10px] text-gray-600">€/usuario extra</span>
+                      <span class="text-[10px] text-gray-600 dark:text-gray-300">€/usuario extra</span>
                       <input type="number" min="0" step="0.01" [ngModel]="draft.extra_user_cents / 100" (ngModelChange)="draft.extra_user_cents = $event * 100" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
                     </label>
-                    <label class="flex items-center gap-1.5 text-[11px] text-gray-700">
+                    <label class="flex items-center gap-1.5 text-[11px] text-gray-700 dark:text-gray-200">
                       <input type="checkbox" [(ngModel)]="draft.is_highlighted" class="rounded border-gray-300 text-blue-600" />
                       <span>Destacado</span>
                     </label>
@@ -771,7 +771,7 @@
                       <button type="button" (click)="updatePlanMetadata()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium rounded">
                         <i class="fas fa-save"></i>Guardar
                       </button>
-                      <button type="button" (click)="cancelEdit()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-[11px] font-medium rounded">
+                      <button type="button" (click)="cancelEdit()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 border border-gray-300 text-gray-700 dark:text-gray-200 text-[11px] font-medium rounded">
                         Cancelar
                       </button>
                     </div>
@@ -808,11 +808,11 @@
 <!-- F-PCA-008 picker modal -->
 @if (showVisibleModulePicker()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="showVisibleModulePicker.set(false)">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
       <div class="flex items-center justify-between p-5 border-b border-gray-100">
         <div>
-          <h3 class="text-base font-semibold text-gray-900">Añadir módulo al plan picker</h3>
-          <p class="text-xs text-gray-500 mt-1">Elige un módulo del catálogo. Luego podrás asociarlo a los planes.</p>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Añadir módulo al plan picker</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Elige un módulo del catálogo. Luego podrás asociarlo a los planes.</p>
         </div>
         <button type="button" (click)="showVisibleModulePicker.set(false)"><i class="fas fa-times"></i></button>
       </div>
@@ -821,7 +821,7 @@
       </div>
       <div class="flex-1 overflow-y-auto p-2">
         @if (filteredAddableModules().length === 0) {
-          <div class="px-4 py-8 text-center text-sm text-gray-500">
+          <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
             @if (visibleModulePickerQuery()) {
               Ningún módulo coincide.
             } @else {
@@ -833,8 +833,8 @@
             <button type="button" (click)="addVisibleModuleFromCatalog(m.key); showVisibleModulePicker.set(false)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-left">
               <i [class]="'fas ' + m.icon + ' text-blue-500'"></i>
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
-                <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ m.label }}</div>
+                <div class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ m.key }}</div>
               </div>
               <i class="fas fa-plus text-blue-500 text-xs"></i>
             </button>
@@ -848,25 +848,25 @@
 <!-- F-PCA-008: modal para añadir módulos desde el catálogo local al backend -->
 @if (showAddCatalogModal()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="showAddCatalogModal.set(false)">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
       <div class="flex items-center justify-between p-5 border-b border-gray-100">
         <div>
-          <h3 class="text-base font-semibold text-gray-900">Añadir módulo al catálogo</h3>
-          <p class="text-xs text-gray-500 mt-1">Promueve un módulo del catálogo local al catálogo editable (backend).</p>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Añadir módulo al catálogo</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Promueve un módulo del catálogo local al catálogo editable (backend).</p>
         </div>
-        <button type="button" (click)="showAddCatalogModal.set(false); newModuleIcon.set({})" class="text-gray-400 hover:text-gray-600" aria-label="Cerrar">
+        <button type="button" (click)="showAddCatalogModal.set(false); newModuleIcon.set({})" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <div class="p-5 border-b border-gray-100">
         <div class="relative">
-          <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-500 text-xs"></i>
           <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono (español, inglés, o nombre fa-...)" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
         </div>
       </div>
       <div class="flex-1 overflow-y-auto p-2">
         @if (addableCatalogKeys.length === 0) {
-          <div class="px-4 py-8 text-center text-sm text-gray-500">
+          <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
             Todos los módulos del catálogo local ya están en el catálogo backend.
           </div>
         } @else {
@@ -875,21 +875,21 @@
               <div class="flex items-center gap-3">
                 <i [class]="'fas ' + (newModuleIcon()[m.key] || m.icon) + ' text-blue-500 text-sm w-5 text-center'"></i>
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
-                  <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+                  <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ m.label }}</div>
+                  <div class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ m.key }}</div>
                 </div>
                 <button type="button" (click)="addModuleFromCatalog(m.key, m.label, newModuleIcon()[m.key] || m.icon); showAddCatalogModal.set(false)" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded">
                   <i class="fas fa-plus text-[10px]"></i> Añadir
                 </button>
               </div>
               <div class="mt-2">
-                <div class="text-[10px] text-gray-400 mb-1">Icono actual: <code class="bg-gray-100 px-1 rounded">{{ newModuleIcon()[m.key] || m.icon }}</code></div>
-                <div class="max-h-48 overflow-y-auto p-1 border border-gray-200 rounded bg-gray-50">
+                <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1">Icono actual: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{{ newModuleIcon()[m.key] || m.icon }}</code></div>
+                <div class="max-h-48 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-900">
                   <div class="grid grid-cols-8 gap-1">
                     @for (entry of filteredIcons(); track entry.class) {
                       <button type="button"
                         (click)="setNewModuleIcon(m.key, entry.class)"
-                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + ((newModuleIcon()[m.key] || m.icon) === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-blue-50')"
+                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + ((newModuleIcon()[m.key] || m.icon) === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50')"
                         [title]="entry.class + ' — ' + entry.keywords">
                         <i [class]="'fas ' + entry.class"></i>
                       </button>
