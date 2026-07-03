@@ -86,6 +86,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   goToImport(): void { this.router.navigate(['/productos/importar']); }
+  goToApi(): void { this.router.navigate(['/productos/conectar-api']); }
 
   resetForm(): void {
     this.newProduct = this.emptyDraft();

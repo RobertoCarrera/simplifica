@@ -133,6 +133,15 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
     data: { moduleKey: "moduloProductos" },
   },
+  {
+    path: "productos/conectar-api",
+    loadComponent: () =>
+      import("./features/products/supplier-import/supplier-api-config.component").then(
+        (m) => m.SupplierApiConfigComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
+    data: { moduleKey: "moduloProductos" },
+  },
 
   // Services
   {
