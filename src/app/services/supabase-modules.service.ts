@@ -415,6 +415,33 @@ export class SupabaseModulesService {
     );
   }
 
+  adminDeleteModuleCatalog(key: string): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance
+          .from('modules_catalog')
+          .delete()
+          .eq('key', key);
+        if (error) throw error;
+      })()
+    );
+  }
+
+  /**
+   * Force PostgREST to reload its schema cache. Some operations (like adding a
+   * new row to a table that previously had no rows visible to anon) can leave
+   * the JS client reporting 'column not found in schema cache'. Calling this
+   * RPC after such operations clears the cache.
+   */
+  reloadSchemaCache(): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_reload_schema');
+        if (error) throw error;
+      })()
+    );
+  }
+
   // ── Legacy User Methods (kept for reference or cleanup later) ──────────────
   adminListUserModules(
     companyId?: string,

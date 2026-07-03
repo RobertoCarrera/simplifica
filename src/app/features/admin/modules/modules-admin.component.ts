@@ -354,6 +354,17 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
+  async deleteModuleFromCatalog(key: string, label: string) {
+    if (!confirm('¿Eliminar "' + label + '" del catálogo de módulos?')) return;
+    try {
+      await firstValueFrom(this.modulesService.adminDeleteModuleCatalog(key));
+      await this.loadModulesCatalog();
+      this.toast.success('Módulo eliminado', '"' + label + '" se ha eliminado.');
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo eliminar.');
+    }
+  }
+
   /**
    * Modules from the local SIDEBAR_CATALOG that are NOT yet present in the
    * backend `modules_catalog` table. Used by the "Añadir nuevo módulo" modal
