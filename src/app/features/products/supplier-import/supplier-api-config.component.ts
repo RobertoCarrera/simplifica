@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupplierImportService } from '../../../services/supplier-import.service';
@@ -157,6 +157,35 @@ interface ApiFieldMapping {
                 }
               }
             </div>
+
+            <!-- Auto-detect suggestion -->
+            @if (testResult()?.ok && testResult()?.sampleData?.length > 0) {
+              <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-sm font-medium text-blue-900 dark:text-blue-200">
+                    <i class="fas fa-magic mr-1"></i>
+                    Detectamos {{ testResult()?.sampleData?.length }} productos de muestra
+                  </p>
+                  <button type="button" (click)="autoDetectMappings()"
+                    [disabled]="isAutoDetecting()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium disabled:opacity-50 flex items-center gap-1">
+                    @if (isAutoDetecting()) {
+                      <div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                      Detectando...
+                    } @else {
+                      <i class="fas fa-wand-magic-sparkles"></i>
+                      Auto-detectar campos
+                    }
+                  </button>
+                </div>
+                <details class="text-xs">
+                  <summary class="cursor-pointer text-blue-700 dark:text-blue-300 hover:underline">
+                    Ver estructura JSON del primer producto ({{ detectedPaths().length }} paths)
+                  </summary>
+                  <pre class="mt-2 p-2 bg-white dark:bg-slate-900 rounded text-xs overflow-x-auto font-mono text-gray-700 dark:text-slate-300">{{ jsonPreview() }}</pre>
+                </details>
+              </div>
+            }
           </div>
         </div>
 
@@ -299,10 +328,18 @@ export class SupplierApiConfigComponent {
 
   // State
   isTesting = signal(false);
+  isAutoDetecting = signal(false);
   isSyncing = signal(false);
   testResult = signal<{ ok: boolean; sampleData: any; error?: string } | null>(null);
+  detectedPaths = signal<string[]>([]);
   syncResult = signal<{ success: boolean; fetched?: number; cached?: number; pages?: number; error?: string } | null>(null);
   createdSupplierId: string | null = null;
+
+  jsonPreview = computed(() => {
+    const sample = this.testResult()?.sampleData?.[0];
+    if (!sample) return '';
+    return JSON.stringify(sample, null, 2);
+  });
 
   // ─── Field mapping CRUD ──────────────────────────────────────────────
 
@@ -349,6 +386,51 @@ export class SupplierApiConfigComponent {
       this.testResult.set({ ok: false, sampleData: null, error: error.message });
     } finally {
       this.isTesting.set(false);
+    }
+  }
+
+  /**
+   * Analyze the sample data from testConnection and auto-populate the
+   * field mappings using heuristic matching of JSON path names.
+   */
+  autoDetectMappings(): void {
+    const sample = this.testResult()?.sampleData?.[0];
+    if (!sample) {
+      this.toastService.error('Error', 'Primero prueba la conexión para obtener datos de muestra');
+      return;
+    }
+
+    this.isAutoDetecting.set(true);
+    try {
+      const paths = this.importService.extractJsonPaths(sample);
+      this.detectedPaths.set(paths);
+
+      const suggestions = this.importService.suggestMappings(paths);
+
+      // Replace existing mappings with suggested ones
+      this.apiMappings = Object.entries(suggestions)
+        .filter(([_, sourcePath]) => sourcePath != null)
+        .map(([targetField, sourcePath]) => {
+          // Determine transform based on field type
+          let transform: string | null = null;
+          if (targetField === 'price' || targetField === 'stock') {
+            transform = 'number';
+          }
+          return {
+            source_path: sourcePath!,
+            target_field: targetField,
+            transform,
+            is_required: targetField === 'name',
+          };
+        });
+
+      const detected = this.apiMappings.length;
+      this.toastService.success(
+        'Campos detectados',
+        `Se mapearon ${detected} campos automáticamente. Revisa y ajusta si hace falta.`,
+      );
+    } finally {
+      this.isAutoDetecting.set(false);
     }
   }
 

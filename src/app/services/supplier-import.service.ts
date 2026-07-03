@@ -515,4 +515,70 @@ export class SupplierImportService {
     }
     return current;
   }
+
+  // ─── Auto-detect field mappings from sample data ──────────────────────────
+
+  /**
+   * Extract all JSON paths from a sample product (or array of products).
+   * Returns paths like "name", "pricing.retail", "specs[0].weight"
+   */
+  extractJsonPaths(sample: any, maxDepth = 4): string[] {
+    const paths = new Set<string>();
+    const visit = (obj: any, prefix: string, depth: number) => {
+      if (depth > maxDepth || obj == null) return;
+      if (Array.isArray(obj)) {
+        // Only inspect first item of arrays (representative)
+        if (obj.length > 0) visit(obj[0], prefix, depth + 1);
+        return;
+      }
+      if (typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+          const path = prefix ? `${prefix}.${key}` : key;
+          paths.add(path);
+          // Recurse but cap depth
+          visit(obj[key], path, depth + 1);
+        }
+      }
+    };
+    visit(sample, '', 0);
+    return Array.from(paths).sort();
+  }
+
+  /**
+   * Suggest field mappings based on heuristic matching of path names
+   * against CRM field names. Returns suggested source_path for each CRM field.
+   */
+  suggestMappings(jsonPaths: string[]): { [targetField: string]: string | null } {
+    const lower = jsonPaths.map((p) => ({ path: p, lower: p.toLowerCase() }));
+
+    const find = (...candidates: string[]): string | null => {
+      // Try exact match first
+      for (const c of candidates) {
+        const exact = lower.find((p) => p.lower === c);
+        if (exact) return exact.path;
+      }
+      // Then partial match (path ends with candidate or contains candidate)
+      for (const c of candidates) {
+        const partial = lower.find((p) => p.lower.endsWith(c) || p.lower.endsWith('.' + c));
+        if (partial) return partial.path;
+      }
+      // Then broader match (contains)
+      for (const c of candidates) {
+        const contains = lower.find((p) => p.lower.includes(c));
+        if (contains) return contains.path;
+      }
+      return null;
+    };
+
+    return {
+      name: find('name', 'title', 'productname', 'product_name', 'nombre', 'titulo'),
+      external_id: find('sku', 'id', 'code', 'reference', 'ref', 'codigo', 'referencia'),
+      description: find('description', 'desc', 'descripcion', 'details', 'summary'),
+      brand: find('brand', 'manufacturer', 'marca', 'fabricante'),
+      category: find('category', 'cat', 'categoria', 'tipo', 'type', 'group'),
+      model: find('model', 'modelo', 'part_number', 'mpn', 'sku'),
+      price: find('price', 'cost', 'precio', 'coste', 'pvp', 'retail', 'amount'),
+      stock: find('stock', 'quantity', 'qty', 'available', 'inventory', 'cantidad'),
+    };
+  }
 }
