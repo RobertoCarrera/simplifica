@@ -387,16 +387,27 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
-  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean }>>({});
+  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean; icon: string }>>({});
+  /** Key of the module whose icon picker is currently open in the Catálogo grid (null = closed). */
+  catalogIconPickerOpen = signal<string | null>(null);
 
-  startCatalogEdit(key: string, label: string, isDevMode: boolean) {
-    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode } });
+  startCatalogEdit(key: string, label: string, isDevMode: boolean, icon: string) {
+    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode, icon } });
+    this.catalogIconPickerOpen.set(null);
   }
 
-  updateCatalogDraft(key: string, patch: Partial<{ label: string; isDevMode: boolean }>) {
+  updateCatalogDraft(key: string, patch: Partial<{ label: string; isDevMode: boolean; icon: string }>) {
     const current = this.editingCatalogDraft()[key];
     if (!current) return;
     this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { ...current, ...patch } });
+  }
+
+  setCatalogIcon(key: string, icon: string) {
+    this.updateCatalogDraft(key, { icon });
+  }
+
+  toggleCatalogIconPicker(key: string) {
+    this.catalogIconPickerOpen.set(this.catalogIconPickerOpen() === key ? null : key);
   }
 
   async saveCatalogEdit(key: string) {

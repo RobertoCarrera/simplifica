@@ -337,7 +337,7 @@
                     <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
                   }
                   @if (isEditorEnabled()) {
-                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode)" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Editar módulo">
+                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Editar módulo">
                       <i class="fas fa-pen text-[10px]"></i>
                     </button>
                     <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="text-xs px-2 py-0.5 rounded border border-red-200 text-red-600 bg-white hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
@@ -346,14 +346,42 @@
                   }
                 } @else {
                   <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="flex-1 min-w-0 text-xs border border-gray-300 rounded px-2 py-1" />
+                  <div class="relative flex-shrink-0">
+                    <button type="button"
+                      (click)="toggleCatalogIconPicker(m.key); $event.stopPropagation()"
+                      class="w-6 h-6 flex items-center justify-center rounded border bg-white hover:bg-blue-50"
+                      [class.border-blue-500]="catalogIconPickerOpen() === m.key"
+                      [class.border-gray-200]="catalogIconPickerOpen() !== m.key"
+                      [title]="'Cambiar icono'">
+                      <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-xs text-blue-600'"></i>
+                    </button>
+                    @if (catalogIconPickerOpen() === m.key) {
+                      <div class="absolute right-0 top-7 z-20 w-[420px] bg-white border border-gray-200 rounded-lg shadow-xl p-2" (click)="$event.stopPropagation()">
+                        <div class="relative mb-2">
+                          <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-[10px]"></i>
+                          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
+                        </div>
+                        <div class="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto p-1">
+                          @for (entry of filteredIcons(); track entry.class) {
+                            <button type="button"
+                              (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null)"
+                              [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-blue-50')"
+                              [title]="entry.class">
+                              <i [class]="'fas ' + entry.class"></i>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
                   <label class="flex items-center gap-1 text-[10px] text-gray-700 flex-shrink-0 cursor-pointer">
                     <input type="checkbox" [checked]="draft!.isDevMode" (change)="updateCatalogDraft(m.key, { isDevMode: $any($event.target).checked })" class="rounded text-amber-600" />
                     <span class="font-medium">DEV</span>
                   </label>
-                  <button (click)="saveCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0">
+                  <button (click)="saveCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
                     <i class="fas fa-save text-[10px]"></i>
                   </button>
-                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0">
+                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Cancelar">
                     <i class="fas fa-times text-[10px]"></i>
                   </button>
                 }
