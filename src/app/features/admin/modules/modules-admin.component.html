@@ -38,6 +38,12 @@
     >
       <i class="fas fa-list-ul mr-2"></i>Orden del Sidebar
     </button>
+    <button (click)="switchTab('modules')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'modules'" [class.text-blue-600]="activeTab() === 'modules'" [class.border-transparent]="activeTab() !== 'modules'" [class.text-gray-500]="activeTab() !== 'modules'">
+      <i class="fas fa-cubes mr-2"></i>Módulos
+    </button>
+    <button (click)="switchTab('addons')" class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px" [class.border-blue-600]="activeTab() === 'addons'" [class.text-blue-600]="activeTab() === 'addons'" [class.border-transparent]="activeTab() !== 'addons'" [class.text-gray-500]="activeTab() !== 'addons'">
+      <i class="fas fa-puzzle-piece mr-2"></i>Add-ons
+    </button>
     <button
       (click)="switchTab('pricing')"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
@@ -90,24 +96,14 @@
                 </div>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800">{{ c.subscription_tier || 'Basic' }}</span>
               </div>
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-center gap-2">
                 <span class="inline-block w-2 h-2 rounded-full" [ngClass]="c.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
                 <span class="text-xs font-medium" [ngClass]="c.is_active ? 'text-green-700' : 'text-red-700'">{{ c.is_active ? 'Empresa Activa' : 'Empresa Inactiva' }}</span>
-                <!-- PR 2: Seat badge shows current/max non-client seats.
-                     The company object from adminListCompanies() carries
-                     max_users; seat_current is computed lazily by the
-                     parent (loadCompanies) so the badge stays a pure
-                     presentational component. -->
-                <app-seat-badge
-                  class="ml-auto"
-                  [company]="c"
-                  (seatBadgeClick)="onSeatBadgeClick(c)"
-                />
               </div>
             </div>
             <!-- Modules List -->
             <div class="p-5 flex-1 flex flex-col gap-4">
-              @for (m of c.modules; track m) {
+              @for (m of visibleCompanyModules(c); track m.key) {
                 <div class="flex items-center justify-between group">
                   <div class="flex items-center gap-3 overflow-hidden">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
@@ -240,27 +236,7 @@
 
                   <!-- Label -->
                   <span class="flex-1 text-sm font-medium text-gray-700 truncate min-w-0">{{ item.label }}</span>
-
-                  <!-- DEV badge (shown when active) -->
-                  @if (item.devMode) {
-                    <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
-                  }
-
-                  <!-- DEV mode toggle button -->
-                  <button
-                    (click)="toggleItemDevMode(item)"
-                    class="text-xs px-2 py-1 rounded-lg border transition-colors flex-shrink-0"
-                    [class.bg-amber-50]="item.devMode"
-                    [class.border-amber-300]="item.devMode"
-                    [class.text-amber-600]="item.devMode"
-                    [class.bg-white]="!item.devMode"
-                    [class.border-gray-200]="!item.devMode"
-                    [class.text-gray-400]="!item.devMode"
-                    [title]="item.devMode ? 'Modo DEV activo: solo visible para superadmin. Click para desactivar.' : 'Click para activar modo DEV (solo superadmin)'"
-                  >
-                    <i class="fas fa-code"></i>
-                  </button>
-                </div>
+</div>
 
                 <!-- Bottom row (mobile) / right (desktop): visibility toggles stacked vertically on mobile, side by side on sm+ -->
                 <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pl-8 sm:pl-0 border-t sm:border-t-0 border-gray-200 pt-2 sm:pt-0">
@@ -327,6 +303,228 @@
     }
   }
 
+  @if (activeTab() === 'modules') {
+    <div class="space-y-6">
+      <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <header class="flex flex-wrap items-start justify-between gap-3 mb-4 pb-4 border-b border-gray-100">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <i class="fas fa-cubes text-blue-500"></i>Catálogo de módulos
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">
+              Edita el nombre visible de cada módulo y márcalo como DEV para que solo lo vean los superadministradores.
+            </p>
+          </div>
+          <button type="button" (click)="showVisibleModulePicker.set(true); visibleModulePickerQuery.set('')" data-testid="open-visible-module-picker" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
+            <i class="fas fa-plus text-xs"></i> Añadir nuevo módulo
+          </button>
+        </header>
+        @if (modulesCatalog().length === 0) {
+          <p class="text-sm text-gray-400 italic">Cargando catálogo…</p>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            @for (m of modulesCatalog(); track m.key) {
+              @let draft = editingCatalogDraft()[m.key];
+              @let editing = !!draft;
+              <div class="flex items-center gap-2 p-2.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors" [class.ring-2]="editing" [class.ring-blue-300]="editing">
+                <i class="fas fa-cube text-gray-400 text-xs flex-shrink-0"></i>
+                @if (!editing) {
+                  <span class="flex-1 min-w-0">
+                    <span class="block text-sm font-medium text-gray-800 truncate">{{ m.label }}</span>
+                    <span class="block text-[10px] font-mono text-gray-400 truncate">{{ m.key }}</span>
+                  </span>
+                  @if (m.is_dev_mode) {
+                    <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
+                  }
+                  @if (isEditorEnabled()) {
+                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode)" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0">
+                      <i class="fas fa-pen text-[10px]"></i>
+                    </button>
+                  }
+                } @else {
+                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="flex-1 min-w-0 text-xs border border-gray-300 rounded px-2 py-1" />
+                  <label class="flex items-center gap-1 text-[10px] text-gray-700 flex-shrink-0 cursor-pointer">
+                    <input type="checkbox" [checked]="draft!.isDevMode" (change)="updateCatalogDraft(m.key, { isDevMode: $any($event.target).checked })" class="rounded text-amber-600" />
+                    <span class="font-medium">DEV</span>
+                  </label>
+                  <button (click)="saveCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0">
+                    <i class="fas fa-save text-[10px]"></i>
+                  </button>
+                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0">
+                    <i class="fas fa-times text-[10px]"></i>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+
+
+  @if (activeTab() === 'addons') {
+    <div class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-gray-900">
+            <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
+          </h3>
+          @if (isEditorEnabled()) {
+            <button (click)="startNewAddon()" [disabled]="isAddonEditorOpen()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors">
+              <i class="fas fa-plus"></i> Nuevo add-on
+            </button>
+          }
+        </div>
+
+        @if (isEditorEnabled() && isAddonEditorOpen()) {
+          <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">
+              {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-600 mb-1">Identificador (id)</span>
+                <input type="text" [value]="editingAddonDraft()?.id ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })" [disabled]="!newAddonMode()" placeholder="marketing_pro" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100" />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-600 mb-1">Nombre</span>
+                <input type="text" [value]="editingAddonDraft()?.name ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </label>
+              <label class="block md:col-span-2">
+                <span class="block text-xs font-medium text-gray-600 mb-1">Descripción</span>
+                <input type="text" [value]="editingAddonDraft()?.description ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-600 mb-1">
+                  Icono
+                  @if (editingAddonDraft()?.icon) {
+                    <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1'"></i>
+                  }
+                </span>
+                <input type="text" list="fa-icon-picker" [value]="editingAddonDraft()?.icon ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })" placeholder="fa-bullhorn" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <datalist id="fa-icon-picker">
+                  @for (icon of CURATED_FA_ICONS; track icon) {
+                    <option [value]="icon">{{ icon }}</option>
+                  }
+                </datalist>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  @for (icon of POPULAR_FA_ICONS; track icon) {
+                    <button type="button" (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })" class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 transition-colors" [class.border-purple-500]="editingAddonDraft()?.icon === icon" [class.border-gray-200]="editingAddonDraft()?.icon !== icon">
+                      <i [class]="'fas ' + icon + ' text-gray-700'"></i>
+                    </button>
+                  }
+                </div>
+              </label>
+              <label class="block">
+                <span class="block text-xs font-medium text-gray-600 mb-1">Precio (€)</span>
+                <input type="number" min="0" step="0.01" [value]="(editingAddonDraft()?.price_eur_cents ?? 0) / 100" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_eur_cents: eurosToCents($any($event.target).value) })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </label>
+              <div class="md:col-span-2">
+                <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>
+                <div class="flex flex-wrap gap-2">
+                  @for (p of plans(); track p.id) {
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm">
+                      <input type="checkbox" [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)" (change)="toggleAddonPlan(p.id)" class="rounded text-purple-600" />
+                      <span class="capitalize">{{ p.name }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+              <div class="md:col-span-2">
+                <span class="block text-xs font-medium text-gray-600 mb-1">
+                  <i class="fas fa-cube text-purple-500 mr-1"></i>Módulos que incluye
+                </span>
+                <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                  @for (m of addableAddonModules(); track m.key) {
+                    @let isChecked = (editingAddonDraft()?.included_modules ?? []).includes(m.key);
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm hover:bg-purple-50">
+                      <input type="checkbox" [checked]="isChecked" (change)="toggleAddonModule(m.key)" class="rounded text-purple-600" />
+                      <i [class]="'fas ' + (m.icon || 'fa-cube') + ' text-xs text-gray-500'"></i>
+                      <span>{{ m.label }}</span>
+                    </label>
+                  }
+                </div>
+                <span class="block text-[11px] text-gray-400 mt-1">Módulos disponibles del catálogo de planes. Los marcados como DEV no aparecen.</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 pt-3 mt-3 border-t border-purple-100">
+              <button type="button" (click)="saveAddon()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl">
+                <i class="fas fa-save"></i> Guardar
+              </button>
+              <button type="button" (click)="cancelAddonEdit()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-xl">
+                Cancelar
+              </button>
+              @if (editingAddon() && !newAddonMode()) {
+                <button type="button" (click)="deleteAddonConfirm(editingAddon()!)" class="ml-auto inline-flex items-center gap-1.5 px-3 py-2 text-red-700 hover:bg-red-50 text-sm font-medium rounded-xl">
+                  <i class="fas fa-trash"></i> Eliminar
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (addons().length > 0) {
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-100">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
+                  <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                  @if (isEditorEnabled()) { <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th> }
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (addon of addons(); track addon.id) {
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+                          <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium text-gray-900">{{ addon.name }}</p>
+                          <p class="text-xs text-gray-500">{{ addon.description }}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-5 py-3 text-sm text-gray-600">
+                      @if (addon.applies_to_plans.length === 0) {
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Todos los planes</span>
+                      } @else {
+                        <div class="flex flex-wrap gap-1">
+                          @for (p of addon.applies_to_plans; track p) {
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">{{ p }}</span>
+                          }
+                        </div>
+                      }
+                    </td>
+                    <td class="px-5 py-3 text-right">
+                      <span class="text-sm font-semibold text-gray-900">+{{ formatAddonPrice(addon.price_eur_cents, addon.currency) }}/mes</span>
+                    </td>
+                    @if (isEditorEnabled()) {
+                      <td class="px-5 py-3 text-right whitespace-nowrap">
+                        <button (click)="startAddonEdit(addon)" [disabled]="isAddonEditorOpen()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50">
+                          <i class="fas fa-pen text-xs"></i> Editar
+                        </button>
+                        <button (click)="deleteAddonConfirm(addon)" [disabled]="isAddonEditorOpen()" class="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50">
+                          <i class="fas fa-trash text-xs"></i>
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-gray-500">Aún no hay add-ons definidos.</p>
+        }
+      </div>
+    </div>
+  }
+
   <!-- ═══════════════════════════════════════════════════════ PRICING TAB -->
   @if (activeTab() === 'pricing') {
     @if (pricingLoading()) {
@@ -349,11 +547,61 @@
         </div>
 
         <!-- Plans grid -->
-        <div>
+        
+      <section class="mb-6">
+        <header class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <i class="fas fa-th text-blue-500"></i>Módulos incluidos por plan
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">Marca qué módulos lleva cada plan de serie. El cambio se persiste al instante.</p>
+          </div>
+          <button type="button" (click)="showVisibleModulePicker.set(true); visibleModulePickerQuery.set('')" data-testid="open-visible-module-picker" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
+            <i class="fas fa-plus text-xs"></i> Añadir nuevo
+          </button>
+        </header>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-50 z-10">Módulo</th>
+                @for (plan of plans(); track plan.id) {
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ plan.name }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              @for (key of availableModuleKeys; track key) {
+                <tr class="hover:bg-gray-50 transition-colors">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-cube text-gray-400 text-xs"></i>
+                      <span class="truncate">{{ moduleLabel(key) }}</span>
+                      <button type="button" (click)="removeVisibleModule(key)" class="ml-1 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0" [attr.aria-label]="'Quitar ' + moduleLabel(key)">
+                        <i class="fas fa-times text-xs"></i>
+                      </button>
+                    </div>
+                  </td>
+                  @for (plan of plans(); track plan.id) {
+                    <td class="px-4 py-3 text-center">
+                      <button (click)="toggleModuleInPlan(plan, key)" [disabled]="isPricingCellSaving(plan.id, key)" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-wait" [class.bg-blue-500]="isModuleInPlan(plan, key)" [class.bg-gray-200]="!isModuleInPlan(plan, key)" role="switch" [attr.aria-checked]="isModuleInPlan(plan, key)">
+                        <span class="sr-only">Toggle</span>
+                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" [class.translate-x-5]="isModuleInPlan(plan, key)" [class.translate-x-0]="!isModuleInPlan(plan, key)"></span>
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div>
           <h3 class="text-base font-semibold text-gray-900 mb-4">
             <i class="fas fa-layer-group mr-2 text-blue-500"></i>Planes base
           </h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             @for (plan of plans(); track plan.id) {
               <div
                 class="bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col transition-all hover:shadow-md relative"
@@ -365,32 +613,22 @@
                     RECOMENDADO
                   </div>
                 }
+                @if (isEditorEnabled() && editingPlan()?.id !== plan.id) {
+                  <button type="button" (click)="startEdit(plan)" [attr.data-testid]="'plan-edit-button-' + plan.id" class="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">
+                    <i class="fas fa-pen text-[10px]"></i> Editar
+                  </button>
+                }
                 <!-- Plan header -->
                 <div class="p-6 border-b border-gray-100"
                   [class.bg-gradient-to-br]="plan.is_highlighted"
                   [class.from-blue-500]="plan.is_highlighted"
                   [class.to-purple-600]="plan.is_highlighted"
                   [class.text-white]="plan.is_highlighted">
-                  <div class="flex items-start justify-between gap-2">
-                    <h4 class="text-xl font-bold"
-                      [class.text-gray-900]="!plan.is_highlighted"
-                      [class.text-white]="plan.is_highlighted">
-                      {{ plan.name }}
-                    </h4>
-                    <!-- PR 3: editor gate — only renders when ?flag=plan-edit-v2 AND super_admin.
-                         The flag defaults to OFF so normal admins never see this affordance. -->
-                    @if (isEditorEnabled() && editingPlan()?.id !== plan.id) {
-                      <button
-                        type="button"
-                        (click)="startEdit(plan)"
-                        class="text-xs px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors flex-shrink-0"
-                        title="Editar plan"
-                        data-testid="plan-edit-button"
-                      >
-                        <i class="fas fa-pen mr-1"></i>Editar
-                      </button>
-                    }
-                  </div>
+                  <h4 class="text-xl font-bold"
+                    [class.text-gray-900]="!plan.is_highlighted"
+                    [class.text-white]="plan.is_highlighted">
+                    {{ plan.name }}
+                  </h4>
                   <p class="text-sm mt-1"
                     [class.text-gray-500]="!plan.is_highlighted"
                     [class.text-blue-100]="plan.is_highlighted">
@@ -400,7 +638,7 @@
                     <span class="text-4xl font-extrabold"
                       [class.text-gray-900]="!plan.is_highlighted"
                       [class.text-white]="plan.is_highlighted">
-                      {{ formatPrice(plan.base_price_cents, plan.currency, plan.billing_period) }}
+                      {{ formatPrice(plan.base_price_eur_cents, plan.currency) }}
                     </span>
                   </div>
                   <p class="text-xs mt-1"
@@ -415,133 +653,7 @@
                       + {{ formatExtraUserPrice(plan.extra_user_cents, plan.currency) }}
                     </p>
                   }
-                  <!-- PR 3: per-card "X / Y seats" line. Inline (not SeatBadgeComponent)
-                       because SeatBadgeComponent is reserved for the companies tab;
-                       here we only need a static count display. -->
-                  <p class="text-xs mt-1 font-medium"
-                    [class.text-gray-500]="!plan.is_highlighted"
-                    [class.text-blue-100]="plan.is_highlighted">
-                    <i class="fas fa-users mr-1"></i>{{ plan.included_users }} / {{ plan.included_users }} plazas incluidas
-                  </p>
                 </div>
-
-                <!-- PR 3: inline edit form (only when flag is on, viewer is super_admin,
-                     and THIS plan is currently being edited). Replace the modules list
-                     with the form while editing; the rest of the page stays interactive. -->
-                @if (isEditorEnabled() && editingPlan()?.id === plan.id && editingDraft(); as draft) {
-                  <div class="p-6 flex-1 flex flex-col gap-3 bg-blue-50/40 border-t border-blue-100" data-testid="plan-edit-form">
-                    <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                      <i class="fas fa-pen mr-1"></i>Editar plan
-                    </p>
-                    <label class="block">
-                      <span class="text-xs text-gray-600">Nombre</span>
-                      <input
-                        type="text"
-                        name="name"
-                        [(ngModel)]="draft.name"
-                        required
-                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </label>
-                    <label class="block">
-                      <span class="text-xs text-gray-600">Tagline</span>
-                      <input
-                        type="text"
-                        name="tagline"
-                        [(ngModel)]="draft.tagline"
-                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <label class="block">
-                        <span class="text-xs text-gray-600">Precio base (€)</span>
-                        <input
-                          type="number"
-                          name="base_price_euros"
-                          [ngModel]="draft.base_price_cents / 100"
-                          (ngModelChange)="draft.base_price_cents = $event * 100"
-                          min="0"
-                          step="0.01"
-                          required
-                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </label>
-                      <label class="block">
-                        <span class="text-xs text-gray-600">Moneda</span>
-                        <select
-                          name="currency"
-                          [(ngModel)]="draft.currency"
-                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                        </select>
-                      </label>
-                    </div>
-                    <label class="block">
-                      <span class="text-xs text-gray-600">Periodicidad</span>
-                      <select
-                        name="billing_period"
-                        [(ngModel)]="draft.billing_period"
-                        class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      >
-                        <option value="monthly">Mensual</option>
-                        <option value="yearly">Anual</option>
-                      </select>
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <label class="block">
-                        <span class="text-xs text-gray-600">Usuarios incluidos</span>
-                        <input
-                          type="number"
-                          name="included_users"
-                          [(ngModel)]="draft.included_users"
-                          min="1"
-                          required
-                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </label>
-                      <label class="block">
-                        <span class="text-xs text-gray-600">Precio usuario extra (€)</span>
-                        <input
-                          type="number"
-                          name="extra_user_euros"
-                          [ngModel]="draft.extra_user_cents / 100"
-                          (ngModelChange)="draft.extra_user_cents = $event * 100"
-                          min="0"
-                          step="0.01"
-                          class="mt-1 block w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </label>
-                    </div>
-                    <label class="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        name="is_highlighted"
-                        [(ngModel)]="draft.is_highlighted"
-                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>Destacado (mutex: solo 1 plan a la vez)</span>
-                    </label>
-                    <div class="flex items-center gap-2 pt-2 border-t border-blue-100">
-                      <button
-                        type="button"
-                        (click)="updatePlanMetadata()"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                        data-testid="plan-edit-save"
-                      >
-                        <i class="fas fa-save"></i>Guardar
-                      </button>
-                      <button
-                        type="button"
-                        (click)="cancelEdit()"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                } @else {
 
                 <!-- Modules included -->
                 <div class="p-6 flex-1 flex flex-col gap-3">
@@ -557,7 +669,7 @@
                     }
                   </ul>
 
-<!-- Add-ons available for this plan -->
+                  <!-- Add-ons available for this plan -->
                   @if (addonsForPlan(plan.id).length > 0) {
                     <div class="mt-4 pt-4 border-t border-gray-100">
                       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -567,11 +679,11 @@
                         @for (addon of addonsForPlan(plan.id); track addon.id) {
                           <li class="flex items-center justify-between text-sm">
                             <span class="flex items-center gap-2 text-gray-600">
-                              <i [class]="'fas ' + addon.icon + 'text-xs text-purple-500'"></i>
+                              <i [class]="'fas ' + addon.icon + ' text-xs text-purple-500'"></i>
                               {{ addon.name }}
                             </span>
                             <span class="text-xs font-medium text-gray-500">
-                              +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
+                              +{{ formatAddonPrice(addon.price_eur_cents, addon.currency) }}/mes
                             </span>
                           </li>
                         }
@@ -579,435 +691,60 @@
                     </div>
                   }
                 </div>
+
+                @if (isEditorEnabled() && editingPlan()?.id === plan.id && editingDraft(); as draft) {
+                  <div class="p-4 bg-blue-50/60 border-t border-blue-200 space-y-2">
+                    <p class="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">
+                      <i class="fas fa-pen mr-1"></i>Editar plan
+                    </p>
+                    <label class="block">
+                      <span class="text-[10px] text-gray-600">Nombre</span>
+                      <input type="text" name="name" [(ngModel)]="draft.name" required class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
+                    </label>
+                    <label class="block">
+                      <span class="text-[10px] text-gray-600">Tagline</span>
+                      <input type="text" name="tagline" [(ngModel)]="draft.tagline" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
+                    </label>
+                    <label class="block">
+                      <span class="text-[10px] text-gray-600">Descripción</span>
+                      <textarea name="description" [(ngModel)]="draft.description" rows="2" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1"></textarea>
+                    </label>
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <label class="block">
+                        <span class="text-[10px] text-gray-600">Precio (€)</span>
+                        <input type="number" min="0" step="0.01" [ngModel]="draft.base_price_eur_cents / 100" (ngModelChange)="draft.base_price_eur_cents = $event * 100" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
+                      </label>
+                      <label class="block">
+                        <span class="text-[10px] text-gray-600">Usuarios incl.</span>
+                        <input type="number" min="0" [(ngModel)]="draft.included_users" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
+                      </label>
+                    </div>
+                    <label class="block">
+                      <span class="text-[10px] text-gray-600">€/usuario extra</span>
+                      <input type="number" min="0" step="0.01" [ngModel]="draft.extra_user_cents / 100" (ngModelChange)="draft.extra_user_cents = $event * 100" class="mt-0.5 block w-full text-xs border border-gray-300 rounded px-2 py-1" />
+                    </label>
+                    <label class="flex items-center gap-1.5 text-[11px] text-gray-700">
+                      <input type="checkbox" [(ngModel)]="draft.is_highlighted" class="rounded border-gray-300 text-blue-600" />
+                      <span>Destacado</span>
+                    </label>
+                    <div class="flex items-center gap-1.5 pt-1.5 border-t border-blue-100">
+                      <button type="button" (click)="updatePlanMetadata()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium rounded">
+                        <i class="fas fa-save"></i>Guardar
+                      </button>
+                      <button type="button" (click)="cancelEdit()" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-[11px] font-medium rounded">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
                 }
               </div>
             }
           </div>
-</div>
-
-        <!-- Plan × Module toggle matrix -->
-        <div>
-          <h3 class="text-base font-semibold text-gray-900 mb-4">
-            <i class="fas fa-th mr-2 text-blue-500"></i>Módulos incluidos por plan
-          </h3>
-          <p class="text-sm text-gray-600 -mt-3 mb-4">
-            Marca qué módulos lleva cada plan de serie. El cambio se persiste al instante.
-          </p>
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-50 z-10">
-                    Módulo
-                  </th>
-                  @for (plan of plans(); track plan.id) {
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {{ plan.name }}
-                    </th>
-                  }
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                @for (key of availableModuleKeys; track key) {
-                  <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
-                      <div class="flex items-center gap-2">
-                        <i class="fas fa-cube text-gray-400 text-xs"></i>
-                        <span>{{ moduleLabel(key) }}</span>
-                      </div>
-                    </td>
-                    @for (plan of plans(); track plan.id) {
-                      <td class="px-4 py-3 text-center">
-                        <button
-                          (click)="toggleModuleInPlan(plan, key)"
-                          [disabled]="isPricingCellSaving(plan.id, key)"
-                          class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-wait"
-                          [class.bg-blue-500]="isModuleInPlan(plan, key)"
-                          [class.bg-gray-200]="!isModuleInPlan(plan, key)"
-                          role="switch"
-                          [attr.aria-checked]="isModuleInPlan(plan, key)"
-                          [attr.aria-label]="(isModuleInPlan(plan, key) ? 'Quitar ' : 'Añadir ') + moduleLabel(key) + ' de ' + plan.name"
-                        >
-                          <span class="sr-only">Toggle</span>
-                          @if (isPricingCellSaving(plan.id, key)) {
-                            <span class="absolute inset-0 flex items-center justify-center">
-                              <i class="fas fa-spinner fa-spin text-[10px] text-gray-600"></i>
-                            </span>
-                          } @else {
-                            <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                              [class.translate-x-5]="isModuleInPlan(plan, key)"
-                              [class.translate-x-0]="!isModuleInPlan(plan, key)">
-                            </span>
-                          }
-                        </button>
-                      </td>
-                    }
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <p class="text-xs text-gray-400 mt-3">
-            <i class="fas fa-info-circle mr-1"></i>
-            Los cambios afectan a futuras contrataciones. Si quieres también modificar el precio o el número de usuarios incluidos, edita el plan completo desde la migración correspondiente (esta UI solo cubre los módulos incluidos).
-          </p>
         </div>
 
-        <!-- Add-ons standalone table -->
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-gray-900">
-              <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
-            </h3>
-            @if (isEditorEnabled()) {
-              <button
-                (click)="startNewAddon()"
-                [disabled]="isAddonEditorOpen()"
-                data-testid="addon-new-button"
-                class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
-              >
-                <i class="fas fa-plus"></i> Nuevo add-on
-              </button>
-            }
-          </div>
+              <!-- Plan × Module toggle matrix moved to 'Planes y Precios' tab above Planes base -->
 
-          <!-- Inline add-on form (PR 4, F-ADDON-002 + F-ADDON-003) -->
-          @if (isEditorEnabled() && isAddonEditorOpen()) {
-            <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4" data-testid="addon-edit-form">
-              <h4 class="text-sm font-semibold text-gray-900 mb-3">
-                <i class="fas fa-puzzle-piece mr-1 text-purple-500"></i>
-                {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
-              </h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Identificador (id)</span>
-                  <input
-                    type="text"
-                    [value]="editingAddonDraft()?.id ?? ''"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })"
-                    [disabled]="!newAddonMode()"
-                    placeholder="marketing_pro"
-                    data-testid="addon-edit-id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
-                  />
-                  <span class="block text-[11px] text-gray-400 mt-1">Inmutable tras crear. Letras, números, - y _.</span>
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Nombre</span>
-                  <input
-                    type="text"
-                    [value]="editingAddonDraft()?.name ?? ''"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })"
-                    placeholder="Marketing avanzado"
-                    data-testid="addon-edit-name"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                </label>
-                <label class="block md:col-span-2">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Descripción</span>
-                  <input
-                    type="text"
-                    [value]="editingAddonDraft()?.description ?? ''"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })"
-                    placeholder="Campañas, automatizaciones, segmentación"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">
-                    Icono (FontAwesome)
-                    @if (editingAddonDraft()?.icon) {
-                      <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1 align-middle'" [title]="editingAddonDraft()?.icon"></i>
-                    }
-                  </span>
-                  <input
-                    type="text"
-                    list="fa-icon-picker"
-                    [value]="editingAddonDraft()?.icon ?? ''"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })"
-                    placeholder="fa-bullhorn"
-                    data-testid="addon-edit-icon"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                  />
-                  <datalist id="fa-icon-picker">
-                    @for (icon of CURATED_FA_ICONS; track icon) {
-                      <option [value]="icon">{{ icon }}</option>
-                    }
-                  </datalist>
-
-                  <!-- Quick-pick grid for the most common add-on icons -->
-                  <div class="mt-2">
-                    <span class="block text-[11px] font-medium text-gray-500 mb-1">
-                      Populares (click para seleccionar)
-                    </span>
-                    <div class="flex flex-wrap gap-1.5" data-testid="addon-edit-icon-grid">
-                      @for (icon of POPULAR_FA_ICONS; track icon) {
-                        <button
-                          type="button"
-                          (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })"
-                          [attr.aria-label]="icon"
-                          [title]="icon"
-                          class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 hover:border-purple-300 transition-colors"
-                          [class.border-purple-500]="editingAddonDraft()?.icon === icon"
-                          [class.bg-purple-50]="editingAddonDraft()?.icon === icon"
-                          [class.border-gray-200]="editingAddonDraft()?.icon !== icon"
-                        >
-                          <i [class]="'fas ' + icon + ' text-gray-700'"></i>
-                        </button>
-                      }
-                    </div>
-                  </div>
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Precio (€)</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    [value]="(editingAddonDraft()?.price_cents ?? 0) / 100"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_cents: eurosToCents($any($event.target).value) })"
-                    data-testid="addon-edit-price"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Periodo</span>
-                  <select
-                    [value]="editingAddonDraft()?.billing_period ?? 'monthly'"
-                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, billing_period: $any($event.target).value })"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                  >
-                    <option value="monthly">Mensual</option>
-                    <option value="yearly">Anual</option>
-                  </select>
-                </label>
-                <label class="block">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Orden</span>
-                  <input
-                    type="number"
-                    [value]="editingAddonDraft()?.sort_order ?? 0"
-                    (input)="editingAddonDraft.set({ ...editingAddonDraft()!, sort_order: +$any($event.target).value })"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                </label>
-                <div class="md:col-span-2">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">Aplica a planes</span>
-                  <div class="flex flex-wrap gap-2">
-                    @for (p of plans(); track p.id) {
-                      <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white cursor-pointer text-sm">
-                        <input
-                          type="checkbox"
-                          [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)"
-                          (change)="toggleAddonPlan(p.id)"
-                          class="rounded text-purple-600 focus:ring-purple-500"
-                        />
-                        <span class="capitalize">{{ p.name }}</span>
-                      </label>
-                    }
-                  </div>
-                  <span class="block text-[11px] text-gray-400 mt-1">Si no marcas ninguno, el add-on aplica a todos los planes.</span>
-                </div>
-
-                <div class="md:col-span-2">
-                  <span class="block text-xs font-medium text-gray-600 mb-1">
-                    <i class="fas fa-cube text-purple-500 mr-1"></i>Módulos que incluye este add-on
-                  </span>
-
-                  <!-- F-ADDON-008: filter input -->
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="relative flex-1">
-                      <i class="fas fa-search absolute left-2.5 top-2.5 text-xs text-gray-400 pointer-events-none"></i>
-                      <input
-                        type="text"
-                        [value]="addonModuleFilter()"
-                        (input)="addonModuleFilter.set($any($event.target).value)"
-                        placeholder="Filtrar módulos por nombre..."
-                        data-testid="addon-edit-modules-filter"
-                        class="w-full pl-7 pr-7 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                      @if (addonModuleFilter()) {
-                        <button
-                          type="button"
-                          (click)="addonModuleFilter.set('')"
-                          aria-label="Limpiar filtro"
-                          class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
-                        >
-                          <i class="fas fa-times text-xs"></i>
-                        </button>
-                      }
-                    </div>
-                    @if (addonModuleFilter()) {
-                      <span class="text-xs text-gray-500 whitespace-nowrap" data-testid="addon-edit-modules-count">
-                        {{ filteredModuleKeys().length }} / {{ availableModuleKeys.length }}
-                      </span>
-                    }
-                  </div>
-
-                  <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50" data-testid="addon-edit-modules">
-                    @let currentAddonId = editingAddon()?.id ?? '';
-                    @let unavailable = unavailableModules(currentAddonId);
-                    @if (filteredModuleKeys().length === 0) {
-                      <span class="text-xs text-gray-400 italic px-2 py-1">
-                        Ningún módulo coincide con "{{ addonModuleFilter() }}"
-                      </span>
-                    }
-                    @for (m of filteredModuleKeys(); track m) {
-                      @let owner = moduleOwnerName(currentAddonId, m);
-                      @let isUnavailable = owner !== null;
-                      <label
-                        class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 text-sm"
-                        [class.bg-white]="!isUnavailable"
-                        [class.bg-gray-50]="isUnavailable"
-                        [class.text-gray-400]="isUnavailable"
-                        [class.cursor-not-allowed]="isUnavailable"
-                        [class.cursor-pointer]="!isUnavailable"
-                        [title]="isUnavailable ? 'Ya incluido en el add-on «' + owner + '». Desactívalo o quítalo de allí para reasignarlo.' : ''"
-                      >
-                        <input
-                          type="checkbox"
-                          [checked]="(editingAddonDraft()?.included_modules ?? []).includes(m)"
-                          [disabled]="isUnavailable"
-                          (change)="toggleAddonModule(m)"
-                          class="rounded text-purple-600 focus:ring-purple-500 disabled:opacity-50"
-                        />
-                        <i class="fas fa-cube text-xs" [class.text-gray-400]="!isUnavailable" [class.text-gray-300]="isUnavailable"></i>
-                        <span>{{ moduleLabel(m) }}</span>
-                        @if (isUnavailable) {
-                          <span class="text-[10px] text-amber-600 font-medium ml-1">({{ owner }})</span>
-                        }
-                      </label>
-                    }
-                  </div>
-                  <span class="block text-[11px] text-gray-400 mt-1">
-                    El add-on concede acceso a los módulos marcados para los planes que lo tengan contratado. Si no marcas ninguno, el add-on no concede módulos extra.
-                  </span>
-                </div>
-                <label class="inline-flex items-center gap-2 md:col-span-2">
-                  <input
-                    type="checkbox"
-                    [checked]="editingAddonDraft()?.is_active ?? true"
-                    (change)="editingAddonDraft.set({ ...editingAddonDraft()!, is_active: $any($event.target).checked })"
-                    class="rounded text-purple-600 focus:ring-purple-500"
-                  />
-                  <span class="text-sm">Activo</span>
-                </label>
-              </div>
-              <div class="flex items-center gap-2 mt-4">
-                <button
-                  (click)="saveAddon()"
-                  [disabled]="addonSavingId() !== null"
-                  data-testid="addon-edit-save"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-xl transition-colors"
-                >
-                  @if (addonSavingId() !== null) {
-                    <i class="fas fa-spinner fa-spin"></i> Guardando...
-                  } @else {
-                    <i class="fas fa-save"></i> Guardar
-                  }
-                </button>
-                <button
-                  (click)="cancelAddonEdit()"
-                  [disabled]="addonSavingId() !== null"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl border border-gray-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          }
-
-          @if (addons().length > 0) {
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
-                    <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
-                    @if (isEditorEnabled()) {
-                      <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Acciones</th>
-                    }
-                  </tr>
-                </thead>
-                <tbody
-                  class="divide-y divide-gray-100"
-                  cdkDropList
-                  [cdkDropListData]="addons()"
-                  [cdkDropListDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
-                  (cdkDropListDropped)="onAddonDrop($event)"
-                  data-testid="addons-table-body"
-                >
-                  @for (addon of addons(); track addon.id) {
-                    <tr
-                      class="hover:bg-gray-50 transition-colors"
-                      cdkDrag
-                      [cdkDragData]="addon"
-                      [cdkDragDisabled]="!isEditorEnabled() || isAddonEditorOpen()"
-                      [class.cursor-grab]="isEditorEnabled() && !isAddonEditorOpen()"
-                      data-testid="addon-row"
-                    >
-                      <td class="px-5 py-3">
-                        <div class="flex items-center gap-3">
-                          @if (isEditorEnabled()) {
-                            <span
-                              cdkDragHandle
-                              class="text-gray-300 hover:text-gray-500"
-                              [title]="'Arrastra para reordenar'"
-                            >
-                              <i class="fas fa-grip-vertical text-xs"></i>
-                            </span>
-                          }
-                          <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
-                            <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
-                          </div>
-                          <div>
-                            <p class="text-sm font-medium text-gray-900">{{ addon.name }}</p>
-                            <p class="text-xs text-gray-500">{{ addon.description }}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-5 py-3 text-sm text-gray-600">
-                        @if (addon.applies_to_plans.length === 0) {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            Todos los planes
-                          </span>
-                        } @else {
-                          <div class="flex flex-wrap gap-1">
-                            @for (p of addon.applies_to_plans; track p) {
-                              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
-                                {{ p }}
-                              </span>
-                            }
-                          </div>
-                        }
-                      </td>
-                      <td class="px-5 py-3 text-right">
-                        <span class="text-sm font-semibold text-gray-900">
-                          +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
-                        </span>
-                      </td>
-                      @if (isEditorEnabled()) {
-                        <td class="px-5 py-3 text-right">
-                          <button
-                            (click)="startAddonEdit(addon)"
-                            [disabled]="isAddonEditorOpen()"
-                            [attr.data-testid]="'addon-edit-button-' + addon.id"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-wait transition-colors"
-                          >
-                            <i class="fas fa-pen text-xs"></i> Editar
-                          </button>
-                        </td>
-                      }
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else if (!isAddonEditorOpen()) {
-            <p class="text-sm text-gray-500">Aún no hay add-ons definidos.</p>
-          }
-        </div>
-
+              <!-- Add-ons moved to 'Add-ons' tab -->
         <!-- Footer info -->
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <div class="flex items-start gap-3">
@@ -1026,4 +763,45 @@
       </div>
     }
   }
+
+
+<!-- F-PCA-008 picker modal -->
+@if (showVisibleModulePicker()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="showVisibleModulePicker.set(false)">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h3 class="text-base font-semibold text-gray-900">Añadir módulo al plan picker</h3>
+          <p class="text-xs text-gray-500 mt-1">Elige un módulo del catálogo. Luego podrás asociarlo a los planes.</p>
+        </div>
+        <button type="button" (click)="showVisibleModulePicker.set(false)"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-5 border-b border-gray-100">
+        <input type="text" [ngModel]="visibleModulePickerQuery()" (ngModelChange)="visibleModulePickerQuery.set($event)" placeholder="Buscar..." class="w-full px-3 py-2 border rounded-lg text-sm" />
+      </div>
+      <div class="flex-1 overflow-y-auto p-2">
+        @if (filteredAddableModules().length === 0) {
+          <div class="px-4 py-8 text-center text-sm text-gray-500">
+            @if (visibleModulePickerQuery()) {
+              Ningún módulo coincide.
+            } @else {
+              Todos los módulos del catálogo ya están.
+            }
+          </div>
+        } @else {
+          @for (m of filteredAddableModules(); track m.key) {
+            <button type="button" (click)="addVisibleModuleFromCatalog(m.key); showVisibleModulePicker.set(false)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-left">
+              <i [class]="'fas ' + m.icon + ' text-blue-500'"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
+                <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+              </div>
+              <i class="fas fa-plus text-blue-500 text-xs"></i>
+            </button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
 </div>

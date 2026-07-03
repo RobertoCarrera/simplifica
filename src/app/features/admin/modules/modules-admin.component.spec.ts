@@ -37,10 +37,8 @@ const SAMPLE_PLAN: Plan = {
   name: 'Starter',
   tagline: 'Para empezar',
   description: null,
-  base_price_cents: 4900,
-  currency: 'EUR',
-  billing_period: 'monthly',
-  included_users: 3,
+  base_price_eur_cents: 4900,
+  currency: 'EUR',  included_users: 3,
   extra_user_cents: 0,
   included_modules: [],
   sort_order: 1,
@@ -50,19 +48,17 @@ const SAMPLE_PLAN: Plan = {
   updated_at: '',
 };
 
-const PRO_PLAN: Plan = { ...SAMPLE_PLAN, id: 'pro', name: 'Pro', sort_order: 2, base_price_cents: 9900 };
-const BUSINESS_PLAN: Plan = { ...SAMPLE_PLAN, id: 'business', name: 'Business', sort_order: 3, base_price_cents: 24900 };
-const FREE_PLAN: Plan = { ...SAMPLE_PLAN, id: 'free', name: 'Free', sort_order: 0, base_price_cents: 0, included_users: 1 };
+const PRO_PLAN: Plan = { ...SAMPLE_PLAN, id: 'pro', name: 'Pro', sort_order: 2, base_price_eur_cents: 9900 };
+const BUSINESS_PLAN: Plan = { ...SAMPLE_PLAN, id: 'business', name: 'Business', sort_order: 3, base_price_eur_cents: 24900 };
+const FREE_PLAN: Plan = { ...SAMPLE_PLAN, id: 'free', name: 'Free', sort_order: 0, base_price_eur_cents: 0, included_users: 1 };
 
 const SAMPLE_ADDON: PlanAddon = {
   id: 'marketing_pro',
   name: 'Marketing avanzado',
   description: 'Campañas y segmentación',
   icon: 'fa-bullhorn',
-  price_cents: 1900,
-  currency: 'EUR',
-  billing_period: 'monthly',
-  applies_to_plans: ['pro'],
+  price_eur_cents: 1900,
+  currency: 'EUR',  applies_to_plans: ['pro'],
   included_modules: ['marketing'],
   sort_order: 10,
   is_active: true,

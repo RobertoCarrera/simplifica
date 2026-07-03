@@ -24,16 +24,6 @@ export interface SidebarOrderEntry {
 
 const MODULES_CACHE_KEY = 'simplifica_modules_cache';
 
-/**
- * Rafter v0.36 — perf: in-memory TTL for the effective-modules cache.
- * 27 components subscribe to `fetchEffectiveModules()` per session; the previous
- * implementation returned the cached value AND fired a background RPC on every
- * call, producing ~20 wasted RPCs/session. With a 60s TTL we still re-fetch
- * periodically (so role changes propagate within a minute) but every
- * subscribe-within-the-window is now free.
- */
-const MODULES_CACHE_TTL_MS = 60_000;
-
 @Injectable({ providedIn: 'root' })
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
@@ -53,9 +43,6 @@ export class SupabaseModulesService {
 
   // Cache in-memory to avoid repeated calls during a session
   private _modules = signal<EffectiveModule[] | null>(null);
-  // Timestamp (Date.now()) of the last SUCCESSFUL fetch — used to gate the
-  // background refresh and avoid firing an RPC on every cache-hit subscribe.
-  private _modulesFetchedAt = 0;
   // Dedup: prevent concurrent identical RPC calls
   private _pendingFetch: Promise<EffectiveModule[]> | null = null;
 
@@ -116,29 +103,20 @@ export class SupabaseModulesService {
   }
 
   /**
-   * Returns cached modules when fresh (within MODULES_CACHE_TTL_MS); otherwise
-   * fetches from the server (deduped) and races against an 8s timeout.
-   *
-   * Rafter v0.36 — perf: the previous implementation returned the cached value
-   * AND fired a background RPC on every cache-hit subscribe. That fired ~20
-   * RPCs/session across the 27 call sites that subscribe during navigation.
-   * Now: cache hits within the TTL return the cached value with NO network
-   * call. The cache is rebuilt lazily on first stale-subscribe, and force-
-   * refreshed via `forceRefreshModules()` for explicit user actions.
+   * Returns cached modules immediately if available, then refreshes from server in background.
+   * On first load (no cache), fetches from server.
    */
   fetchEffectiveModules(): Observable<EffectiveModule[]> {
     const cached = this._modules();
-    const cacheAge = Date.now() - this._modulesFetchedAt;
-    if (cached && cacheAge < MODULES_CACHE_TTL_MS) {
-      // Cache is fresh — return as-is, NO background refresh.
+    if (cached) {
+      // Return cached data immediately, refresh in background (deduped)
+      this._dedupedFetch().catch(() => {});
       return of(cached);
     }
-    // Cache is stale or empty — trigger fetch (deduped) and return its observable.
-    // Race against an 8s timeout so the UI never hangs on first paint; fall back
-    // to the previous cached value (if any) on timeout/error to avoid an empty UI.
+    // Race the RPC against an 8s timeout so the UI never hangs
     return from(this._dedupedFetch()).pipe(
-      timeout({ first: 8000, with: () => of(cached ?? ([] as EffectiveModule[])) }),
-      catchError(() => of(cached ?? ([] as EffectiveModule[]))),
+      timeout({ first: 8000, with: () => of([] as EffectiveModule[]) }),
+      catchError(() => of([] as EffectiveModule[])),
     );
   }
 
@@ -188,9 +166,6 @@ export class SupabaseModulesService {
 
     const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
-    // Rafter v0.36 — perf: stamp the cache so subsequent subscribes within the
-    // TTL window don't trigger another RPC.
-    this._modulesFetchedAt = Date.now();
 
     // Persist to sessionStorage for instant restore on next navigation
     try {
@@ -205,10 +180,6 @@ export class SupabaseModulesService {
   /** Clear cached modules (call on logout or company switch) */
   clearCache() {
     this._modules.set(null);
-    // Rafter v0.36 — perf: reset the TTL stamp too so the next subscribe does
-    // a fresh fetch instead of returning a sessionStorage-hydrated value past
-    // its TTL window.
-    this._modulesFetchedAt = 0;
     try {
       sessionStorage.removeItem(MODULES_CACHE_KEY);
     } catch {
@@ -261,19 +232,22 @@ export class SupabaseModulesService {
     companyId: string,
     moduleKey: string,
     status: string,
+    force: boolean = false,
   ): Observable<{ success: boolean }> {
-    return from(this.executeAdminSetCompanyModule(companyId, moduleKey, status));
+    return from(this.executeAdminSetCompanyModule(companyId, moduleKey, status, force));
   }
 
   private async executeAdminSetCompanyModule(
     companyId: string,
     moduleKey: string,
     status: string,
+    force: boolean = false,
   ): Promise<{ success: boolean }> {
     const { data, error } = await this.supabaseClient.instance.rpc('admin_set_company_module', {
       p_target_company_id: companyId,
       p_module_key: moduleKey,
       p_status: status,
+      p_force: force,
     });
 
     if (error) {
@@ -393,6 +367,37 @@ export class SupabaseModulesService {
     // Refresh cached order
     await this.fetchSidebarOrder();
     return { success: true };
+  }
+
+  // ── Modules Catalog (edit label, toggle DEV) ────────────────────────────────
+  adminListModulesCatalog(): Observable<{ key: string; label: string; superadmin_only: boolean; is_dev_mode: boolean }[]> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance
+          .from('modules_catalog')
+          .select('key, label, superadmin_only, is_dev_mode')
+          .order('label', { ascending: true });
+        if (error) throw error;
+        return (data || []);
+      })()
+    );
+  }
+
+  adminUpdateModuleCatalog(
+    key: string,
+    label: string,
+    isDevMode: boolean,
+  ): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_update_module_catalog', {
+          p_module_key: key,
+          p_label: label,
+          p_is_dev_mode: isDevMode,
+        });
+        if (error) throw error;
+      })()
+    );
   }
 
   // ── Legacy User Methods (kept for reference or cleanup later) ──────────────
