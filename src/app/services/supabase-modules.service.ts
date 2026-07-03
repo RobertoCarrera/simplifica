@@ -400,6 +400,21 @@ export class SupabaseModulesService {
     );
   }
 
+  adminAddModuleCatalog(
+    key: string,
+    label: string,
+    icon: string = 'fa-cube',
+  ): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance
+          .from('modules_catalog')
+          .insert({ key, label, icon, is_dev_mode: false });
+        if (error) throw error;
+      })()
+    );
+  }
+
   // ── Legacy User Methods (kept for reference or cleanup later) ──────────────
   adminListUserModules(
     companyId?: string,

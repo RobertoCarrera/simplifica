@@ -149,6 +149,7 @@ export class ModulesAdminComponent implements OnInit {
   // Modules catalog (editable display labels + per-module DEV toggle)
   modulesCatalog = signal<{ key: string; label: string; is_dev_mode: boolean }[]>([]);
   showVisibleModulePicker = signal(false);
+  showAddCatalogModal = signal(false);
   visibleModulePickerQuery = signal('');
 
   // ── Add-on editor ────────────────────────────────────────────────────────
@@ -305,6 +306,28 @@ export class ModulesAdminComponent implements OnInit {
       const list = await firstValueFrom(this.modulesService.adminListModulesCatalog());
       this.modulesCatalog.set(list as any);
     } catch (e) { console.error('Error loading modules catalog:', e); }
+  }
+
+  async addModuleFromCatalog(key: string, label: string) {
+    try {
+      await firstValueFrom(this.modulesService.adminAddModuleCatalog(key, label));
+      await this.loadModulesCatalog();
+      this.toast.success('Módulo añadido', '"' + label + '" se ha añadido al catálogo.');
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo añadir.');
+    }
+  }
+
+  /**
+   * Modules from the local SIDEBAR_CATALOG that are NOT yet present in the
+   * backend `modules_catalog` table. Used by the "Añadir nuevo módulo" modal
+   * on the Catálogo de módulos tab so the admin can promote them.
+   */
+  get addableCatalogKeys(): Array<{ key: string; label: string; icon: string }> {
+    const existing = new Set(this.modulesCatalog().map((m: any) => m.key));
+    return Object.entries(this.moduleLabelMap)
+      .filter(([k]) => !existing.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
+      .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
   }
 
   async saveModuleCatalog(key: string, label: string, isDevMode: boolean) {

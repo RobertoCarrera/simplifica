@@ -315,7 +315,7 @@
               Edita el nombre visible de cada módulo y márcalo como DEV para que solo lo vean los superadministradores.
             </p>
           </div>
-          <button type="button" (click)="showVisibleModulePicker.set(true); visibleModulePickerQuery.set('')" data-testid="open-visible-module-picker" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
+          <button type="button" (click)="showAddCatalogModal.set(true)" data-testid="open-add-catalog-modal" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0">
             <i class="fas fa-plus text-xs"></i> Añadir nuevo módulo
           </button>
         </header>
@@ -792,6 +792,41 @@
           @for (m of filteredAddableModules(); track m.key) {
             <button type="button" (click)="addVisibleModuleFromCatalog(m.key); showVisibleModulePicker.set(false)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-left">
               <i [class]="'fas ' + m.icon + ' text-blue-500'"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
+                <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+              </div>
+              <i class="fas fa-plus text-blue-500 text-xs"></i>
+            </button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- F-PCA-008: modal para añadir módulos desde el catálogo local al backend -->
+@if (showAddCatalogModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="showAddCatalogModal.set(false)">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h3 class="text-base font-semibold text-gray-900">Añadir módulo al catálogo</h3>
+          <p class="text-xs text-gray-500 mt-1">Promueve un módulo del catálogo local al catálogo editable (backend).</p>
+        </div>
+        <button type="button" (click)="showAddCatalogModal.set(false)" class="text-gray-400 hover:text-gray-600" aria-label="Cerrar">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-2">
+        @if (addableCatalogKeys.length === 0) {
+          <div class="px-4 py-8 text-center text-sm text-gray-500">
+            Todos los módulos del catálogo local ya están en el catálogo backend.
+          </div>
+        } @else {
+          @for (m of addableCatalogKeys; track m.key) {
+            <button type="button" (click)="addModuleFromCatalog(m.key, m.label); showAddCatalogModal.set(false)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-left">
+              <i [class]="'fas ' + m.icon + ' text-blue-500 text-sm w-5 text-center'"></i>
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
                 <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
