@@ -256,12 +256,9 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   addableAddonModules(): Array<{ key: string; label: string; icon: string }> {
+    // Source of truth: local catalog + backend DEV filter.
+    // Whatever is in plan_visible_modules but not DEV-flagged in modules_catalog is allowed.
     const devKeys = new Set(this.modulesCatalog().filter((m: any) => m.is_dev_mode).map((m: any) => m.key));
-    const visible = this.visibleModules();
-    if (visible.length > 0) {
-      return visible.filter((m) => !devKeys.has(m.module_key)).map((m) => ({ key: m.module_key, label: m.display_label, icon: m.icon || 'fa-cube' }));
-    }
-    // Fallback: derive from the local catalog
     return Object.entries(this.moduleLabelMap)
       .filter(([k]) => !devKeys.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
       .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
