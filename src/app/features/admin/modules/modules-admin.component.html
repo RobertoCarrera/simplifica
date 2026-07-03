@@ -356,7 +356,7 @@
                       <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-xs text-blue-600'"></i>
                     </button>
                     @if (catalogIconPickerOpen() === m.key) {
-                      <div class="absolute right-0 top-7 z-20 w-[420px] bg-white border border-gray-200 rounded-lg shadow-xl p-2" (click)="$event.stopPropagation()">
+                      <div class="absolute right-0 top-7 z-[60] w-[420px] bg-white border border-gray-200 rounded-lg shadow-xl p-2" (click)="$event.stopPropagation()">
                         <div class="relative mb-2">
                           <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-[10px]"></i>
                           <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
