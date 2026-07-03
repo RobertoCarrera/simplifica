@@ -298,9 +298,15 @@ export class ModulesAdminComponent implements OnInit {
     // Source of truth: local catalog + backend DEV filter.
     // Whatever is in plan_visible_modules but not DEV-flagged in modules_catalog is allowed.
     const devKeys = new Set(this.modulesCatalog().filter((m: any) => m.is_dev_mode).map((m: any) => m.key));
+    const curatedIcons = new Map(
+      this.modulesCatalog()
+        .filter((m: any) => !!(m as any).icon)
+        .map((m: any) => [m.key, (m as any).icon])
+    );
+    const sidebarIcons = new Map(SIDEBAR_CATALOG.map((c) => [c.key, c.icon]));
     return Object.entries(this.moduleLabelMap)
       .filter(([k]) => !devKeys.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
-      .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
+      .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
   get addableModuleKeys(): Array<{ key: string; label: string; icon: string }> {
