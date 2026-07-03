@@ -633,6 +633,21 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Computed menu items based on user role (does NOT depend on notification count).
   // Core items render immediately. Production items appear once modules load.
+  /**
+   * Apply admin-curated lucide_icon overrides from modules_catalog to a menu
+   * list. Items without a matching sidebarKey keep their static icon.
+   */
+  private applyIconOverrides(items: MenuItem[]): MenuItem[] {
+    const overrides = this._lucideIconOverrides();
+    if (!overrides.size) return items;
+    return items.map((it) => {
+      if (it.sidebarKey && overrides.has(it.sidebarKey)) {
+        return { ...it, icon: overrides.get(it.sidebarKey)! };
+      }
+      return it;
+    });
+  }
+
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
@@ -644,7 +659,9 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
-      return [{ id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core', sidebarKey: 'core_/ayuda' }];
+      return this.applyIconOverrides([
+        { id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core', sidebarKey: 'core_/ayuda' },
+      ]);
     }
 
     // Super Admin sees EVERYTHING (bypass module checks), using custom sort order
@@ -773,11 +790,11 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       });
 
-      return clientMenu;
+      return this.applyIconOverrides(clientMenu);
     }
 
     // Admin / member / professional: sort + filter from sortedAllMenuItems
-    return this.sortedAllMenuItems().filter((item) => {
+    return this.applyIconOverrides(this.sortedAllMenuItems()).filter((item) => {
       // Check sidebar visibility for team: if explicitly hidden for team, filter out
       const orderEntry = this.modulesService.sidebarOrderSignal().get(item.sidebarKey);
       if (orderEntry !== undefined && !orderEntry.visibleToTeam) return false;

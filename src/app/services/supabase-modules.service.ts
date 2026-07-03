@@ -370,13 +370,13 @@ export class SupabaseModulesService {
   }
 
   // ── Modules Catalog (edit label, toggle DEV) ────────────────────────────────
-  adminListModulesCatalog(): Observable<{ key: string; label: string; superadmin_only: boolean; is_dev_mode: boolean; icon: string }[]> {
+  adminListModulesCatalog(): Observable<{ key: string; label: string; superadmin_only: boolean; is_dev_mode: boolean; icon: string; lucide_icon: string | null }[]> {
     return from(
       (async () => {
         const { data, error } = await this.supabaseClient.instance
           .from('modules_catalog')
-          .select('key, label, superadmin_only, is_dev_mode, icon')
-          .order('label', { ascending: true })
+          .select('key, label, superadmin_only, is_dev_mode, icon, lucide_icon')
+          .order('label', { ascending: true });
         if (error) throw error;
         return (data || []);
       })()
