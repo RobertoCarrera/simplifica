@@ -306,9 +306,15 @@ export class ModulesAdminComponent implements OnInit {
   get addableModuleKeys(): Array<{ key: string; label: string; icon: string }> {
     const visible = new Set(this.visibleModules().map((m) => m.module_key));
     const devKeys = new Set(this.modulesCatalog().filter((m: any) => m.is_dev_mode).map((m: any) => m.key));
+    const curatedIcons = new Map(
+      this.modulesCatalog()
+        .filter((m: any) => !!(m as any).icon)
+        .map((m: any) => [m.key, (m as any).icon])
+    );
+    const sidebarIcons = new Map(SIDEBAR_CATALOG.map((c) => [c.key, c.icon]));
     return Object.entries(this.moduleLabelMap)
       .filter(([k]) => !visible.has(k) && !devKeys.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
-      .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
+      .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
   filteredAddableModules() {
@@ -377,9 +383,17 @@ export class ModulesAdminComponent implements OnInit {
    */
   get addableCatalogKeys(): Array<{ key: string; label: string; icon: string }> {
     const existing = new Set(this.modulesCatalog().map((m: any) => m.key));
+    // Build map of curated icons (from editable catalog) keyed by module_key
+    const curatedIcons = new Map(
+      this.modulesCatalog()
+        .filter((m: any) => !!(m as any).icon)
+        .map((m: any) => [m.key, (m as any).icon])
+    );
+    // Fallback to the static SIDEBAR_CATALOG icon if not in curated
+    const sidebarIcons = new Map(SIDEBAR_CATALOG.map((c) => [c.key, c.icon]));
     return Object.entries(this.moduleLabelMap)
       .filter(([k]) => !existing.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
-      .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
+      .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
   async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube') {
@@ -587,6 +601,13 @@ export class ModulesAdminComponent implements OnInit {
 
       // Build items: start with catalog, apply saved order/visibility
       const devKeys = new Set(this.modulesCatalog().filter((m: any) => m.is_dev_mode).map((m: any) => m.key));
+      // Build a map of admin-curated icons from modules_catalog so the
+      // Orden del Sidebar reflects the icon chosen in the Catálogo de módulos.
+      const curatedIcons = new Map(
+        this.modulesCatalog()
+          .filter((m: any) => !!(m as any).icon)
+          .map((m: any) => [m.key, (m as any).icon])
+      );
       this.sidebarOrderItems.set(
         SIDEBAR_CATALOG
           .filter((cat) => !devKeys.has(cat.key))
@@ -595,7 +616,7 @@ export class ModulesAdminComponent implements OnInit {
             return {
               key: cat.key,
               label: cat.label,
-              icon: cat.icon,
+              icon: curatedIcons.get(cat.key) || cat.icon,
               category: cat.category,
               order: saved?.order ?? null as any,
               visible: saved?.visible ?? true,
