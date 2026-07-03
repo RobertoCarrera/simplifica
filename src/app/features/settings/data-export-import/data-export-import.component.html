@@ -103,7 +103,9 @@
                             <option value="customers">Clientes (Individuos o Empresas)</option>
                             <option value="services">Servicios (Catálogo)</option>
                             <option value="clinical-history">Historial Clínico (Notas encriptadas)</option>
-                            <option value="doctoralia-bookings">Reservas (Doctoralia)</option>
+                            @if (modulesService.isModuleEnabled('integracionDoctoralia')) {
+                              <option value="doctoralia-bookings">Reservas (Doctoralia)</option>
+                            }
                         </select>
                     </div>
 

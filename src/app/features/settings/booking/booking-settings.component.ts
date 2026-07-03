@@ -12,6 +12,7 @@ import { UnlinkedReportComponent } from './tabs/unlinked-report/unlinked-report.
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { AuthService } from '../../../services/auth.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { ToastService } from '../../../services/toast.service';
 import {
   SupabaseProfessionalsService,
@@ -71,6 +72,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   private settingsService = inject(SupabaseSettingsService);
   private toastService = inject(ToastService);
   private sidebarService = inject(SidebarStateService);
+  private modulesService = inject(SupabaseModulesService);
 
   activeTab:
     | 'services'
@@ -2521,7 +2523,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const localEvents = (localBookings || []).map((b: any) => {
       const event = this.mapBookingToEvent(b);
       // Fire-and-forget: ensure Doctoralia bookings without client_id get linked/created
-      this.ensureClientLinked(b);
+      // Only when the company has the Doctoralia integration module active.
+      if (this.modulesService.isModuleEnabled('integracionDoctoralia')) {
+        this.ensureClientLinked(b);
+      }
       return event;
     });
 

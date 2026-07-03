@@ -8,6 +8,7 @@ import { SupabaseCustomersService, CustomerFilters } from '../../../services/sup
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
 import { ToastService } from '../../../services/toast.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 type DataType = 'customers' | 'services' | 'clinical-history' | 'doctoralia-bookings';
 
@@ -22,6 +23,7 @@ export class DataExportImportComponent {
     private servicesService = inject(SupabaseServicesService);
     private toastService = inject(ToastService);
     private simpleSupabase = inject(SimpleSupabaseService);
+    modulesService = inject(SupabaseModulesService);
 
     activeSection = signal<'export' | 'import'>('export');
     selectedDataType = signal<DataType>('customers');
