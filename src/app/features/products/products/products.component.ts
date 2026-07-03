@@ -16,6 +16,7 @@ import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
 import { ConfirmModalComponent, ConfirmModalOptions } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { Product } from '../../../models/product';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-products',
@@ -49,6 +50,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   private productMetadataService = inject(ProductMetadataService);
   private toastService = inject(ToastService);
   private auth = inject(AuthService);
+  private router = inject(Router);
 
   @ViewChild(ConfirmModalComponent) confirmModal!: ConfirmModalComponent;
 
@@ -82,6 +84,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
       product.category?.toLowerCase().includes(term) ||
       product.model?.toLowerCase().includes(term)));
   }
+
+  goToImport(): void { this.router.navigate(['/productos/importar']); }
 
   resetForm(): void {
     this.newProduct = this.emptyDraft();

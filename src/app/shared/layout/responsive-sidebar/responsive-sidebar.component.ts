@@ -181,10 +181,8 @@ export class ResponsiveSidebarComponent implements OnInit {
   private permissionsService = inject(SupabasePermissionsService);
   private analyticsService = inject(AnalyticsService);
 
-  // Server-side modules allowed for this user
+// Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
-  /** module_key → lucide_icon overrides from modules_catalog (admin-curated). */
-  private _lucideIconOverrides = signal<Map<string, string>>(new Map());
 
   /**
    * Sorts allMenuItems by custom sidebar order (from DB) with id-based fallback.
@@ -197,16 +195,10 @@ export class ResponsiveSidebarComponent implements OnInit {
    * but got redirected because her company doesn't have moduloProyectos in
    * company_modules. See module.guard.ts for the guard logic.
    */
-  private sortedAllMenuItems = computed<MenuItem[]>(() => {
+private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const orderMap = this.modulesService.sidebarOrderSignal();
     const isSuperAdmin = this.authService.userRole() === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
-    const overrides = this._lucideIconOverrides();
-    return [...this.allMenuItems].map((it: MenuItem) => {
-      if (it.sidebarKey && overrides.has(it.sidebarKey)) {
-        return { ...it, icon: overrides.get(it.sidebarKey)! };
-      }
-      return it;
-    })
+    return [...this.allMenuItems]
       .filter((item) => {
         // HARDCODED: Profesionales NO ven "Proyectos" en ninguna company.
         if (item.sidebarKey === 'moduloProyectos' && this.authService.userRole() === 'professional') {
@@ -633,21 +625,6 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Computed menu items based on user role (does NOT depend on notification count).
   // Core items render immediately. Production items appear once modules load.
-  /**
-   * Apply admin-curated lucide_icon overrides from modules_catalog to a menu
-   * list. Items without a matching sidebarKey keep their static icon.
-   */
-  private applyIconOverrides(items: MenuItem[]): MenuItem[] {
-    const overrides = this._lucideIconOverrides();
-    if (!overrides.size) return items;
-    return items.map((it) => {
-      if (it.sidebarKey && overrides.has(it.sidebarKey)) {
-        return { ...it, icon: overrides.get(it.sidebarKey)! };
-      }
-      return it;
-    });
-  }
-
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
@@ -659,9 +636,9 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
-      return this.applyIconOverrides([
+      return [
         { id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core', sidebarKey: 'core_/ayuda' },
-      ]);
+      ];
     }
 
     // Super Admin sees EVERYTHING (bypass module checks), using custom sort order
@@ -790,11 +767,11 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       });
 
-      return this.applyIconOverrides(clientMenu);
+      return clientMenu;
     }
 
     // Admin / member / professional: sort + filter from sortedAllMenuItems
-    return this.applyIconOverrides(this.sortedAllMenuItems()).filter((item) => {
+    return this.sortedAllMenuItems().filter((item) => {
       // Check sidebar visibility for team: if explicitly hidden for team, filter out
       const orderEntry = this.modulesService.sidebarOrderSignal().get(item.sidebarKey);
       if (orderEntry !== undefined && !orderEntry.visibleToTeam) return false;
@@ -854,34 +831,6 @@ export class ResponsiveSidebarComponent implements OnInit {
   });
 
   ngOnInit() {
-    // Load admin-curated Lucide icons from modules_catalog
-    if (this.modulesService.adminListModulesCatalog) {
-      this.modulesService.adminListModulesCatalog().subscribe({
-        next: (list: any[]) => {
-          const map = new Map<string, string>();
-          for (const m of list || []) {
-            if (m?.key && m?.lucide_icon) map.set(m.key, m.lucide_icon);
-          }
-          this._lucideIconOverrides.set(map);
-        },
-        error: () => {}
-      });
-    }
-    // Periodic refresh so icon changes made in the admin propagate
-    // to the sidebar without requiring a hard refresh. Every 30s.
-    setInterval(() => {
-      if (this.modulesService.adminListModulesCatalog) {
-        this.modulesService.adminListModulesCatalog().subscribe({
-          next: (list: any[]) => {
-            const map = new Map<string, string>();
-            for (const m of list || []) {
-              if (m?.key && m?.lucide_icon) map.set(m.key, m.lucide_icon);
-            }
-            this._lucideIconOverrides.set(map);
-          }
-        });
-      }
-    }, 30000);
     // Listen for mobile profile switcher trigger
     window.addEventListener('open-profile-switcher', () => {
       this.isSwitcherOpen.set(true);

@@ -370,12 +370,15 @@ export class SupabaseModulesService {
   }
 
   // ── Modules Catalog (edit label, toggle DEV) ────────────────────────────────
-  adminListModulesCatalog(): Observable<{ key: string; label: string; superadmin_only: boolean; is_dev_mode: boolean; icon: string; lucide_icon: string | null }[]> {
+  adminListModulesCatalog(): Observable<{ key: string; label: string; superadmin_only: boolean; is_dev_mode: boolean; icon: string }[]> {
     return from(
       (async () => {
-        const { data, error } = await this.supabaseClient.instance.rpc('admin_get_modules_catalog');
+        const { data, error } = await this.supabaseClient.instance
+          .from('modules_catalog')
+          .select('key, label, superadmin_only, is_dev_mode, icon')
+          .order('label', { ascending: true });
         if (error) throw error;
-        return (data || []) as any[];
+        return (data || []);
       })()
     );
   }
@@ -385,7 +388,6 @@ export class SupabaseModulesService {
     label: string,
     isDevMode: boolean,
     icon: string = 'fa-cube',
-    lucideIcon: string | null = null,
   ): Observable<void> {
     return from(
       (async () => {
@@ -394,7 +396,6 @@ export class SupabaseModulesService {
           p_label: label,
           p_is_dev_mode: isDevMode,
           p_icon: icon,
-          p_lucide_icon: lucideIcon,
         });
         if (error) throw error;
       })()

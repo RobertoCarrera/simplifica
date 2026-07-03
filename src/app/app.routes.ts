@@ -124,6 +124,15 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
     data: { moduleKey: "moduloProductos" },
   },
+  {
+    path: "productos/importar",
+    loadComponent: () =>
+      import("./features/products/supplier-import/supplier-import.component").then(
+        (m) => m.SupplierImportComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
+    data: { moduleKey: "moduloProductos" },
+  },
 
   // Services
   {
