@@ -125,6 +125,15 @@ export const routes: Routes = [
     data: { moduleKey: "moduloProductos" },
   },
   {
+    path: "productos/proveedores",
+    loadComponent: () =>
+      import("./features/products/supplier-import/suppliers-list.component").then(
+        (m) => m.SuppliersListComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
+    data: { moduleKey: "moduloProductos" },
+  },
+  {
     path: "productos/importar",
     loadComponent: () =>
       import("./features/products/supplier-import/supplier-import.component").then(
