@@ -387,6 +387,7 @@ export class SupabaseModulesService {
     key: string,
     label: string,
     isDevMode: boolean,
+    icon: string = 'fa-cube',
   ): Observable<void> {
     return from(
       (async () => {
@@ -394,6 +395,7 @@ export class SupabaseModulesService {
           p_module_key: key,
           p_label: label,
           p_is_dev_mode: isDevMode,
+          p_icon: icon,
         });
         if (error) throw error;
       })()

@@ -377,9 +377,9 @@ export class ModulesAdminComponent implements OnInit {
       .map(([k, v]) => ({ key: k, label: v, icon: 'fa-cube' }));
   }
 
-  async saveModuleCatalog(key: string, label: string, isDevMode: boolean) {
+  async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube') {
     try {
-      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode));
+      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode, icon));
       await this.loadModulesCatalog();
       this.toast.success('Módulo actualizado', '"' + label + '" guardado.');
     } catch (e: any) {
@@ -414,7 +414,7 @@ export class ModulesAdminComponent implements OnInit {
     const draft = this.editingCatalogDraft()[key];
     if (!draft) return;
     if (!draft.label.trim()) { this.toast.error('Validación', 'El nombre es obligatorio.'); return; }
-    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode);
+    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode, draft.icon);
     const all = { ...this.editingCatalogDraft() };
     delete all[key];
     this.editingCatalogDraft.set(all);
