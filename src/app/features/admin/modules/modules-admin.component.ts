@@ -269,6 +269,11 @@ export class ModulesAdminComponent implements OnInit {
   ];
 
   moduleIcon(key: string): string {
+    // First check the editable backend catalog (modules_catalog) — has the
+    // admin-curated icon.
+    const fromCatalog = this.modulesCatalog().find((m: any) => m.key === key);
+    if ((fromCatalog as any)?.icon) return (fromCatalog as any).icon;
+    // Then the plan picker (plan_visible_modules).
     const curated = this.visibleModules().find((m) => m.module_key === key);
     if (curated?.icon) return curated.icon;
     return 'fa-cube';
@@ -750,6 +755,9 @@ export class ModulesAdminComponent implements OnInit {
       this.loadVisibleModules();
       this.loadModulesCatalog();
     }
+    // The icon catalog is used by 3 places (sidebar order, plan matrix,
+    // add-on modules picker), so always ensure it's loaded.
+    this.loadModulesCatalog();
   }
 
   // ── Pricing tab ────────────────────────────────────────────────────────────
