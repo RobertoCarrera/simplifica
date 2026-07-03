@@ -44,6 +44,7 @@
               }
             ],
             "styles": [
+              "src/assets/fontawesome.min.css",
               "src/styles.scss"
             ],
             "scripts": []
@@ -114,6 +115,7 @@
               }
             ],
             "styles": [
+              "src/assets/fontawesome.min.css",
               "src/styles.scss"
             ],
             "scripts": []
