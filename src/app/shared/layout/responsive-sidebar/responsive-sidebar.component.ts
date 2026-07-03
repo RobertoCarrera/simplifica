@@ -183,6 +183,8 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
+  /** module_key → lucide_icon overrides from modules_catalog (admin-curated). */
+  private _lucideIconOverrides = signal<Map<string, string>>(new Map());
 
   /**
    * Sorts allMenuItems by custom sidebar order (from DB) with id-based fallback.
@@ -198,7 +200,13 @@ export class ResponsiveSidebarComponent implements OnInit {
   private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const orderMap = this.modulesService.sidebarOrderSignal();
     const isSuperAdmin = this.authService.userRole() === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
-    return [...this.allMenuItems]
+    const overrides = this._lucideIconOverrides();
+    return [...this.allMenuItems].map((it: MenuItem) => {
+      if (it.sidebarKey && overrides.has(it.sidebarKey)) {
+        return { ...it, icon: overrides.get(it.sidebarKey)! };
+      }
+      return it;
+    })
       .filter((item) => {
         // HARDCODED: Profesionales NO ven "Proyectos" en ninguna company.
         if (item.sidebarKey === 'moduloProyectos' && this.authService.userRole() === 'professional') {
@@ -829,6 +837,19 @@ export class ResponsiveSidebarComponent implements OnInit {
   });
 
   ngOnInit() {
+    // Load admin-curated Lucide icons from modules_catalog
+    if (this.modulesService.adminListModulesCatalog) {
+      this.modulesService.adminListModulesCatalog().subscribe({
+        next: (list: any[]) => {
+          const map = new Map<string, string>();
+          for (const m of list || []) {
+            if (m?.key && m?.lucide_icon) map.set(m.key, m.lucide_icon);
+          }
+          this._lucideIconOverrides.set(map);
+        },
+        error: () => {}
+      });
+    }
     // Listen for mobile profile switcher trigger
     window.addEventListener('open-profile-switcher', () => {
       this.isSwitcherOpen.set(true);
