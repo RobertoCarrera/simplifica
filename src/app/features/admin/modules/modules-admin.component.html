@@ -337,7 +337,7 @@
                     <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
                   }
                   @if (isEditorEnabled()) {
-                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Editar módulo">
+                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube', $any(m).lucideIcon || getLucideName($any(m).icon))" class="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors flex-shrink-0" title="Editar módulo">
                       <i class="fas fa-pen text-[10px]"></i>
                     </button>
                     <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="text-xs px-2 py-0.5 rounded border border-red-200 text-red-600 bg-white hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">

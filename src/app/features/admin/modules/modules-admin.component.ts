@@ -317,6 +317,31 @@ export class ModulesAdminComponent implements OnInit {
       .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
+  /** Convert a FA class name to a Lucide icon name. Strips `fa-` prefix and
+   *  strips common FA suffixes (`-solid`, `-regular`, `-brands`, `-light`).
+   *  Examples: `fa-house` → `home`, `fa-bullhorn` → `megaphone`. */
+  getLucideName(faClass: string): string {
+    if (!faClass) return 'package';
+    let name = faClass.replace(/^fa-/, '').replace(/-solid$|-regular$|-brands$|-light$/, '');
+    // Common FA→Lucide overrides
+    const map: Record<string, string> = {
+      'cogs': 'settings',
+      'gear': 'settings',
+      'file-invoice-dollar': 'receipt',
+      'bullhorn': 'megaphone',
+      'mobile-screen': 'smartphone',
+      'mobile-screen-button': 'smartphone',
+      'puzzle-piece': 'puzzle',
+      'graduation-cap': 'graduation-cap',
+      'comments': 'message-circle',
+      'shield-halved': 'shield',
+      'envelope': 'mail',
+      'shop': 'shopping-bag',
+      'envelope-open': 'mail-open',
+    };
+    return map[name] || name;
+  }
+
   filteredAddableModules() {
     const q = this.visibleModulePickerQuery().toLowerCase().trim();
     const all = this.addableModuleKeys;
@@ -396,9 +421,9 @@ export class ModulesAdminComponent implements OnInit {
       .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
-  async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube') {
+  async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube', lucideIcon: string | null = null) {
     try {
-      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode, icon));
+      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode, icon, lucideIcon));
       await this.loadModulesCatalog();
       this.toast.success('Módulo actualizado', '"' + label + '" guardado.');
     } catch (e: any) {
@@ -406,12 +431,12 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
-  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean; icon: string }>>({});
+  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean; icon: string; lucideIcon?: string }>>({});
   /** Key of the module whose icon picker is currently open in the Catálogo grid (null = closed). */
   catalogIconPickerOpen = signal<string | null>(null);
 
-  startCatalogEdit(key: string, label: string, isDevMode: boolean, icon: string) {
-    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode, icon } });
+  startCatalogEdit(key: string, label: string, isDevMode: boolean, icon: string, lucideIcon?: string) {
+    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode, icon, lucideIcon } });
     this.catalogIconPickerOpen.set(null);
   }
 
@@ -433,7 +458,9 @@ export class ModulesAdminComponent implements OnInit {
     const draft = this.editingCatalogDraft()[key];
     if (!draft) return;
     if (!draft.label.trim()) { this.toast.error('Validación', 'El nombre es obligatorio.'); return; }
-    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode, draft.icon);
+    // Auto-derive Lucide from the current FA icon if not set explicitly
+    const lucideIcon = draft.lucideIcon || this.getLucideName(draft.icon);
+    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode, draft.icon, lucideIcon);
     const all = { ...this.editingCatalogDraft() };
     delete all[key];
     this.editingCatalogDraft.set(all);
