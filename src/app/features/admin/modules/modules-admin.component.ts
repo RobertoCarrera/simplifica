@@ -8,6 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { PlanService, Plan, PlanAddon, PlanVisibleModule } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
+import { FA_ICON_CATALOG, FaIconEntry } from '../../../shared/fontawesome-icons';
 
 /** All known sidebar navigation items with their display labels and icons */
 const SIDEBAR_CATALOG: { key: string; label: string; icon: string; category: 'core' | 'production' }[] = [
@@ -150,6 +151,12 @@ export class ModulesAdminComponent implements OnInit {
   modulesCatalog = signal<{ key: string; label: string; is_dev_mode: boolean }[]>([]);
   showVisibleModulePicker = signal(false);
   showAddCatalogModal = signal(false);
+  /** Pending icon selection in the "Añadir nuevo módulo" modal: module_key → icon class. */
+  newModuleIcon = signal<Record<string, string>>({});
+
+  setNewModuleIcon(key: string, icon: string) {
+    this.newModuleIcon.set({ ...this.newModuleIcon(), [key]: icon });
+  }
   visibleModulePickerQuery = signal('');
 
   // ── Add-on editor ────────────────────────────────────────────────────────
@@ -162,42 +169,33 @@ export class ModulesAdminComponent implements OnInit {
   editingPlan = signal<Plan | null>(null);
   editingDraft = signal<Plan | null>(null);
 
-  // ── FontAwesome 6 icons (static so Angular templates can read them) ─────
-  static readonly CURATED_FA_ICONS: readonly string[] = [
-    'fa-bullhorn','fa-megaphone','fa-ad','fa-mail-bulk',
-    'fa-robot','fa-microchip','fa-brain','fa-magic','fa-wand-magic-sparkles',
-    'fa-cogs','fa-cog','fa-gears','fa-sliders','fa-screwdriver-wrench',
-    'fa-bolt','fa-bolt-lightning','fa-plug','fa-power-off',
-    'fa-chart-line','fa-chart-bar','fa-chart-pie','fa-chart-area',
-    'fa-file-invoice','fa-file-invoice-dollar','fa-receipt','fa-cash-register',
-    'fa-box','fa-boxes','fa-box-open','fa-pallet','fa-warehouse',
-    'fa-tools','fa-toolbox','fa-wrench','fa-hammer','fa-screwdriver',
-    'fa-calendar','fa-calendar-alt','fa-calendar-check','fa-calendar-plus',
-    'fa-comments','fa-comment','fa-comment-dots','fa-comment-alt',
-    'fa-mobile-alt','fa-mobile','fa-tablet-alt','fa-laptop',
-    'fa-project-diagram','fa-diagram-project','fa-sitemap','fa-network-wired',
-    'fa-book','fa-book-open','fa-graduation-cap','fa-university',
-    'fa-shield-alt','fa-lock','fa-key','fa-user-shield',
-    'fa-bell','fa-bell-slash','fa-envelope','fa-paper-plane',
-    'fa-users','fa-user-tie','fa-user-cog','fa-user-shield',
-    'fa-search','fa-search-plus','fa-search-minus','fa-filter',
-    'fa-star','fa-heart','fa-fire','fa-bolt',
-    'fa-rocket','fa-paperclip','fa-thumbtack',
-    'fa-puzzle-piece','fa-shapes','fa-cube','fa-cubes',
-    'fa-credit-card','fa-wallet','fa-money-bill','fa-coins',
-    'fa-headset','fa-phone','fa-phone-alt','fa-tty',
-    'fa-language','fa-globe','fa-globe-europe','fa-earth-americas',
-  ];
+  // Search query for the icon picker (Spanish + English).
+  iconSearchQuery = signal('');
 
+  // Curated list (static subset) used in the add-on edit form.
   static readonly POPULAR_FA_ICONS: readonly string[] = [
     'fa-bullhorn','fa-robot','fa-cogs','fa-file-invoice-dollar',
     'fa-chart-line','fa-box-open','fa-tools','fa-comments',
     'fa-mobile-alt','fa-project-diagram','fa-puzzle-piece','fa-magic',
   ];
 
-  // Instance aliases of the static FA icon lists — Angular templates can't access static members directly.
-  readonly CURATED_FA_ICONS = ModulesAdminComponent.CURATED_FA_ICONS;
-  readonly POPULAR_FA_ICONS = ModulesAdminComponent.POPULAR_FA_ICONS;
+  // Full FA 6 catalog with keywords (Spanish + English).
+  get FA_ICONS(): readonly FaIconEntry[] {
+    return FA_ICON_CATALOG;
+  }
+
+  /** Filtered icon list based on the search query. Matches the class name
+   *  OR any of the keywords. Spanish keywords work because the FA metadata
+   *  includes English terms that translate well; for the common Spanish-only
+   *  queries the user can also type the class (e.g. "fa-home"). */
+  filteredIcons(): FaIconEntry[] {
+    const q = this.iconSearchQuery().toLowerCase().trim();
+    if (!q) return FA_ICON_CATALOG.slice(0, 120);
+    const qn = q.replace(/^fa-/, '').replace(/^fa/, '');
+    return FA_ICON_CATALOG.filter(
+      (e) => e.class.includes(q) || e.keywords.toLowerCase().includes(q) || e.class.replace('fa-', '').includes(qn)
+    ).slice(0, 240);
+  }
 
   isEditorEnabled(): boolean { return this.isSuperAdmin(); }
 
@@ -308,9 +306,12 @@ export class ModulesAdminComponent implements OnInit {
     } catch (e) { console.error('Error loading modules catalog:', e); }
   }
 
-  async addModuleFromCatalog(key: string, label: string) {
+  async addModuleFromCatalog(key: string, label: string, icon: string = 'fa-cube') {
     try {
-      await firstValueFrom(this.modulesService.adminAddModuleCatalog(key, label));
+      await firstValueFrom(this.modulesService.adminAddModuleCatalog(key, label, icon));
+      // Reload PostgREST schema cache so the freshly-inserted row is visible
+      // to the next query without raising 'column not found in schema cache'.
+      try { await firstValueFrom(this.modulesService.reloadSchemaCache()); } catch { /* best-effort */ }
       await this.loadModulesCatalog();
       this.toast.success('Módulo añadido', '"' + label + '" se ha añadido al catálogo.');
     } catch (e: any) {

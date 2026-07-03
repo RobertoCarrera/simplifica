@@ -402,18 +402,27 @@
                     <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1'"></i>
                   }
                 </span>
-                <input type="text" list="fa-icon-picker" [value]="editingAddonDraft()?.icon ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })" placeholder="fa-bullhorn" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" list="fa-icon-picker" [value]="editingAddonDraft()?.icon ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })" placeholder="fa-bullhorn — o busca: casa, correo, cohete…" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 <datalist id="fa-icon-picker">
-                  @for (icon of CURATED_FA_ICONS; track icon) {
-                    <option [value]="icon">{{ icon }}</option>
+                  @for (icon of FA_ICONS.slice(0, 80); track icon.class) {
+                    <option [value]="icon.class">{{ icon.class }}</option>
                   }
                 </datalist>
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                  @for (icon of POPULAR_FA_ICONS; track icon) {
-                    <button type="button" (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon })" class="w-8 h-8 flex items-center justify-center rounded-lg border bg-white hover:bg-purple-50 transition-colors" [class.border-purple-500]="editingAddonDraft()?.icon === icon" [class.border-gray-200]="editingAddonDraft()?.icon !== icon">
-                      <i [class]="'fas ' + icon + ' text-gray-700'"></i>
-                    </button>
-                  }
+                <div class="mt-2 relative">
+                  <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+                  <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono: marketing, casa, robot..." class="w-full pl-7 pr-3 py-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-purple-500" />
+                </div>
+                <div class="mt-1 max-h-32 overflow-y-auto p-1 border border-gray-200 rounded bg-gray-50">
+                  <div class="grid grid-cols-10 gap-0.5">
+                    @for (entry of filteredIcons(); track entry.class) {
+                      <button type="button"
+                        (click)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: entry.class })"
+                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (editingAddonDraft()?.icon === entry.class ? 'bg-purple-100 border border-purple-500 text-purple-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-purple-50')"
+                        [title]="entry.class + ' — ' + entry.keywords">
+                        <i [class]="'fas ' + entry.class"></i>
+                      </button>
+                    }
+                  </div>
                 </div>
               </label>
               <label class="block">
@@ -814,9 +823,15 @@
           <h3 class="text-base font-semibold text-gray-900">Añadir módulo al catálogo</h3>
           <p class="text-xs text-gray-500 mt-1">Promueve un módulo del catálogo local al catálogo editable (backend).</p>
         </div>
-        <button type="button" (click)="showAddCatalogModal.set(false)" class="text-gray-400 hover:text-gray-600" aria-label="Cerrar">
+        <button type="button" (click)="showAddCatalogModal.set(false); newModuleIcon.set({})" class="text-gray-400 hover:text-gray-600" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
+      </div>
+      <div class="p-5 border-b border-gray-100">
+        <div class="relative">
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
+          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono (español, inglés, o nombre fa-...)" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto p-2">
         @if (addableCatalogKeys.length === 0) {
@@ -825,14 +840,33 @@
           </div>
         } @else {
           @for (m of addableCatalogKeys; track m.key) {
-            <button type="button" (click)="addModuleFromCatalog(m.key, m.label); showAddCatalogModal.set(false)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-left">
-              <i [class]="'fas ' + m.icon + ' text-blue-500 text-sm w-5 text-center'"></i>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
-                <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+            <div class="rounded-lg hover:bg-blue-50 transition-colors p-2">
+              <div class="flex items-center gap-3">
+                <i [class]="'fas ' + (newModuleIcon()[m.key] || m.icon) + ' text-blue-500 text-sm w-5 text-center'"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate">{{ m.label }}</div>
+                  <div class="text-xs text-gray-400 truncate">{{ m.key }}</div>
+                </div>
+                <button type="button" (click)="addModuleFromCatalog(m.key, m.label, newModuleIcon()[m.key] || m.icon); showAddCatalogModal.set(false)" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded">
+                  <i class="fas fa-plus text-[10px]"></i> Añadir
+                </button>
               </div>
-              <i class="fas fa-plus text-blue-500 text-xs"></i>
-            </button>
+              <div class="mt-2">
+                <div class="text-[10px] text-gray-400 mb-1">Icono actual: <code class="bg-gray-100 px-1 rounded">{{ newModuleIcon()[m.key] || m.icon }}</code></div>
+                <div class="max-h-48 overflow-y-auto p-1 border border-gray-200 rounded bg-gray-50">
+                  <div class="grid grid-cols-8 gap-1">
+                    @for (entry of filteredIcons(); track entry.class) {
+                      <button type="button"
+                        (click)="setNewModuleIcon(m.key, entry.class)"
+                        [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + ((newModuleIcon()[m.key] || m.icon) === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-blue-50')"
+                        [title]="entry.class + ' — ' + entry.keywords">
+                        <i [class]="'fas ' + entry.class"></i>
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
           }
         }
       </div>
