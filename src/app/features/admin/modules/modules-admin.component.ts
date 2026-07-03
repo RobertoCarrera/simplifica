@@ -190,10 +190,45 @@ export class ModulesAdminComponent implements OnInit {
    *  queries the user can also type the class (e.g. "fa-home"). */
   filteredIcons(): FaIconEntry[] {
     const q = this.iconSearchQuery().toLowerCase().trim();
-    if (!q) return FA_ICON_CATALOG.slice(0, 120);
+    if (!q) return FA_ICON_CATALOG.slice(0, 5);
     const qn = q.replace(/^fa-/, '').replace(/^fa/, '');
+    // Map a few common Spanish queries to English equivalents the catalog uses.
+    const es2en: Record<string, string[]> = {
+      'casa': ['house','home'], 'hogar': ['house','home'],
+      'usuario': ['user','users','person'], 'persona': ['user','person'],
+      'dinero': ['money','dollar','wallet','coins','cash'],
+      'pago': ['credit-card','money','dollar','wallet'],
+      'correo': ['envelope','mail'], 'email': ['envelope','mail'],
+      'cohete': ['rocket'], 'robot': ['robot','android'],
+      'dinamica': ['chart-line','chart-bar','chart-pie','chart-area','gauge'],
+      'mando': ['gamepad','terminal'], 'consola': ['terminal','gamepad'],
+      'configuracion': ['gear','gears','sliders','cogs','cog'],
+      'ajustes': ['gear','sliders'],
+      'mensaje': ['message','comment','envelope','mail'],
+      'comentario': ['comment','message','comments'],
+      'seguridad': ['shield','lock','key','shield-halved'],
+      'candado': ['lock','key'],
+      'carrito': ['cart-shopping','bag-shopping','basket-shopping'],
+      'tienda': ['store','cart-shopping','bag-shopping'],
+      'archivo': ['file','folder','folder-open','file-lines','file-code'],
+      'calendario': ['calendar','calendar-days','calendar-check','calendar-plus'],
+      'reloj': ['clock','calendar'],
+      'herramienta': ['tools','wrench','screwdriver-wrench','hammer'],
+      'camara': ['camera','video','film'],
+      'telefono': ['phone','mobile','mobile-screen','mobile-screen-button'],
+      'corazon': ['heart'], 'favorito': ['heart','star'],
+      'estrella': ['star'],
+      'coche': ['car','truck','van-shuttle'],
+      'engranaje': ['gear','cog','gears','cogs'],
+      'llave': ['key'],
+    };
+    const extras = es2en[q] || [];
     return FA_ICON_CATALOG.filter(
-      (e) => e.class.includes(q) || e.keywords.toLowerCase().includes(q) || e.class.replace('fa-', '').includes(qn)
+      (e) =>
+        e.class.includes(q) ||
+        e.keywords.toLowerCase().includes(q) ||
+        e.class.replace('fa-', '').includes(qn) ||
+        extras.some((s) => e.class.includes(s))
     ).slice(0, 240);
   }
 
