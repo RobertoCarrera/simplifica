@@ -107,11 +107,11 @@
                 <div class="flex items-center justify-between group">
                   <div class="flex items-center gap-3 overflow-hidden">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-                      [ngClass]="{
-                        'bg-green-100 text-green-600': m.status === 'active' || m.status === 'activado',
-                        'bg-gray-100 text-gray-400': m.status !== 'active' && m.status !== 'activado',
-                      }">
-                      <i class="fas fa-cube text-xs"></i>
+                       [ngClass]="{
+                         'bg-green-100 text-green-600': m.status === 'active' || m.status === 'activado',
+                         'bg-gray-100 text-gray-400': m.status !== 'active' && m.status !== 'activado',
+                       }">
+                      <i [class]="'fas ' + moduleIcon(m.key) + ' text-xs'"></i>
                     </div>
                     <span class="text-sm font-medium text-gray-700 truncate" title="{{ getLabel(m) }}">{{ getLabel(m) }}</span>
                   </div>
@@ -327,7 +327,7 @@
               @let draft = editingCatalogDraft()[m.key];
               @let editing = !!draft;
               <div class="flex items-center gap-2 p-2.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors" [class.ring-2]="editing" [class.ring-blue-300]="editing">
-                <i class="fas fa-cube text-gray-400 text-xs flex-shrink-0"></i>
+                <i [class]="'fas ' + ($any(m).icon || 'fa-cube') + ' text-xs flex-shrink-0 ' + (editing ? 'text-blue-600' : 'text-gray-400')"></i>
                 @if (!editing) {
                   <span class="flex-1 min-w-0">
                     <span class="block text-sm font-medium text-gray-800 truncate">{{ m.label }}</span>
@@ -473,7 +473,7 @@
               </div>
               <div class="md:col-span-2">
                 <span class="block text-xs font-medium text-gray-600 mb-1">
-                  <i class="fas fa-cube text-purple-500 mr-1"></i>Módulos que incluye
+                  <i class="fas fa-cubes text-purple-500 mr-1"></i>Módulos que incluye
                 </span>
                 <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
                   @for (m of addableAddonModules(); track m.key) {
@@ -615,7 +615,7 @@
                 <tr class="hover:bg-gray-50 transition-colors">
                   <td class="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
                     <div class="flex items-center gap-2">
-                      <i class="fas fa-cube text-gray-400 text-xs"></i>
+                      <i [class]="'fas ' + moduleIcon(key) + ' text-xs text-gray-500'"></i>
                       <span class="truncate">{{ moduleLabel(key) }}</span>
                       <button type="button" (click)="removeVisibleModule(key)" class="ml-1 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0" [attr.aria-label]="'Quitar ' + moduleLabel(key)">
                         <i class="fas fa-times text-xs"></i>
