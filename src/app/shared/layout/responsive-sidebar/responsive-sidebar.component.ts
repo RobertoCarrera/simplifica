@@ -850,6 +850,21 @@ export class ResponsiveSidebarComponent implements OnInit {
         error: () => {}
       });
     }
+    // Periodic refresh so icon changes made in the admin propagate
+    // to the sidebar without requiring a hard refresh. Every 30s.
+    setInterval(() => {
+      if (this.modulesService.adminListModulesCatalog) {
+        this.modulesService.adminListModulesCatalog().subscribe({
+          next: (list: any[]) => {
+            const map = new Map<string, string>();
+            for (const m of list || []) {
+              if (m?.key && m?.lucide_icon) map.set(m.key, m.lucide_icon);
+            }
+            this._lucideIconOverrides.set(map);
+          }
+        });
+      }
+    }, 30000);
     // Listen for mobile profile switcher trigger
     window.addEventListener('open-profile-switcher', () => {
       this.isSwitcherOpen.set(true);
