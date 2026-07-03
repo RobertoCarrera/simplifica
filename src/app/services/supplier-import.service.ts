@@ -302,6 +302,26 @@ export class SupplierImportService {
     );
   }
 
+  // ─── Snippets (pre-built supplier configs) ────────────────────────────────
+
+  /**
+   * Load all active supplier snippets from the DB.
+   * Each snippet has base_url + sync_config + field_mappings pre-configured.
+   */
+  getSnippets(): Observable<any[]> {
+    return from(
+      this.supabase.getClient()
+        .from('supplier_snippets')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        })
+    );
+  }
+
   // ─── REST API Integration ────────────────────────────────────────────────
 
   /**
@@ -580,5 +600,20 @@ export class SupplierImportService {
       price: find('price', 'cost', 'precio', 'coste', 'pvp', 'retail', 'amount'),
       stock: find('stock', 'quantity', 'qty', 'available', 'inventory', 'cantidad'),
     };
+  }
+
+  // ─── Auto-sync configuration ──────────────────────────────────────────────
+
+  /**
+   * Update the auto_sync_enabled + auto_sync_frequency for a supplier.
+   * The pg_cron job reads these and syncs accordingly.
+   */
+  async updateAutoSync(supplierId: string, enabled: boolean, frequency: 'hourly' | 'daily' | 'weekly'): Promise<void> {
+    const client = this.supabase.getClient();
+    const { error } = await client
+      .from('suppliers')
+      .update({ auto_sync_enabled: enabled, auto_sync_frequency: frequency })
+      .eq('id', supplierId);
+    if (error) throw error;
   }
 }

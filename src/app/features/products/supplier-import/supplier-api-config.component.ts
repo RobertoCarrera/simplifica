@@ -32,6 +32,34 @@ interface ApiFieldMapping {
           </div>
         </div>
 
+        <!-- Snippets (pre-built configs) -->
+        @if (snippets().length > 0) {
+          <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-2">
+              <i class="fas fa-bookmark mr-1 text-blue-600"></i>
+              ¿Quieres empezar rápido?
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-slate-400 mb-4">
+              Elige un proveedor pre-configurado para autocompletar el formulario
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              @for (snippet of snippets(); track snippet.id) {
+                <button type="button" (click)="applySnippet(snippet)"
+                  class="text-left p-4 border border-gray-200 dark:border-slate-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all">
+                  <div class="flex items-start justify-between gap-2 mb-1">
+                    <h4 class="font-medium text-gray-900 dark:text-slate-50">{{ snippet.name }}</h4>
+                    <span class="text-xs uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400 shrink-0">{{ snippet.category }}</span>
+                  </div>
+                  @if (snippet.description) {
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">{{ snippet.description }}</p>
+                  }
+                  <code class="text-xs font-mono text-blue-600 dark:text-blue-400 truncate block">{{ snippet.base_url }}</code>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Step 1: API Connection -->
         <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-slate-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-4">
@@ -334,6 +362,7 @@ export class SupplierApiConfigComponent {
   detectedPaths = signal<string[]>([]);
   syncResult = signal<{ success: boolean; fetched?: number; cached?: number; pages?: number; error?: string } | null>(null);
   createdSupplierId: string | null = null;
+  snippets = signal<any[]>([]);
 
   jsonPreview = computed(() => {
     const sample = this.testResult()?.sampleData?.[0];
@@ -434,6 +463,52 @@ export class SupplierApiConfigComponent {
     }
   }
 
+  // ─── Snippets ─────────────────────────────────────────────────────────
+
+  /**
+   * Load pre-built supplier snippets from the DB.
+   * Called once when the component initializes.
+   */
+  async loadSnippets(): Promise<void> {
+    try {
+      const snippets = await this.importService.getSnippets().toPromise();
+      this.snippets.set(snippets || []);
+    } catch (error) {
+      // Silent fail — snippets are optional
+      console.error('Failed to load snippets:', error);
+    }
+  }
+
+  /**
+   * Apply a pre-built snippet: fill all form fields with the snippet's config.
+   */
+  applySnippet(snippet: any): void {
+    if (snippet.name) this.supplierName = snippet.name;
+    if (snippet.base_url) this.baseUrl = snippet.base_url;
+    if (snippet.sync_config) {
+      const cfg = snippet.sync_config;
+      this.pagination = cfg.pagination || 'none';
+      this.responsePath = cfg.response_path || '';
+      this.pageSize = cfg.page_size || 100;
+      this.maxPages = cfg.max_pages || 50;
+      this.pageParam = cfg.page_param || 'page';
+      this.pageSizeParam = cfg.page_size_param || 'pageSize';
+      this.cursorPath = cfg.cursor_path || 'meta.next_cursor';
+    }
+    if (Array.isArray(snippet.field_mappings)) {
+      this.apiMappings = snippet.field_mappings.map((m: any) => ({
+        source_path: m.source_path || '',
+        target_field: m.target_field || '',
+        transform: m.transform || null,
+        is_required: m.target_field === 'name',
+      }));
+    }
+    this.toastService.success(
+      'Snippet aplicado',
+      `Configuración de "${snippet.name}" cargada. Revisa y pulsa "Probar conexión".`,
+    );
+  }
+
   // ─── Save + sync ─────────────────────────────────────────────────────
 
   async saveAndSync(): Promise<void> {
@@ -472,5 +547,9 @@ export class SupplierApiConfigComponent {
 
   goBack(): void {
     history.back();
+  }
+
+  constructor() {
+    this.loadSnippets();
   }
 }

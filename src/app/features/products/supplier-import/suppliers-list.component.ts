@@ -110,6 +110,16 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
                       class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded text-sm font-medium transition-colors flex items-center gap-1">
                       <i class="fas fa-eye"></i> Ver cache
                     </button>
+                    @if (supplier.adapter_type === 'rest_api') {
+                      <button type="button" (click)="toggleAutoSync(supplier)"
+                        [class]="supplier.auto_sync_enabled
+                          ? 'px-3 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-sm font-medium transition-colors flex items-center gap-1'
+                          : 'px-3 py-2 bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/40 text-gray-600 dark:text-gray-400 rounded text-sm font-medium transition-colors flex items-center gap-1'"
+                        [title]="supplier.auto_sync_enabled ? 'Auto-sync activado (' + (supplier.auto_sync_frequency || 'daily') + ')' : 'Activar auto-sync'">
+                        <i [class]="supplier.auto_sync_enabled ? 'fas fa-clock' : 'far fa-clock'"></i>
+                        {{ supplier.auto_sync_enabled ? 'Auto' : 'Manual' }}
+                      </button>
+                    }
                     <button type="button" (click)="confirmDelete(supplier)"
                       class="px-3 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-300 rounded text-sm font-medium transition-colors flex items-center gap-1">
                       <i class="fas fa-trash"></i>
@@ -180,6 +190,63 @@ export class SuppliersListComponent {
       this.toastService.error('Error', error?.message || 'No se pudo sincronizar');
     } finally {
       this.syncingId.set(null);
+    }
+  }
+
+  async toggleAutoSync(supplier: any): Promise<void> {
+    const newEnabled = !supplier.auto_sync_enabled;
+    const frequency = supplier.auto_sync_frequency || 'daily';
+
+    // Simple confirm dialog if disabling
+    if (supplier.auto_sync_enabled) {
+      const confirmed = await this.confirmModal.open({
+        title: '¿Desactivar auto-sync?',
+        message: `"${supplier.name}" ya no se sincronizará automáticamente. Tendrás que pulsar "Sincronizar" manualmente.`,
+        confirmText: 'Desactivar',
+        icon: 'fa-pause',
+        iconColor: 'amber',
+      });
+      if (!confirmed) return;
+    } else {
+      // Confirm activation with frequency choice
+      const choice = prompt(
+        `Activar auto-sync para "${supplier.name}".\n\nFrecuencia:\n1 = Cada hora (hourly)\n2 = Cada día (daily)\n3 = Cada semana (weekly)\n\nEscribe 1, 2 o 3:`,
+        '2',
+      );
+      if (choice === null) return; // cancelled
+      if (choice === '1') (this as any).tempFrequency = 'hourly';
+      else if (choice === '3') (this as any).tempFrequency = 'weekly';
+      else (this as any).tempFrequency = 'daily';
+    }
+
+    try {
+      await this.importService.updateAutoSync(
+        supplier.id,
+        newEnabled,
+        newEnabled ? ((this as any).tempFrequency || 'daily') : frequency,
+      );
+      // Update local state
+      this.suppliers.update((list) =>
+        list.map((s) =>
+          s.id === supplier.id
+            ? {
+                ...s,
+                auto_sync_enabled: newEnabled,
+                auto_sync_frequency: newEnabled
+                  ? ((this as any).tempFrequency || s.auto_sync_frequency || 'daily')
+                  : s.auto_sync_frequency,
+              }
+            : s,
+        ),
+      );
+      this.toastService.success(
+        newEnabled ? 'Auto-sync activado' : 'Auto-sync desactivado',
+        newEnabled
+          ? `"${supplier.name}" se sincronizará automáticamente (${((this as any).tempFrequency || 'daily')}).`
+          : `"${supplier.name}" ya no se sincroniza automáticamente.`,
+      );
+    } catch (error: any) {
+      this.toastService.error('Error', error?.message || 'No se pudo cambiar el auto-sync');
     }
   }
 
