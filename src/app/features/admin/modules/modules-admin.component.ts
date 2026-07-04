@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -85,6 +85,17 @@ export class ModulesAdminComponent implements OnInit {
   // Drag & drop state
   draggedKey = signal<string | null>(null);
   dragOverKey = signal<string | null>(null);
+
+  constructor() {
+    // Close the icon picker on any click outside it. Listening on document
+    // with capture phase so we beat other click handlers.
+    document.addEventListener('click', () => {
+      if (this.catalogIconPickerOpen()) {
+        this.catalogIconPickerOpen.set(null);
+        this.iconPickerAnchor.set(null);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadCompanies();
@@ -431,9 +442,26 @@ export class ModulesAdminComponent implements OnInit {
     this.updateCatalogDraft(key, { icon });
   }
 
-  toggleCatalogIconPicker(key: string) {
-    this.catalogIconPickerOpen.set(this.catalogIconPickerOpen() === key ? null : key);
+  toggleCatalogIconPicker(key: string, event?: MouseEvent) {
+    if (this.catalogIconPickerOpen() === key) {
+      this.catalogIconPickerOpen.set(null);
+      this.iconPickerAnchor.set(null);
+      return;
+    }
+    this.catalogIconPickerOpen.set(key);
+    // Capture the button's viewport-relative position so we can render the
+    // popup as position:fixed (which escapes any stacking-context the
+    // sidebar creates and won't get clipped by ancestor overflow).
+    const btn = (event?.currentTarget as HTMLElement) ?? null;
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      this.iconPickerAnchor.set({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
   }
+
+  /** Viewport coordinates of the currently-open icon picker, or null. */
+  iconPickerAnchor = signal<{ top: number; right: number } | null>(null);
+  pickerPosition = computed(() => this.iconPickerAnchor() ?? { top: 0, right: 0 });
 
   async saveCatalogEdit(key: string) {
     const draft = this.editingCatalogDraft()[key];
