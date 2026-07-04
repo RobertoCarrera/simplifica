@@ -313,97 +313,106 @@
         @if (modulesCatalog().length === 0) {
           <p class="text-sm text-gray-400 dark:text-gray-500 italic">Cargando catálogo…</p>
         } @else {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             @for (m of modulesCatalog(); track m.key) {
               @let draft = editingCatalogDraft()[m.key];
               @let editing = !!draft;
-              <div class="flex items-center gap-2 p-2.5 rounded-lg transition-colors"
+              <div class="flex flex-col gap-2 p-3 rounded-xl transition-colors"
                 [class.ring-2]="editing"
                 [class.ring-blue-300]="editing"
                 [ngClass]="{
                   'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800': $any(m).scope === 'core',
-                  'bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700': $any(m).scope !== 'core' && $any(m).scope !== 'dev',
+                  'bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700': $any(m).scope !== 'core' && $any(m).scope !== 'dev',
                   'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 border border-amber-200 dark:border-amber-800': $any(m).scope === 'dev'
                 }">
-                <i [class]="'fas ' + ($any(m).icon || 'fa-cube') + ' text-base flex-shrink-0 ' + (editing ? 'text-blue-600' : ($any(m).scope === 'core' ? 'text-blue-500' : ($any(m).scope === 'dev' ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500')))"></i>
                 @if (!editing) {
-                  <span class="flex-1 min-w-0">
-                    <span class="block text-sm font-medium text-gray-800 dark:text-white truncate">{{ m.label }}</span>
-                  </span>
-                  @if ($any(m).scope === 'core') {
-                    <span class="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">CORE</span>
-                  } @else if ($any(m).scope === 'dev') {
-                    <span class="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
-                  }
-                  @if (isEditorEnabled()) {
-                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="w-9 h-9 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Editar módulo">
-                      <i class="fas fa-pen text-base"></i>
-                    </button>
-                    @if ($any(m).scope !== 'core') {
-                      <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="w-9 h-9 flex items-center justify-center rounded border border-red-200 text-red-600 bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
-                        <i class="fas fa-trash text-base"></i>
-                      </button>
+                  <!-- Header: icon + label + scope badge -->
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i [class]="'fas ' + ($any(m).icon || 'fa-cube') + ' text-lg flex-shrink-0 ' + ($any(m).scope === 'core' ? 'text-blue-500' : ($any(m).scope === 'dev' ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'))"></i>
+                    <span class="flex-1 text-sm font-medium text-gray-800 dark:text-white truncate">{{ m.label }}</span>
+                    @if ($any(m).scope === 'core') {
+                      <span class="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">CORE</span>
+                    } @else if ($any(m).scope === 'dev') {
+                      <span class="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
                     }
+                  </div>
+                  <!-- Action row -->
+                  @if (isEditorEnabled()) {
+                    <div class="flex items-center gap-1.5 mt-1">
+                      <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="w-9 h-9 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Editar módulo">
+                        <i class="fas fa-pen text-base"></i>
+                      </button>
+                      @if ($any(m).scope !== 'core') {
+                        <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="w-9 h-9 flex items-center justify-center rounded border border-red-200 text-red-600 bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
+                          <i class="fas fa-trash text-base"></i>
+                        </button>
+                      }
+                    </div>
                   }
                 } @else {
-                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="flex-1 min-w-0 text-sm border border-gray-300 rounded px-2.5 py-1.5" />
-                  <div class="relative flex-shrink-0">
-                    <button type="button"
-                      (click)="toggleCatalogIconPicker(m.key, $event); $event.stopPropagation()"
-                      class="w-9 h-9 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
-                      [class.border-blue-500]="catalogIconPickerOpen() === m.key"
-                      [ngClass]="catalogIconPickerOpen() !== m.key ? 'border-gray-200 dark:border-gray-700' : ''"
-                      [title]="'Cambiar icono'">
-                      <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-base text-blue-600'"></i>
-                    </button>
-                    @if (catalogIconPickerOpen() === m.key) {
-                      <div class="fixed z-[9999] w-[420px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2" [style.top.px]="pickerPosition().top" [style.right.px]="pickerPosition().right" (click)="$event.stopPropagation()">
-                        <div class="relative mb-2">
-                          <i class="fas fa-search absolute left-2 top-2 text-gray-400 dark:text-gray-500 text-[10px]"></i>
-                          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
+                  <!-- Edit mode: label input + icon picker -->
+                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="w-full text-sm border border-gray-300 rounded px-2.5 py-1.5" />
+                  <div class="flex items-center gap-1.5">
+                    <div class="relative flex-shrink-0">
+                      <button type="button"
+                        (click)="toggleCatalogIconPicker(m.key, $event); $event.stopPropagation()"
+                        class="w-9 h-9 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
+                        [class.border-blue-500]="catalogIconPickerOpen() === m.key"
+                        [ngClass]="catalogIconPickerOpen() !== m.key ? 'border-gray-200 dark:border-gray-700' : ''"
+                        [title]="'Cambiar icono'">
+                        <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-base text-blue-600'"></i>
+                      </button>
+                      @if (catalogIconPickerOpen() === m.key) {
+                        <div class="fixed z-[9999] w-[420px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2" [style.top.px]="pickerPosition().top" [style.right.px]="pickerPosition().right" (click)="$event.stopPropagation()">
+                          <div class="relative mb-2">
+                            <i class="fas fa-search absolute left-2 top-2 text-gray-400 dark:text-gray-500 text-[10px]"></i>
+                            <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
+                          </div>
+                          <div class="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto p-1">
+                            @for (entry of filteredIcons(); track entry.class) {
+                              <button type="button"
+                                (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null)"
+                                [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50')"
+                                [title]="entry.class">
+                                <i [class]="'fas ' + entry.class"></i>
+                              </button>
+                            }
+                          </div>
                         </div>
-                        <div class="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto p-1">
-                          @for (entry of filteredIcons(); track entry.class) {
-                            <button type="button"
-                              (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null)"
-                              [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50')"
-                              [title]="entry.class">
-                              <i [class]="'fas ' + entry.class"></i>
-                            </button>
-                          }
-                        </div>
-                      </div>
-                    }
+                      }
+                    </div>
+                    <div class="flex items-center gap-1 flex-shrink-0 ml-auto">
+                      <button type="button"
+                        (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'core' })"
+                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        [ngClass]="draft!.scope === 'core' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
+                        title="Módulo core (siempre incluido)">
+                        C
+                      </button>
+                      <button type="button"
+                        (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'production' })"
+                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        [ngClass]="draft!.scope === 'production' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
+                        title="Módulo de producción (pagable)">
+                        P
+                      </button>
+                      <button type="button"
+                        (click)="updateCatalogDraft(m.key, { isDevMode: true, scope: 'dev' })"
+                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        [ngClass]="draft!.scope === 'dev' ? 'bg-amber-500 text-white' : 'border border-amber-300 text-amber-700 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/30'"
+                        title="Solo superadmins">
+                        DEV
+                      </button>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-1 flex-shrink-0">
-                    <button type="button"
-                      (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'core' })"
-                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
-                      [ngClass]="draft!.scope === 'core' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
-                      title="Módulo core (siempre incluido)">
-                      C
+                  <div class="flex items-center gap-1.5">
+                    <button (click)="saveCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
+                      <i class="fas fa-save text-base"></i>
                     </button>
-                    <button type="button"
-                      (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'production' })"
-                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
-                      [ngClass]="draft!.scope === 'production' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
-                      title="Módulo de producción (pagable)">
-                      P
-                    </button>
-                    <button type="button"
-                      (click)="updateCatalogDraft(m.key, { isDevMode: true, scope: 'dev' })"
-                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
-                      [ngClass]="draft!.scope === 'dev' ? 'bg-amber-500 text-white' : 'border border-amber-300 text-amber-700 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/30'"
-                      title="Solo superadmins">
-                      DEV
+                    <button (click)="cancelCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Cancelar">
+                      <i class="fas fa-times text-base"></i>
                     </button>
                   </div>
-                  <button (click)="saveCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
-                    <i class="fas fa-save text-base"></i>
-                  </button>
-                  <button (click)="cancelCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Cancelar">
-                    <i class="fas fa-times text-base"></i>
-                  </button>
                 }
               </div>
             }
