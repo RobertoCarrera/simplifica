@@ -384,21 +384,21 @@
                     <div class="flex items-center gap-1 flex-shrink-0 ml-auto">
                       <button type="button"
                         (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'core' })"
-                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        class="h-9 px-2.5 flex items-center justify-center rounded text-xs font-medium transition-colors"
                         [ngClass]="draft!.scope === 'core' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
                         title="Módulo core (siempre incluido)">
-                        C
+                        Core
                       </button>
                       <button type="button"
                         (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'production' })"
-                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        class="h-9 px-2.5 flex items-center justify-center rounded text-xs font-medium transition-colors"
                         [ngClass]="draft!.scope === 'production' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
                         title="Módulo de producción (pagable)">
-                        P
+                        Producción
                       </button>
                       <button type="button"
                         (click)="updateCatalogDraft(m.key, { isDevMode: true, scope: 'dev' })"
-                        class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                        class="h-9 px-2.5 flex items-center justify-center rounded text-xs font-medium transition-colors"
                         [ngClass]="draft!.scope === 'dev' ? 'bg-amber-500 text-white' : 'border border-amber-300 text-amber-700 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/30'"
                         title="Solo superadmins">
                         DEV
