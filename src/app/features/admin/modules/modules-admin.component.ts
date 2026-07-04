@@ -413,9 +413,9 @@ export class ModulesAdminComponent implements OnInit {
       .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
-  async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube') {
+  async saveModuleCatalog(key: string, label: string, isDevMode: boolean, icon: string = 'fa-cube', scope: 'core' | 'production' | 'dev' = 'production') {
     try {
-      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode, icon));
+      await firstValueFrom(this.modulesService.adminUpdateModuleCatalog(key, label, isDevMode, icon, scope));
       await this.loadModulesCatalog();
       this.toast.success('Módulo actualizado', '"' + label + '" guardado.');
     } catch (e: any) {
@@ -423,16 +423,20 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
-  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean; icon: string }>>({});
+  editingCatalogDraft = signal<Record<string, { label: string; isDevMode: boolean; icon: string; scope: 'core' | 'production' | 'dev' }>>({});
   /** Key of the module whose icon picker is currently open in the Catálogo grid (null = closed). */
   catalogIconPickerOpen = signal<string | null>(null);
 
   startCatalogEdit(key: string, label: string, isDevMode: boolean, icon: string) {
-    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode, icon } });
+    // Derive scope from existing data: DEV flag wins, otherwise check if key is core_*.
+    const scope: 'core' | 'production' | 'dev' = isDevMode
+      ? 'dev'
+      : (key.startsWith('core_/') ? 'core' : 'production');
+    this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { label, isDevMode, icon, scope } });
     this.catalogIconPickerOpen.set(null);
   }
 
-  updateCatalogDraft(key: string, patch: Partial<{ label: string; isDevMode: boolean; icon: string }>) {
+  updateCatalogDraft(key: string, patch: Partial<{ label: string; isDevMode: boolean; icon: string; scope: 'core' | 'production' | 'dev' }>) {
     const current = this.editingCatalogDraft()[key];
     if (!current) return;
     this.editingCatalogDraft.set({ ...this.editingCatalogDraft(), [key]: { ...current, ...patch } });
@@ -469,7 +473,7 @@ export class ModulesAdminComponent implements OnInit {
     const draft = this.editingCatalogDraft()[key];
     if (!draft) return;
     if (!draft.label.trim()) { this.toast.error('Validación', 'El nombre es obligatorio.'); return; }
-    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode, draft.icon);
+    await this.saveModuleCatalog(key, draft.label.trim(), draft.isDevMode, draft.icon, draft.scope);
     const all = { ...this.editingCatalogDraft() };
     delete all[key];
     this.editingCatalogDraft.set(all);

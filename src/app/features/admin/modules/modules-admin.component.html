@@ -327,11 +327,11 @@
                     <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">DEV</span>
                   }
                   @if (isEditorEnabled()) {
-                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="text-sm px-2.5 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Editar módulo">
-                      <i class="fas fa-pen"></i>
+                    <button (click)="startCatalogEdit(m.key, m.label, m.is_dev_mode, $any(m).icon || 'fa-cube')" class="w-9 h-9 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Editar módulo">
+                      <i class="fas fa-pen text-base"></i>
                     </button>
-                    <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="text-sm px-2.5 py-1.5 rounded border border-red-200 text-red-600 bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
-                      <i class="fas fa-trash"></i>
+                    <button (click)="deleteModuleFromCatalog(m.key, m.label)" class="w-9 h-9 flex items-center justify-center rounded border border-red-200 text-red-600 bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors flex-shrink-0" title="Eliminar módulo del catálogo">
+                      <i class="fas fa-trash text-base"></i>
                     </button>
                   }
                 } @else {
@@ -364,15 +364,34 @@
                       </div>
                     }
                   </div>
-                  <label class="flex items-center gap-1 text-[10px] text-gray-700 dark:text-gray-200 flex-shrink-0 cursor-pointer">
-                    <input type="checkbox" [checked]="draft!.isDevMode" (change)="updateCatalogDraft(m.key, { isDevMode: $any($event.target).checked })" class="rounded text-amber-600" />
-                    <span class="font-medium">DEV</span>
-                  </label>
-                  <button (click)="saveCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
-                    <i class="fas fa-save text-[10px]"></i>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <button type="button"
+                      (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'core' })"
+                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                      [ngClass]="draft!.scope === 'core' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
+                      title="Módulo core (siempre incluido)">
+                      C
+                    </button>
+                    <button type="button"
+                      (click)="updateCatalogDraft(m.key, { isDevMode: false, scope: 'production' })"
+                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                      [ngClass]="draft!.scope === 'production' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30'"
+                      title="Módulo de producción (pagable)">
+                      P
+                    </button>
+                    <button type="button"
+                      (click)="updateCatalogDraft(m.key, { isDevMode: true, scope: 'dev' })"
+                      class="w-9 h-9 flex items-center justify-center rounded text-xs font-medium transition-colors"
+                      [ngClass]="draft!.scope === 'dev' ? 'bg-amber-500 text-white' : 'border border-amber-300 text-amber-700 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/30'"
+                      title="Solo superadmins">
+                      DEV
+                    </button>
+                  </div>
+                  <button (click)="saveCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0" title="Guardar">
+                    <i class="fas fa-save text-base"></i>
                   </button>
-                  <button (click)="cancelCatalogEdit(m.key)" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors flex-shrink-0" title="Cancelar">
-                    <i class="fas fa-times text-[10px]"></i>
+                  <button (click)="cancelCatalogEdit(m.key)" class="w-9 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0" title="Cancelar">
+                    <i class="fas fa-times text-base"></i>
                   </button>
                 }
               </div>
