@@ -659,9 +659,24 @@ export class ModulesAdminComponent implements OnInit {
           .filter((m: any) => !!(m as any).icon)
           .map((m: any) => [m.key, (m as any).icon])
       );
+      // Source of truth: the backend modules_catalog (so DEV modules and any
+      // new admin-created modules show up here too — SIDEBAR_CATALOG is
+      // just a fallback for keys not present in the catalog yet).
+      const catalogEntries = this.modulesCatalog().length > 0
+        ? this.modulesCatalog().map((m: any) => ({
+            key: m.key,
+            label: m.label,
+            icon: m.icon,
+            category: (m.scope === 'core' ? 'core' : 'production') as 'core' | 'production',
+          }))
+        : SIDEBAR_CATALOG.map((c) => ({ ...c }));
+      // Also include any SIDEBAR_CATALOG keys that aren't in modules_catalog
+      // (fallback for static core keys the admin hasn't cataloged yet).
+      const catalogKeys = new Set(catalogEntries.map((c) => c.key));
+      const staticFallbacks = SIDEBAR_CATALOG.filter((c) => !catalogKeys.has(c.key));
+
       this.sidebarOrderItems.set(
-        SIDEBAR_CATALOG
-          .filter((cat) => !devKeys.has(cat.key))
+        [...catalogEntries, ...staticFallbacks]
           .map((cat) => {
             const saved = orderMap.get(cat.key);
             return {
