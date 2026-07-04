@@ -342,7 +342,7 @@
                       (click)="toggleCatalogIconPicker(m.key); $event.stopPropagation()"
                       class="w-6 h-6 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
                       [class.border-blue-500]="catalogIconPickerOpen() === m.key"
-                      [class.border-gray-200 dark:border-gray-700]="catalogIconPickerOpen() !== m.key"
+                      [ngClass]="catalogIconPickerOpen() !== m.key ? 'border-gray-200 dark:border-gray-700' : ''"
                       [title]="'Cambiar icono'">
                       <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-xs text-blue-600'"></i>
                     </button>
