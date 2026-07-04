@@ -335,15 +335,15 @@
                     </button>
                   }
                 } @else {
-                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="flex-1 min-w-0 text-xs border border-gray-300 rounded px-2 py-1" />
+                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="flex-1 min-w-0 text-sm border border-gray-300 rounded px-2.5 py-1.5" />
                   <div class="relative flex-shrink-0">
                     <button type="button"
                       (click)="toggleCatalogIconPicker(m.key, $event); $event.stopPropagation()"
-                      class="w-6 h-6 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
+                      class="w-9 h-9 flex items-center justify-center rounded border bg-white dark:bg-gray-800 hover:bg-blue-50"
                       [class.border-blue-500]="catalogIconPickerOpen() === m.key"
                       [ngClass]="catalogIconPickerOpen() !== m.key ? 'border-gray-200 dark:border-gray-700' : ''"
                       [title]="'Cambiar icono'">
-                      <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-xs text-blue-600'"></i>
+                      <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-base text-blue-600'"></i>
                     </button>
                     @if (catalogIconPickerOpen() === m.key) {
                       <div class="fixed z-[9999] w-[420px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2" [style.top.px]="pickerPosition().top" [style.right.px]="pickerPosition().right" (click)="$event.stopPropagation()">
