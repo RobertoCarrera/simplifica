@@ -238,7 +238,7 @@ get isOwnerOrSuperAdmin(): boolean {
         private sanitizer: DomSanitizer,
         @Inject(UserModulesService) private userModulesService: UserModulesService,
         @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
-        @Inject(SupabaseModulesService) modulesService: SupabaseModulesService,
+        @Inject(SupabaseModulesService) public modulesService: SupabaseModulesService,
         private invoicesService: SupabaseInvoicesService,
         private customersService: SupabaseCustomersService,
         private permissionsService: SupabasePermissionsService,
@@ -1130,7 +1130,7 @@ async updateProfile() {
                 this.allowedModuleKeysSet = new Set(mods.filter(m => m.enabled).map(m => m.key));
                 this.modulesDiagnosticsLoading = false;
             },
-            error: (err) => {
+            error: (err: any) => {
                 console.warn('Error cargando módulos efectivos:', err);
                 this.effectiveModules = null;
                 this.allowedModuleKeysSet = new Set(); // mark as loaded but no permissions
