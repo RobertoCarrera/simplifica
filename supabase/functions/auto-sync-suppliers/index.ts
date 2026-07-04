@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
     // )
     // For first run (never synced), updated_at is null OR very old.
     const { data: suppliers, error } = await supabase
-      .from("suppliers")
+      .from("catalog_suppliers")
       .select("id, name, adapter_type, base_url, sync_config, auto_sync_frequency, updated_at")
       .eq("auto_sync_enabled", true)
       .or(`updated_at.is.null,updated_at.lt.${oneWeekAgo}`);
@@ -266,7 +266,7 @@ async function syncOne(supabase: any, supplier: any) {
     if (!error) upserted += batch.length;
   }
 
-  await supabase.from("suppliers").update({ updated_at: new Date().toISOString() }).eq("id", supplier.id);
+  await supabase.from("catalog_suppliers").update({ updated_at: new Date().toISOString() }).eq("id", supplier.id);
 
   return { fetched: allProducts.length, cached: upserted };
 }

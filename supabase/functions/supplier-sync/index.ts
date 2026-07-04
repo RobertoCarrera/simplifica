@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
 
     // 6. Load supplier AND verify ownership in single query (tenant isolation)
     const { data: supplier, error: supplierError } = await supabase
-      .from("suppliers")
+      .from("catalog_suppliers")
       .select("*")
       .eq("id", supplier_id)
       .eq("company_id", userCompanyId)
@@ -360,7 +360,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    await supabase.from("suppliers").update({
+    await supabase.from("catalog_suppliers").update({
       updated_at: new Date().toISOString(),
     }).eq("id", supplier_id);
 
