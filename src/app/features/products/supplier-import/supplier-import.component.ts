@@ -246,14 +246,14 @@ export class SupplierImportComponent {
     const find = (...candidates: string[]): string | undefined =>
       headers[lower.findIndex((h) => candidates.some((c) => h.includes(c)))];
 
-    this.mapping.name = find('name', 'nombre', 'product', 'producto', 'descripcion');
-    this.mapping.sku = find('sku', 'reference', 'referencia', 'codigo', 'code', 'id');
-    this.mapping.description = find('description', 'descripcion', 'detalle', 'detail');
-    this.mapping.brand = find('brand', 'marca', 'fabricante', 'manufacturer');
-    this.mapping.category = find('category', 'categoria', 'tipo', 'type');
-    this.mapping.model = find('model', 'modelo');
-    this.mapping.price = find('price', 'precio', 'cost', 'coste', 'pvp', 'retail');
-    this.mapping.stock = find('stock', 'quantity', 'cantidad', 'qty', 'available');
+    this.mapping['name'] = find('name', 'nombre', 'product', 'producto', 'descripcion');
+    this.mapping['sku'] = find('sku', 'reference', 'referencia', 'codigo', 'code', 'id');
+    this.mapping['description'] = find('description', 'descripcion', 'detalle', 'detail');
+    this.mapping['brand'] = find('brand', 'marca', 'fabricante', 'manufacturer');
+    this.mapping['category'] = find('category', 'categoria', 'tipo', 'type');
+    this.mapping['model'] = find('model', 'modelo');
+    this.mapping['price'] = find('price', 'precio', 'cost', 'coste', 'pvp', 'retail');
+    this.mapping['stock'] = find('stock', 'quantity', 'cantidad', 'qty', 'available');
   }
 
   // ─── Selection ───────────────────────────────────────────────────────

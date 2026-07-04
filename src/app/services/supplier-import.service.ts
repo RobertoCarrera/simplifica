@@ -1,6 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { SimpleSupabaseService } from './simple-supabase.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
@@ -22,14 +21,7 @@ export interface SupplierProductDraft {
 }
 
 export interface FieldMapping {
-  name?: string;
-  description?: string;
-  brand?: string;
-  category?: string;
-  model?: string;
-  price?: string;
-  stock?: string;
-  sku?: string;
+  [key: string]: string | undefined;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,7 +30,79 @@ export class SupplierImportService {
   private auth = inject(AuthService);
   private toastService = inject(ToastService);
 
-  // ─── CSV Parsing (no external dependency) ───────────────────────────────
+  supplierName = '';
+  fileName = '';
+  rawText = '';
+  headers = signal<string[]>([]);
+  parsedRows = signal<ParsedCSVRow[]>([]);
+
+  mapping: FieldMapping = {};
+  marginPercent = 0;
+  rounding: 'round' | 'ceil' | 'floor' | 'none' = 'round';
+
+  selectedIds = signal<Set<number>>(new Set());
+  isImporting = signal(false);
+
+  searchTerm = signal('');
+  filteredProducts = computed(() => {
+    const term = this.searchTerm().toLowerCase().trim();
+    if (!term) return this.parsedRows();
+    return this.parsedRows().filter((p) =>
+      p['name']?.toLowerCase().includes(term) ||
+      p['description']?.toLowerCase().includes(term) ||
+      p['brand']?.toLowerCase().includes(term) ||
+      p['category']?.toLowerCase().includes(term) ||
+      p['model']?.toLowerCase().includes(term));
+  });
+
+  allSelected = computed(() => {
+    const total = this.parsedRows().length;
+    return total > 0 && this.selectedIds().size === total;
+  });
+
+  // ─── All DB operations go through catalog-crud Edge Function ───────────
+  // This bypasses the broken PostgREST schema cache
+  private projectUrl = '';
+  private accessToken = '';
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const client = this.supabase.getClient();
+    const { data: session } = await client.auth.getSession();
+    this.accessToken = session.session?.access_token || '';
+    this.projectUrl = (this.supabase as any).supabaseUrl || (client as any).supabaseUrl || '';
+    return {
+      'Authorization': `Bearer ${this.accessToken}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  private async callCrud(action: string, options: {
+    method?: string;
+    body?: any;
+    queryParams?: Record<string, string>;
+  } = {}): Promise<any> {
+    const headers = await this.getAuthHeaders();
+    let url = `${this.projectUrl}/functions/v1/catalog-crud/${action}`;
+    if (options.queryParams) {
+      const qs = new URLSearchParams(options.queryParams).toString();
+      if (qs) url += `?${qs}`;
+    }
+    const fetchOptions: RequestInit = {
+      method: options.method || 'POST',
+      headers,
+    };
+    if (options.body) {
+      fetchOptions.body = JSON.stringify(options.body);
+    }
+    const response = await fetch(url, fetchOptions);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Unknown' }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  // ─── CSV Parsing ──────────────────────────────────────────────────────────
 
   parseCSV(text: string, delimiter = ','): { headers: string[]; rows: ParsedCSVRow[] } {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -89,14 +153,14 @@ export class SupplierImportService {
   mapRowsToDrafts(rows: ParsedCSVRow[], mapping: FieldMapping): SupplierProductDraft[] {
     return rows.map((row) => {
       const draft: SupplierProductDraft = {
-        external_id: mapping.sku ? (row[mapping.sku] || '').trim() : '',
-        name: mapping.name ? (row[mapping.name] || '').trim() : '',
-        description: mapping.description ? (row[mapping.description] || '').trim() || null : null,
-        brand: mapping.brand ? (row[mapping.brand] || '').trim() || null : null,
-        category: mapping.category ? (row[mapping.category] || '').trim() || null : null,
-        model: mapping.model ? (row[mapping.model] || '').trim() || null : null,
-        supplier_price: mapping.price ? this.parseNumber(row[mapping.price]) : 0,
-        stock_quantity: mapping.stock ? this.parseNumber(row[mapping.stock]) : 0,
+        external_id: (mapping['sku'] && row[mapping['sku']] || '').trim(),
+        name: (mapping['name'] && row[mapping['name']] || '').trim(),
+        description: (mapping['description'] && row[mapping['description']] || '').trim() || null,
+        brand: (mapping['brand'] && row[mapping['brand']] || '').trim() || null,
+        category: (mapping['category'] && row[mapping['category']] || '').trim() || null,
+        model: (mapping['model'] && row[mapping['model']] || '').trim() || null,
+        supplier_price: mapping['price'] ? this.parseNumber(row[mapping['price']]) : 0,
+        stock_quantity: mapping['stock'] ? this.parseNumber(row[mapping['stock']]) : 0,
         raw_data: { ...row },
       };
       return draft;
@@ -105,7 +169,6 @@ export class SupplierImportService {
 
   private parseNumber(value: string): number {
     if (!value) return 0;
-    // Handle European format (1.234,56) and US format (1,234.56)
     const cleaned = value.replace(/[^\d,.-]/g, '');
     if (cleaned.includes(',') && cleaned.includes('.')) {
       return parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
@@ -128,34 +191,118 @@ export class SupplierImportService {
     }
   }
 
-  // ─── Create supplier + cache products ────────────────────────────────────
+  // ─── REST API Integration (via catalog-crud EF, NOT PostgREST) ──────────
+
+  async createApiSupplier(
+    name: string,
+    baseUrl: string,
+    syncConfig: Record<string, any>,
+    fieldMappings: { source_path: string; target_field: string; transform?: string | null; is_required?: boolean }[],
+  ): Promise<string> {
+    const result = await this.callCrud('create', {
+      method: 'POST',
+      body: {
+        name,
+        adapter_type: 'rest_api',
+        base_url: baseUrl,
+        sync_config: syncConfig,
+      },
+    });
+    if (result.error) throw new Error(result.error);
+    const supplierId = result.data?.id;
+    if (!supplierId) throw new Error('No supplier ID returned');
+
+    if (fieldMappings.length > 0) {
+      await this.callCrud('save_mapping', {
+        method: 'POST',
+        queryParams: { supplier_id: supplierId },
+        body: { mappings: fieldMappings },
+      });
+    }
+    return supplierId;
+  }
+
+  async updateApiSupplier(
+    supplierId: string,
+    baseUrl: string,
+    syncConfig: Record<string, any>,
+    fieldMappings: { source_path: string; target_field: string; transform?: string | null; is_required?: boolean }[],
+  ): Promise<void> {
+    const result = await this.callCrud('update', {
+      method: 'POST',
+      queryParams: { id: supplierId },
+      body: {
+        base_url: baseUrl,
+        sync_config: syncConfig,
+      },
+    });
+    if (result.error) throw new Error(result.error);
+
+    if (fieldMappings.length > 0) {
+      const r = await this.callCrud('save_mapping', {
+        method: 'POST',
+        queryParams: { supplier_id: supplierId },
+        body: { mappings: fieldMappings },
+      });
+      if (r.error) throw new Error(r.error);
+    }
+  }
+
+  async testApiConnection(baseUrl: string, syncConfig: Record<string, any>): Promise<{ ok: boolean; sampleData: any; error?: string }> {
+    try {
+      const result = await this.callCrud('test_connection', {
+        method: 'POST',
+        body: { base_url: baseUrl, sync_config: syncConfig },
+      });
+      if (!result.ok) {
+        return { ok: false, sampleData: null, error: result.error || 'Connection failed' };
+      }
+      return { ok: true, sampleData: result.data };
+    } catch (error: any) {
+      return { ok: false, sampleData: null, error: error.message || 'Connection failed' };
+    }
+  }
+
+  async syncFromApi(supplierId: string): Promise<{ fetched: number; cached: number; pages: number }> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.projectUrl}/functions/v1/supplier-sync-v4`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ supplier_id: supplierId }),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Sync failed: ${errorBody}`);
+    }
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    return { fetched: result.fetched, cached: result.cached, pages: result.pages };
+  }
 
   async createSupplierAndCache(name: string, drafts: SupplierProductDraft[]): Promise<string> {
     const companyId = this.auth.companyId();
     if (!companyId) throw new Error('No company_id available');
 
-    const client = this.supabase.getClient();
-
-    // 1. Create supplier
-    const { data: supplier, error: supplierError } = await client
-      .from('catalog_suppliers')
-      .insert({
+    const createResult = await this.callCrud('create', {
+      method: 'POST',
+      body: {
         company_id: companyId,
         name,
         adapter_type: 'csv_upload',
         is_active: true,
-      })
-      .select('id')
-      .single();
+      },
+    });
+    if (createResult.error || !createResult.data) {
+      throw new Error(createResult.error || 'Failed to create supplier');
+    }
+    const supplierId = createResult.data.id;
 
-    if (supplierError || !supplier) throw supplierError || new Error('Failed to create supplier');
-
-    // 2. Bulk insert cache products (batch of 100)
+    const client = this.supabase.getClient();
     const batchSize = 100;
     for (let i = 0; i < drafts.length; i += batchSize) {
       const batch = drafts.slice(i, i + batchSize);
       const cacheRows = batch.map((d) => ({
-        supplier_id: supplier.id,
+        supplier_id: supplierId,
         company_id: companyId,
         external_id: d.external_id || `row-${i + batch.indexOf(d)}`,
         name: d.name,
@@ -175,10 +322,10 @@ export class SupplierImportService {
       if (cacheError) throw cacheError;
     }
 
-    return supplier.id;
+    return supplierId;
   }
 
-  // ─── Import cached products to CRM products table ────────────────────────
+  // ─── Import cache products to actual products table ──────────────────
 
   async importToProducts(
     cacheIds: string[],
@@ -190,7 +337,6 @@ export class SupplierImportService {
 
     const client = this.supabase.getClient();
 
-    // Fetch selected cache rows
     const { data: cacheRows, error: fetchError } = await client
       .from('supplier_products_cache')
       .select('*')
@@ -205,7 +351,6 @@ export class SupplierImportService {
     for (const row of cacheRows) {
       const finalPrice = this.applyMargin(row.supplier_price || 0, marginPercent, rounding);
 
-      // Check if product already exists (by external_id / model)
       const { data: existing } = await client
         .from('products')
         .select('id')
@@ -215,7 +360,6 @@ export class SupplierImportService {
         .maybeSingle();
 
       if (existing) {
-        // Update existing product
         const { error: updateError } = await client
           .from('products')
           .update({
@@ -229,7 +373,6 @@ export class SupplierImportService {
 
         if (updateError) { errors++; continue; }
 
-        // Mark as imported
         await client
           .from('supplier_products_cache')
           .update({ imported_at: new Date().toISOString(), imported_product_id: existing.id })
@@ -237,7 +380,6 @@ export class SupplierImportService {
 
         imported++;
       } else {
-        // Create new product
         const { data: newProduct, error: insertError } = await client
           .from('products')
           .insert({
@@ -265,260 +407,124 @@ export class SupplierImportService {
     return { imported, errors };
   }
 
-  // ─── Get suppliers for current company ───────────────────────────────────
-
   getSuppliers(): Observable<any[]> {
     const companyId = this.auth.companyId();
     if (!companyId) return from([[]]);
     return from(
-      this.supabase.getClient()
-        .from('catalog_suppliers')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false })
-        .then(({ data, error }) => {
-          if (error) throw error;
-          return data || [];
-        })
+      (async () => {
+        const result = await this.callCrud('list');
+        return result.data || [];
+      })()
     );
   }
-
-  // ─── Get cache products for a supplier ───────────────────────────────────
 
   getCacheProducts(supplierId: string): Observable<any[]> {
-    const companyId = this.auth.companyId();
-    if (!companyId) return from([[]]);
     return from(
-      this.supabase.getClient()
-        .from('supplier_products_cache')
-        .select('*')
-        .eq('supplier_id', supplierId)
-        .eq('company_id', companyId)
-        .order('name', { ascending: true })
-        .then(({ data, error }) => {
-          if (error) throw error;
-          return data || [];
-        })
+      (async () => {
+        const result = await this.callCrud('list_cache', {
+          method: 'GET',
+          queryParams: { supplier_id: supplierId },
+        });
+        return result.data || [];
+      })()
     );
   }
 
-  // ─── Snippets (pre-built supplier configs) ────────────────────────────────
-
-  /**
-   * Load all active supplier snippets from the DB.
-   * Each snippet has base_url + sync_config + field_mappings pre-configured.
-   */
-  getSnippets(): Observable<any[]> {
-    return from(
-      this.supabase.getClient()
-        .from('supplier_snippets')
-        .select('*')
-        .eq('is_active', true)
-        .order('name', { ascending: true })
-        .then(({ data, error }) => {
-          if (error) throw error;
-          return data || [];
-        })
-    );
-  }
-
-  // ─── REST API Integration ────────────────────────────────────────────────
-
-  /**
-   * Create a supplier with REST API config (not CSV).
-   * Saves base_url + sync_config + field_mappings to DB.
-   */
-  async createApiSupplier(
-    name: string,
-    baseUrl: string,
-    syncConfig: Record<string, any>,
-    fieldMappings: { source_path: string; target_field: string; transform?: string | null; is_required?: boolean }[],
-  ): Promise<string> {
-    const companyId = this.auth.companyId();
-    if (!companyId) throw new Error('No company_id available');
-
-    const client = this.supabase.getClient();
-
-    // 1. Create supplier with API config
-    const { data: supplier, error: supplierError } = await client
-      .from('catalog_suppliers')
-      .insert({
-        company_id: companyId,
-        name,
-        adapter_type: 'rest_api',
-        base_url: baseUrl,
-        sync_config: syncConfig,
-        is_active: true,
-      })
-      .select('id')
-      .single();
-
-    if (supplierError || !supplier) throw supplierError || new Error('Failed to create supplier');
-
-    // 2. Save field mappings
-    if (fieldMappings.length > 0) {
-      const mappingRows = fieldMappings.map((m) => ({
-        supplier_id: supplier.id,
-        source_path: m.source_path,
-        target_field: m.target_field,
-        transform: m.transform || null,
-        is_required: m.is_required || false,
-      }));
-
-      const { error: mappingError } = await client
-        .from('supplier_field_mappings')
-        .insert(mappingRows);
-
-      if (mappingError) throw mappingError;
-    }
-
-    return supplier.id;
-  }
-
-  /**
-   * Update an existing supplier's API config + field mappings.
-   */
-  async updateApiSupplier(
-    supplierId: string,
-    baseUrl: string,
-    syncConfig: Record<string, any>,
-    fieldMappings: { source_path: string; target_field: string; transform?: string | null; is_required?: boolean }[],
-  ): Promise<void> {
-    const client = this.supabase.getClient();
-
-    // Update supplier
-    const { error: supplierError } = await client
-      .from('catalog_suppliers')
-      .update({ base_url: baseUrl, sync_config: syncConfig, updated_at: new Date().toISOString() })
-      .eq('id', supplierId);
-
-    if (supplierError) throw supplierError;
-
-    // Replace field mappings (delete + insert)
-    await client.from('supplier_field_mappings').delete().eq('supplier_id', supplierId);
-
-    if (fieldMappings.length > 0) {
-      const mappingRows = fieldMappings.map((m) => ({
-        supplier_id: supplierId,
-        source_path: m.source_path,
-        target_field: m.target_field,
-        transform: m.transform || null,
-        is_required: m.is_required || false,
-      }));
-
-      const { error: mappingError } = await client
-        .from('supplier_field_mappings')
-        .insert(mappingRows);
-
-      if (mappingError) throw mappingError;
-    }
-  }
-
-  /**
-   * Test API connection — makes a single fetch to verify the URL + auth work.
-   * Returns the first page of data so the user can see the structure.
-   */
-  async testApiConnection(baseUrl: string, syncConfig: Record<string, any>): Promise<{ ok: boolean; sampleData: any; error?: string }> {
-    try {
-      const cfg = syncConfig as any;
-      const authHeaders: Record<string, string> = { ...(cfg.headers || {}), Accept: 'application/json' };
-      const authQueryParams: Record<string, string> = {};
-
-      switch (cfg.auth_type) {
-        case 'bearer':
-          authHeaders['Authorization'] = `Bearer ${cfg.auth_token || ''}`;
-          break;
-        case 'api_key_header':
-          authHeaders[cfg.auth_header_name || 'X-API-Key'] = cfg.auth_token || '';
-          break;
-        case 'api_key_query':
-          authQueryParams[cfg.auth_query_param || 'api_key'] = cfg.auth_token || '';
-          break;
-      }
-
-      const url = new URL(baseUrl);
-      for (const [k, v] of Object.entries(authQueryParams)) {
-        url.searchParams.set(k, v);
-      }
-      // Add first page params for test
-      if (cfg.pagination === 'page') {
-        url.searchParams.set(cfg.page_param || 'page', '1');
-        url.searchParams.set(cfg.page_size_param || 'pageSize', '5');
-      } else if (cfg.pagination === 'offset') {
-        url.searchParams.set('offset', '0');
-        url.searchParams.set('limit', '5');
-      }
-
-      const response = await fetch(url.toString(), { method: 'GET', headers: authHeaders });
-
-      if (!response.ok) {
-        return { ok: false, sampleData: null, error: `HTTP ${response.status}: ${response.statusText}` };
-      }
-
-      const json = await response.json();
-
-      // Try to extract products array
-      const products = this.resolvePath(json, cfg.response_path || '');
-      const sampleArray = Array.isArray(products) ? products.slice(0, 3) : [json];
-
-      return { ok: true, sampleData: sampleArray };
-    } catch (error: any) {
-      return { ok: false, sampleData: null, error: error.message || 'Connection failed' };
-    }
-  }
-
-  /**
-   * Trigger the supplier-sync Edge Function to fetch all products from the API.
-   */
-  async syncFromApi(supplierId: string): Promise<{ fetched: number; cached: number; pages: number }> {
-    const client = this.supabase.getClient();
-    const { data: session } = await client.auth.getSession();
-    const accessToken = session.session?.access_token;
-
-    // Get the Supabase project URL from the client instance
-    const projectUrl = (this.supabase as any).supabaseUrl || (client as any).supabaseUrl || '';
-    if (!projectUrl) throw new Error('Could not determine Supabase project URL');
-
-    const response = await fetch(`${projectUrl}/functions/v1/supplier-sync-v4`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ supplier_id: supplierId }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Sync failed: ${errorBody}`);
-    }
-
-    const result = await response.json();
-    if (result.error) throw new Error(result.error);
-
-    return { fetched: result.fetched, cached: result.cached, pages: result.pages };
-  }
-
-  /**
-   * Get field mappings for a supplier.
-   */
   getFieldMappings(supplierId: string): Observable<any[]> {
     return from(
-      this.supabase.getClient()
-        .from('supplier_field_mappings')
-        .select('*')
-        .eq('supplier_id', supplierId)
-        .order('target_field', { ascending: true })
-        .then(({ data, error }) => {
-          if (error) throw error;
-          return data || [];
-        })
+      (async () => {
+        const result = await this.callCrud('get_mapping', {
+          method: 'GET',
+          queryParams: { supplier_id: supplierId },
+        });
+        return result.data || [];
+      })()
     );
   }
 
-  // ─── JSON path resolver (mirrors the Edge Function logic) ────────────────
+  getSnippets(): Observable<any[]> {
+    return from(
+      (async () => {
+        const result = await this.callCrud('get_snippets', { method: 'GET' });
+        return result.data || [];
+      })()
+    );
+  }
 
-  private resolvePath(obj: any, path: string): any {
+  async deleteSupplier(supplierId: string): Promise<void> {
+    const result = await this.callCrud('delete', {
+      method: 'POST',
+      queryParams: { id: supplierId },
+    });
+    if (result.error) throw new Error(result.error);
+  }
+
+  async updateAutoSync(supplierId: string, enabled: boolean, frequency: 'hourly' | 'daily' | 'weekly'): Promise<void> {
+    const result = await this.callCrud('update', {
+      method: 'POST',
+      queryParams: { id: supplierId },
+      body: {
+        auto_sync_enabled: enabled,
+        auto_sync_frequency: frequency,
+      },
+    });
+    if (result.error) throw new Error(result.error);
+  }
+
+  // ─── JSON path resolver + auto-detect ────────────────────────────────
+
+  extractJsonPaths(sample: any, maxDepth = 4): string[] {
+    const paths = new Set<string>();
+    const visit = (obj: any, prefix: string, depth: number) => {
+      if (depth > maxDepth || obj == null) return;
+      if (Array.isArray(obj)) {
+        if (obj.length > 0) visit(obj[0], prefix, depth + 1);
+        return;
+      }
+      if (typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+          const path = prefix ? `${prefix}.${key}` : key;
+          paths.add(path);
+          visit(obj[key], path, depth + 1);
+        }
+      }
+    };
+    visit(sample, '', 0);
+    return Array.from(paths).sort();
+  }
+
+  suggestMappings(jsonPaths: string[]): { [targetField: string]: string | null } {
+    const lower = jsonPaths.map((p) => ({ path: p, lower: p.toLowerCase() }));
+
+    const find = (...candidates: string[]): string | null => {
+      for (const c of candidates) {
+        const exact = lower.find((p) => p.lower === c);
+        if (exact) return exact.path;
+      }
+      for (const c of candidates) {
+        const partial = lower.find((p) => p.lower.endsWith(c) || p.lower.endsWith('.' + c));
+        if (partial) return partial.path;
+      }
+      for (const c of candidates) {
+        const contains = lower.find((p) => p.lower.includes(c));
+        if (contains) return contains.path;
+      }
+      return null;
+    };
+
+    return {
+      name: find('name', 'title', 'productname', 'product_name', 'nombre', 'titulo'),
+      external_id: find('sku', 'reference', 'referencia', 'codigo', 'code', 'id'),
+      description: find('description', 'descripcion', 'detalle', 'detail'),
+      brand: find('brand', 'marca', 'fabricante', 'manufacturer'),
+      category: find('category', 'categoria', 'tipo', 'type', 'group'),
+      model: find('model', 'modelo'),
+      price: find('price', 'cost', 'precio', 'coste', 'pvp', 'retail', 'amount'),
+      stock: find('stock', 'quantity', 'qty', 'available', 'inventory', 'cantidad'),
+    };
+  }
+
+  resolvePath(obj: any, path: string): any {
     if (!path) return obj;
     let current = obj;
     for (const part of path.split('.')) {
@@ -534,86 +540,5 @@ export class SupplierImportService {
       }
     }
     return current;
-  }
-
-  // ─── Auto-detect field mappings from sample data ──────────────────────────
-
-  /**
-   * Extract all JSON paths from a sample product (or array of products).
-   * Returns paths like "name", "pricing.retail", "specs[0].weight"
-   */
-  extractJsonPaths(sample: any, maxDepth = 4): string[] {
-    const paths = new Set<string>();
-    const visit = (obj: any, prefix: string, depth: number) => {
-      if (depth > maxDepth || obj == null) return;
-      if (Array.isArray(obj)) {
-        // Only inspect first item of arrays (representative)
-        if (obj.length > 0) visit(obj[0], prefix, depth + 1);
-        return;
-      }
-      if (typeof obj === 'object') {
-        for (const key of Object.keys(obj)) {
-          const path = prefix ? `${prefix}.${key}` : key;
-          paths.add(path);
-          // Recurse but cap depth
-          visit(obj[key], path, depth + 1);
-        }
-      }
-    };
-    visit(sample, '', 0);
-    return Array.from(paths).sort();
-  }
-
-  /**
-   * Suggest field mappings based on heuristic matching of path names
-   * against CRM field names. Returns suggested source_path for each CRM field.
-   */
-  suggestMappings(jsonPaths: string[]): { [targetField: string]: string | null } {
-    const lower = jsonPaths.map((p) => ({ path: p, lower: p.toLowerCase() }));
-
-    const find = (...candidates: string[]): string | null => {
-      // Try exact match first
-      for (const c of candidates) {
-        const exact = lower.find((p) => p.lower === c);
-        if (exact) return exact.path;
-      }
-      // Then partial match (path ends with candidate or contains candidate)
-      for (const c of candidates) {
-        const partial = lower.find((p) => p.lower.endsWith(c) || p.lower.endsWith('.' + c));
-        if (partial) return partial.path;
-      }
-      // Then broader match (contains)
-      for (const c of candidates) {
-        const contains = lower.find((p) => p.lower.includes(c));
-        if (contains) return contains.path;
-      }
-      return null;
-    };
-
-    return {
-      name: find('name', 'title', 'productname', 'product_name', 'nombre', 'titulo'),
-      external_id: find('sku', 'id', 'code', 'reference', 'ref', 'codigo', 'referencia'),
-      description: find('description', 'desc', 'descripcion', 'details', 'summary'),
-      brand: find('brand', 'manufacturer', 'marca', 'fabricante'),
-      category: find('category', 'cat', 'categoria', 'tipo', 'type', 'group'),
-      model: find('model', 'modelo', 'part_number', 'mpn', 'sku'),
-      price: find('price', 'cost', 'precio', 'coste', 'pvp', 'retail', 'amount'),
-      stock: find('stock', 'quantity', 'qty', 'available', 'inventory', 'cantidad'),
-    };
-  }
-
-  // ─── Auto-sync configuration ──────────────────────────────────────────────
-
-  /**
-   * Update the auto_sync_enabled + auto_sync_frequency for a supplier.
-   * The pg_cron job reads these and syncs accordingly.
-   */
-  async updateAutoSync(supplierId: string, enabled: boolean, frequency: 'hourly' | 'daily' | 'weekly'): Promise<void> {
-    const client = this.supabase.getClient();
-    const { error } = await client
-      .from('catalog_suppliers')
-      .update({ auto_sync_enabled: enabled, auto_sync_frequency: frequency })
-      .eq('id', supplierId);
-    if (error) throw error;
   }
 }
