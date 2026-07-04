@@ -264,7 +264,7 @@ export class SuppliersListComponent {
       const client = (this.importService as any).supabase.getClient();
       await client.from('supplier_products_cache').delete().eq('supplier_id', supplier.id);
       await client.from('supplier_field_mappings').delete().eq('supplier_id', supplier.id);
-      const { error } = await client.from('suppliers').delete().eq('id', supplier.id);
+      const { error } = await client.from('catalog_suppliers').delete().eq('id', supplier.id);
       if (error) throw error;
 
       this.toastService.success('Eliminado', `Proveedor "${supplier.name}" eliminado`);

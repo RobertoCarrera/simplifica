@@ -138,7 +138,7 @@ export class SupplierImportService {
 
     // 1. Create supplier
     const { data: supplier, error: supplierError } = await client
-      .from('suppliers')
+      .from('catalog_suppliers')
       .insert({
         company_id: companyId,
         name,
@@ -272,7 +272,7 @@ export class SupplierImportService {
     if (!companyId) return from([[]]);
     return from(
       this.supabase.getClient()
-        .from('suppliers')
+        .from('catalog_suppliers')
         .select('*')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
@@ -341,7 +341,7 @@ export class SupplierImportService {
 
     // 1. Create supplier with API config
     const { data: supplier, error: supplierError } = await client
-      .from('suppliers')
+      .from('catalog_suppliers')
       .insert({
         company_id: companyId,
         name,
@@ -388,7 +388,7 @@ export class SupplierImportService {
 
     // Update supplier
     const { error: supplierError } = await client
-      .from('suppliers')
+      .from('catalog_suppliers')
       .update({ base_url: baseUrl, sync_config: syncConfig, updated_at: new Date().toISOString() })
       .eq('id', supplierId);
 
@@ -611,7 +611,7 @@ export class SupplierImportService {
   async updateAutoSync(supplierId: string, enabled: boolean, frequency: 'hourly' | 'daily' | 'weekly'): Promise<void> {
     const client = this.supabase.getClient();
     const { error } = await client
-      .from('suppliers')
+      .from('catalog_suppliers')
       .update({ auto_sync_enabled: enabled, auto_sync_frequency: frequency })
       .eq('id', supplierId);
     if (error) throw error;
