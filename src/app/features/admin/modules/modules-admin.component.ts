@@ -449,6 +449,8 @@ export class ModulesAdminComponent implements OnInit {
       return;
     }
     this.catalogIconPickerOpen.set(key);
+    // Reset the search box so previous queries don't linger when reopening.
+    this.iconSearchQuery.set('');
     // Capture the button's viewport-relative position so we can render the
     // popup as position:fixed (which escapes any stacking-context the
     // sidebar creates and won't get clipped by ancestor overflow).
