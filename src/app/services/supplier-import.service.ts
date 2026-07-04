@@ -479,7 +479,7 @@ export class SupplierImportService {
     const projectUrl = (this.supabase as any).supabaseUrl || (client as any).supabaseUrl || '';
     if (!projectUrl) throw new Error('Could not determine Supabase project URL');
 
-    const response = await fetch(`${projectUrl}/functions/v1/supplier-sync-v3`, {
+    const response = await fetch(`${projectUrl}/functions/v1/supplier-sync-v4`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
