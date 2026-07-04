@@ -238,7 +238,7 @@ get isOwnerOrSuperAdmin(): boolean {
         private sanitizer: DomSanitizer,
         @Inject(UserModulesService) private userModulesService: UserModulesService,
         @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
-        @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
+        @Inject(SupabaseModulesService) modulesService: SupabaseModulesService,
         private invoicesService: SupabaseInvoicesService,
         private customersService: SupabaseCustomersService,
         private permissionsService: SupabasePermissionsService,
