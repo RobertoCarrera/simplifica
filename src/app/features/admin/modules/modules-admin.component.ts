@@ -290,6 +290,17 @@ export class ModulesAdminComponent implements OnInit {
     return 'fa-cube';
   }
 
+  /** Look up the scope (core/production/dev) for a module key. */
+  moduleScope(key: string): 'core' | 'production' | 'dev' {
+    const fromCatalog = this.modulesCatalog().find((m: any) => m.key === key);
+    return ((fromCatalog as any)?.scope ?? 'production') as 'core' | 'production' | 'dev';
+  }
+
+  /** True for modules the admin can edit/delete (not core). */
+  canEditCatalogRow(key: string): boolean {
+    return this.moduleScope(key) !== 'core';
+  }
+
   get availableModuleKeys(): string[] {
     const visible = this.visibleModules().map((m) => m.module_key);
     if (visible.length > 0) return visible;
@@ -858,6 +869,9 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   isModuleInPlan(plan: Plan, moduleKey: string): boolean {
+    // Core modules are intrinsically included in every plan — they cannot
+    // be toggled off, but should always render as "on" in the matrix.
+    if (this.moduleScope(moduleKey) === 'core') return true;
     return plan.included_modules.includes(moduleKey);
   }
 
@@ -867,6 +881,8 @@ export class ModulesAdminComponent implements OnInit {
    * On error, reverts and shows a toast.
    */
   async toggleModuleInPlan(plan: Plan, moduleKey: string) {
+    // Core modules are locked on — no toggle.
+    if (this.moduleScope(moduleKey) === 'core') return;
     const wasIncluded = this.isModuleInPlan(plan, moduleKey);
     const wantIncluded = !wasIncluded;
     const key = `${plan.id}:${moduleKey}`;
