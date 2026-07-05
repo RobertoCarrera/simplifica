@@ -357,7 +357,7 @@
                   }
                 } @else {
                   <!-- Edit mode: label input + icon picker -->
-                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="w-full text-sm border border-gray-300 rounded px-2.5 py-1.5" />
+                  <input type="text" [value]="draft!.label" (input)="updateCatalogDraft(m.key, { label: $any($event.target).value })" class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                   <div class="flex items-center gap-1.5">
                     <div class="relative flex-shrink-0">
                       <button type="button"
@@ -444,22 +444,22 @@
         </div>
 
         @if (isEditorEnabled() && isAddonEditorOpen()) {
-          <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4">
+          <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-5 mb-4">
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
               {{ newAddonMode() ? 'Crear add-on' : 'Editar ' + (editingAddon()?.name ?? '') }}
             </h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label class="block">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Identificador (id)</span>
-                <input type="text" [value]="editingAddonDraft()?.id ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })" [disabled]="!newAddonMode()" placeholder="marketing_pro" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 dark:bg-gray-700" />
+                <input type="text" [value]="editingAddonDraft()?.id ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, id: $any($event.target).value })" [disabled]="!newAddonMode()" placeholder="marketing_pro" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-700" />
               </label>
               <label class="block">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre</span>
-                <input type="text" [value]="editingAddonDraft()?.name ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" [value]="editingAddonDraft()?.name ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, name: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
               </label>
               <label class="block md:col-span-2">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Descripción</span>
-                <input type="text" [value]="editingAddonDraft()?.description ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" [value]="editingAddonDraft()?.description ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, description: $any($event.target).value })" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
               </label>
               <label class="block">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
@@ -468,7 +468,7 @@
                     <i [class]="'fas ' + editingAddonDraft()?.icon + ' text-purple-500 ml-1'"></i>
                   }
                 </span>
-                <input type="text" list="fa-icon-picker" [value]="editingAddonDraft()?.icon ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })" placeholder="fa-bullhorn — o busca: casa, correo, cohete…" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" list="fa-icon-picker" [value]="editingAddonDraft()?.icon ?? ''" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, icon: $any($event.target).value })" placeholder="fa-bullhorn — o busca: casa, correo, cohete…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                 <datalist id="fa-icon-picker">
                   @for (icon of FA_ICONS.slice(0, 80); track icon.class) {
                     <option [value]="icon.class">{{ icon.class }}</option>
@@ -493,7 +493,7 @@
               </label>
               <label class="block">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Precio (€)</span>
-                <input type="number" min="0" step="0.01" [value]="(editingAddonDraft()?.price_eur_cents ?? 0) / 100" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_eur_cents: eurosToCents($any($event.target).value) })" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="number" min="0" step="0.01" [value]="(editingAddonDraft()?.price_eur_cents ?? 0) / 100" (input)="editingAddonDraft.set({ ...editingAddonDraft()!, price_eur_cents: eurosToCents($any($event.target).value) })" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
               </label>
               <div class="md:col-span-2">
                 <span class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Aplica a planes</span>
@@ -513,7 +513,7 @@
                 <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
                   @for (m of addableAddonModules(); track m.key) {
                     @let isChecked = (editingAddonDraft()?.included_modules ?? []).includes(m.key);
-                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm hover:bg-purple-50">
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm hover:bg-purple-50 dark:hover:bg-purple-900/30">
                       <input type="checkbox" [checked]="isChecked" (change)="toggleAddonModule(m.key)" class="rounded text-purple-600" />
                       <i [class]="'fas ' + (m.icon || 'fa-cube') + ' text-xs text-gray-500 dark:text-gray-400'"></i>
                       <span>{{ m.label }}</span>
@@ -580,7 +580,7 @@
                     </td>
                     @if (isEditorEnabled()) {
                       <td class="px-5 py-3 text-right whitespace-nowrap">
-                        <button (click)="startAddonEdit(addon)" [disabled]="isAddonEditorOpen()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50">
+                        <button (click)="startAddonEdit(addon)" [disabled]="isAddonEditorOpen()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 bg-white dark:bg-gray-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 disabled:opacity-50">
                           <i class="fas fa-pen text-xs"></i> Editar
                         </button>
                         <button (click)="deleteAddonConfirm(addon)" [disabled]="isAddonEditorOpen()" class="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50">
@@ -908,7 +908,7 @@
       <div class="p-5 border-b border-gray-100">
         <div class="relative">
           <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-500 text-xs"></i>
-          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono (español, inglés, o nombre fa-...)" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+          <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono (español, inglés, o nombre fa-...)" class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
         </div>
       </div>
       <div class="flex-1 overflow-y-auto p-2">
