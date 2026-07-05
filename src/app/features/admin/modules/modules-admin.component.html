@@ -697,8 +697,7 @@
             @for (plan of plans(); track plan.id) {
               <div
                 class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col transition-all hover:shadow-md relative"
-                [class.border-blue-500]="plan.is_highlighted"
-                [class.border-gray-200 dark:border-gray-700]="!plan.is_highlighted"
+                [ngClass]="plan.is_highlighted ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'"
               >
                 @if (plan.is_highlighted) {
                   <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
