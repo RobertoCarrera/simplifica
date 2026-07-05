@@ -194,33 +194,11 @@
 
   <!-- Footer -->
   <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
-    <!-- Mobile/PWA actions -->
-    @if (isMobile() || pwaService.deviceInfo().screenSize === 'sm') {
-      <div class="space-y-2">
-        <!-- PWA Install button -->
-        @if (pwaService.canInstall() && !isCollapsed()) {
-          <button
-            (click)="installPWA()"
-            class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-          >
-            <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
-            {{ 'sidebar.instalarApp' | transloco }}
-          </button>
-        }
-
-        <!-- Mobile dashboard link -->
-        <a
-          routerLink="/mobile"
-          class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-          [class.justify-center]="isCollapsed()"
-        >
-          <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
-          @if (!isCollapsed()) {
-            <span>{{ 'sidebar.dashboardMovil' | transloco }}</span>
-          }
-        </a>
-      </div>
-    }
+    <!-- Mobile/PWA actions (PR #2 extraction) -->
+    <app-sidebar-mobile-pwa-actions
+      [isMobile]="isMobileSignal"
+      [isCollapsed]="isCollapsed"
+    />
 
     <!-- User profile -->
     <div class="user-profile-row flex items-center justify-between mt-3">
