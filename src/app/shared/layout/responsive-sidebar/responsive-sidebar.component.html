@@ -155,39 +155,6 @@
             }
           }
         </a>
-
-        <!-- Sub-items for Productos -->
-        @if (!isCollapsed() && item.id === 9) {
-          <div class="ml-6 mt-1 space-y-1">
-            <a
-              routerLink="/productos/proveedores"
-              routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-              (click)="isMobile() && closeSidebar()"
-              class="flex items-center px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <lucide-icon name="building" [size]="14" class="mr-2 flex-shrink-0"></lucide-icon>
-              <span class="truncate">Proveedores</span>
-            </a>
-            <a
-              routerLink="/productos/importar"
-              routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-              (click)="isMobile() && closeSidebar()"
-              class="flex items-center px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <lucide-icon name="file-text" [size]="14" class="mr-2 flex-shrink-0"></lucide-icon>
-              <span class="truncate">Importar CSV</span>
-            </a>
-            <a
-              routerLink="/productos/conectar-api"
-              routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-              (click)="isMobile() && closeSidebar()"
-              class="flex items-center px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <lucide-icon name="megaphone" [size]="14" class="mr-2 flex-shrink-0"></lucide-icon>
-              <span class="truncate">Conectar API</span>
-            </a>
-          </div>
-        }
       </div>
     }
   </nav>
