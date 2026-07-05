@@ -499,7 +499,7 @@
                 <span class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Aplica a planes</span>
                 <div class="flex flex-wrap gap-2">
                   @for (p of plans(); track p.id) {
-                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm">
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30">
                       <input type="checkbox" [checked]="(editingAddonDraft()?.applies_to_plans ?? []).includes(p.id)" (change)="toggleAddonPlan(p.id)" class="rounded text-purple-600" />
                       <span class="capitalize">{{ p.name }}</span>
                     </label>
@@ -513,10 +513,10 @@
                 <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
                   @for (m of addableAddonModules(); track m.key) {
                     @let isChecked = (editingAddonDraft()?.included_modules ?? []).includes(m.key);
-                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm hover:bg-purple-50 dark:hover:bg-purple-900/30">
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30">
                       <input type="checkbox" [checked]="isChecked" (change)="toggleAddonModule(m.key)" class="rounded text-purple-600" />
                       <i [class]="'fas ' + (m.icon || 'fa-cube') + ' text-xs text-gray-500 dark:text-gray-400'"></i>
-                      <span class="text-gray-700 dark:text-gray-200">{{ m.label }}</span>
+                      <span>{{ m.label }}</span>
                     </label>
                   }
                 </div>
