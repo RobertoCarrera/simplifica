@@ -55,26 +55,18 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { AnalyticsService } from '../../../services/analytics.service';
-import { FeedbackService } from '../../feedback/feedback.service';
 import { MailStoreService } from '../../../features/webmail/services/mail-store.service';
-import { firstValueFrom } from 'rxjs';
-
-// Menu item shape used by this component
-interface MenuItem {
-  id: number;
-  label: string;
-  icon: string;
-  route: string;
-  badge?: number;
-  children?: MenuItem[];
-  module?: string; // 'core' | 'production' | 'development'
-  moduleKey?: string; // Optional key to check in modules_catalog
-  // roleOnly can be used to restrict visibility to specific roles
-  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
-  requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
-  /** Key used to match sidebar_navigation_order table (moduleKey for production, 'core_<route>' for core) */
-  sidebarKey: string;
-}
+import { firstValueFrom, fromEvent, map, startWith } from 'rxjs';
+import { SidebarFloatingTooltipComponent } from './components/sidebar-floating-tooltip/sidebar-floating-tooltip.component';
+import { SidebarFooterLinksComponent } from './components/sidebar-footer-links/sidebar-footer-links.component';
+import { SidebarMobileOverlayComponent } from './components/sidebar-mobile-overlay/sidebar-mobile-overlay.component';
+import {
+  MenuItem,
+  ALL_NAV_ITEMS,
+  WEBMAIL_ITEM_ID,
+  NOTIFICATION_ITEM_IDS,
+  isMenuItemAllowedByModules,
+} from './data/sidebar-menu.items';
 
 @Component({
   selector: 'app-responsive-sidebar',
@@ -85,7 +77,15 @@ interface MenuItem {
     '[class.mobile-visible]': 'isOpen() && isMobile()',
     '[class.mobile-hidden]': '!isOpen() && isMobile()',
   },
-  imports: [CommonModule, RouterModule, LucideAngularModule, TranslocoPipe],
+  imports: [
+    CommonModule,
+    RouterModule,
+    LucideAngularModule,
+    TranslocoPipe,
+    SidebarFloatingTooltipComponent,
+    SidebarFooterLinksComponent,
+    SidebarMobileOverlayComponent,
+  ],
   providers: [
     {
       provide: LUCIDE_ICONS,
@@ -148,13 +148,13 @@ export class ResponsiveSidebarComponent implements OnInit {
     { initialValue: null as Record<string, string> | null }
   );
   
-  feedbackService = inject(FeedbackService);
+  // Tooltip interaction state — converted to signals so the floating-tooltip
+  // sub-component can consume them as @Input() Signal<...> and react without
+  // the parent re-rendering the entire sidebar on every hover change.
+  readonly hoveredItem = signal<MenuItem | null>(null);
+  readonly tooltipStyle = signal<{ top: string; left: string }>({ top: '0px', left: '0px' });
 
-  // Tooltip interaction state
-  hoveredItem: any = null;
-  tooltipStyle: { top: string; left: string } = { top: '0px', left: '0px' };
-
-  onMouseEnter(event: MouseEvent, item: any) {
+  onMouseEnter(event: MouseEvent, item: MenuItem) {
     if (!this.isCollapsed()) return;
 
     // Calculate position based on the target element
@@ -162,15 +162,15 @@ export class ResponsiveSidebarComponent implements OnInit {
     const rect = target.getBoundingClientRect();
 
     // Position fixed logic
-    this.tooltipStyle = {
+    this.tooltipStyle.set({
       top: `${rect.top + rect.height / 2}px`,
       left: `${rect.right + 10}px`, // 10px offset
-    };
-    this.hoveredItem = item;
+    });
+    this.hoveredItem.set(item);
   }
 
   onMouseLeave() {
-    this.hoveredItem = null;
+    this.hoveredItem.set(null);
   }
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
@@ -245,10 +245,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
 
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
-
-  // Local state
-  private _activeItem = signal(1);
-  readonly activeItem = this._activeItem.asReadonly();
 
   // Company Switcher State
   isSwitcherOpen = signal(false);
@@ -362,6 +358,33 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   // Computed values from service
   readonly isOpen = this.sidebarState.isOpen;
   readonly isCollapsed = this.sidebarState.isCollapsed;
+  /**
+   * Reactive window.innerWidth — toSignal auto-unsubscribes the fromEvent
+   * stream when the component is destroyed, so no manual cleanup needed.
+   * Feeds isMobileSignal below so sub-components (mobile-overlay) re-render
+   * when the viewport crosses the 768px breakpoint on desktop.
+   */
+  readonly innerWidth = toSignal(
+    fromEvent(window, 'resize').pipe(
+      map(() => window.innerWidth),
+      startWith(window.innerWidth),
+    ),
+    { initialValue: window.innerWidth },
+  );
+
+  /**
+   * Reactive wrapper around the legacy isMobile() method. The host binding and
+   * ngOnInit still call the method directly (which re-evaluates on each CD
+   * cycle), but sub-components that need reactivity (e.g. mobile-overlay)
+   * consume this signal as @Input() Signal<boolean>.
+   *
+   * innerWidth() is the reactive source for the viewport branch — the computed
+   * re-evaluates on every resize event, so children update correctly when the
+   * user crosses the 768px breakpoint on desktop.
+   */
+  readonly isMobileSignal = computed(
+    () => this.pwaService.isMobileDevice() || this.innerWidth() < 768,
+  );
   // All menu items (productivos, visibles también en desarrollo)
   // Lucide icons para el template
   readonly icons = {
@@ -392,236 +415,23 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
     LayoutGrid,
   };
 
-  private allMenuItems: MenuItem[] = [
-    {
-      id: 1,
-      label: 'nav.inicio',
-      icon: 'home',
-      route: '/inicio',
-      module: 'core',
-      sidebarKey: 'core_/inicio',
-    },
-    {
-      id: 90,
-      label: 'nav.notificaciones',
-      icon: 'bell',
-      route: '/notifications',
-      module: 'core',
-      sidebarKey: 'core_/notifications',
-    },
-    {
-      id: 100,
-      label: 'nav.docs',
-      icon: 'book-open',
-      route: '/docs',
-      module: 'production',
-      sidebarKey: 'documentacion',
-    },
-    {
-      id: 2,
-      label: 'nav.clientes',
-      icon: 'users',
-      route: '/clientes',
-      module: 'core',
-      sidebarKey: 'core_/clientes',
-    },
-    {
-      id: 13,
-      label: 'nav.rgpd',
-      icon: 'shield',
-      route: '/gdpr',
-      module: 'core',
-      roleOnly: 'ownerAdmin',
-      sidebarKey: 'core_/gdpr',
-    },
-    {
-      id: 3,
-      label: 'nav.dispositivos',
-      icon: 'smartphone',
-      route: '/dispositivos',
-      module: 'production',
-      moduleKey: 'moduloSAT',
-      sidebarKey: 'moduloSAT',
-    },
-    {
-      id: 4,
-      label: 'nav.tickets',
-      icon: 'ticket',
-      route: '/tickets',
-      module: 'production',
-      moduleKey: 'moduloSAT',
-      sidebarKey: 'moduloSAT',
-      requiredPermission: ['tickets.view', 'tickets.create'],
-    },
-    {
-      id: 5,
-      label: 'nav.chat',
-      icon: 'message-circle',
-      route: '/chat',
-      module: 'production',
-      moduleKey: 'moduloChat',
-      sidebarKey: 'moduloChat',
-    },
-    {
-      id: 6,
-      label: 'nav.presupuestos',
-      icon: 'file-text',
-      route: '/presupuestos',
-      module: 'production',
-      moduleKey: 'moduloPresupuestos',
-      sidebarKey: 'moduloPresupuestos',
-    },
-    {
-      id: 7,
-      label: 'nav.facturacion',
-      icon: 'receipt',
-      route: '/facturacion',
-      module: 'production',
-      moduleKey: 'moduloFacturas',
-      sidebarKey: 'moduloFacturas',
-      requiredPermission: ['invoices.view', 'invoices.create'],
-    },
-    {
-      id: 8,
-      label: 'nav.analiticas',
-      icon: 'trending-up',
-      route: '/analytics',
-      module: 'production',
-      moduleKey: 'moduloAnaliticas',
-      sidebarKey: 'moduloAnaliticas',
-    },
-    {
-      id: 9,
-      label: 'nav.productos',
-      icon: 'package',
-      route: '/productos',
-      module: 'production',
-      moduleKey: 'moduloProductos',
-      sidebarKey: 'moduloProductos',
-    },
-    {
-      id: 10,
-      label: 'nav.servicios',
-      icon: 'wrench',
-      route: '/servicios',
-      module: 'production',
-      moduleKey: 'moduloServicios',
-      sidebarKey: 'moduloServicios',
-    },
-    {
-      id: 11,
-      label: 'nav.reservas',
-      icon: 'calendar',
-      route: '/reservas',
-      module: 'production',
-      moduleKey: 'moduloReservas',
-      sidebarKey: 'moduloReservas',
-      requiredPermission: [
-        'bookings.view',
-        'bookings.view_own',
-        'bookings.manage_own',
-        'bookings.manage_all',
-      ],
-    },
-    {
-      id: 12,
-      label: 'nav.conciliacion',
-      icon: 'clipboard-check',
-      route: '/reservas/conciliacion',
-      module: 'production',
-      moduleKey: 'moduloReservas',
-      sidebarKey: 'moduloReservas',
-      requiredPermission: [
-        'bookings.view',
-        'bookings.view_own',
-        'bookings.manage_own',
-        'bookings.manage_all',
-      ],
-    },
-    {
-      id: 95,
-      label: 'nav.webmail',
-      icon: 'mail',
-      route: '/webmail',
-      module: 'core',
-      sidebarKey: 'core_/webmail',
-    },
-    {
-      id: 97,
-      label: 'nav.adminWebmail',
-      icon: 'shield',
-      route: '/webmail-admin',
-      module: 'core',
-      roleOnly: 'adminOnlyWebmail',
-      sidebarKey: 'core_/webmail-admin',
-    },
-    {
-      id: 98,
-      label: 'nav.inboundMail',
-      icon: 'mail',
-      route: '/settings/inbound-mail',
-      module: 'core',
-      roleOnly: 'ownerAdmin',
-      sidebarKey: 'core_/inbound-mail',
-    },
-    {
-      id: 103,
-      label: 'nav.adminInboundMail',
-      icon: 'shield',
-      route: '/admin/inbound-mail',
-      module: 'core',
-      roleOnly: 'adminOnly',
-      sidebarKey: 'core_/admin/inbound-mail',
-    },
-    {
-      id: 101,
-      label: 'nav.proyectos',
-      icon: 'layout-grid',
-      route: '/projects',
-      module: 'production',
-      moduleKey: 'moduloProyectos',
-      sidebarKey: 'moduloProyectos',
-    },
-    {
-      id: 96,
-      label: 'Marketing',
-      icon: 'megaphone',
-      route: '/marketing',
-      module: 'production',
-      moduleKey: 'marketing',
-      sidebarKey: 'marketing',
-    },
-    {
-      id: 99,
-      label: 'nav.gestionModulos',
-      icon: 'sparkles',
-      route: '/admin/modulos',
-      module: 'core',
-      roleOnly: 'adminOnly',
-      sidebarKey: 'core_/admin/modulos',
-    },
-    {
-      id: 102,
-      label: 'nav.systemHealth',
-      icon: 'activity',
-      route: '/admin/system-health',
-      module: 'core',
-      roleOnly: 'adminOnly',
-      sidebarKey: 'core_/admin/system-health',
-    },
-  ];
+  private allMenuItems: MenuItem[] = ALL_NAV_ITEMS;
 
   // Notification badge kept in a separate computed so that unreadCount changes
   // do NOT re-trigger the heavy menuItems filtering logic.
   notificationBadge = computed(() => this.notificationsService.unreadCount());
 
-  // IDs that carry the notification badge (staff=90, client=2007)
-  readonly NOTIFICATION_ITEM_IDS = new Set([90, 2007]);
+  // NOTIFICATION_ITEM_IDS and WEBMAIL_ITEM_ID are imported from
+  // data/sidebar-menu.items and re-used by the nav list (PR 2 territory).
+  // Re-exposed as readonly class members so the template type checker can
+  // resolve them — Angular templates only see class members, not module-level
+  // imports. The shadowed local names just rebind the imported constants.
+  readonly WEBMAIL_ITEM_ID = WEBMAIL_ITEM_ID;
+  readonly NOTIFICATION_ITEM_IDS = NOTIFICATION_ITEM_IDS;
 
   // Webmail unread badge
   private mailStore = inject(MailStoreService);
   webmailBadge = computed(() => this.mailStore.totalUnreadMail() || null);
-  readonly WEBMAIL_ITEM_ID = 95;
 
   // Computed menu items based on user role (does NOT depend on notification count).
   // Core items render immediately. Production items appear once modules load.
@@ -752,7 +562,7 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
       // While modules are loading, only show core items.
       // Once loaded, filter production items by allowed modules.
       if (allowed) {
-        clientMenu = clientMenu.filter((item) => this.isMenuItemAllowedByModules(item, allowed));
+        clientMenu = clientMenu.filter((item) => isMenuItemAllowedByModules(item, allowed));
       } else {
         clientMenu = clientMenu.filter((item) => item.module === 'core');
       }
@@ -894,18 +704,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
     }
   }
 
-  setActiveItem(itemId: number) {
-    this._activeItem.set(itemId);
-  }
-
-  getSidebarClasses(): string {
-    if (this.isMobile()) {
-      return this.isOpen() ? 'mobile-visible' : 'mobile-hidden';
-    } else {
-      return this.isCollapsed() ? 'collapsed' : 'expanded';
-    }
-  }
-
   async installPWA() {
     const success = await this.pwaService.installPWA();
     if (success) {
@@ -994,39 +792,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
     }
   }
 
-  // Mapear rutas a claves de módulo (ajustar si cambian rutas)
-  private routeToModuleKey(route: string): string | null {
-    switch (route) {
-      case '/tickets':
-        // Tickets module key (can also be specified via item.moduleKey)
-        return 'moduloSAT';
-      case '/presupuestos':
-      case '/portal/presupuestos':
-        return 'moduloPresupuestos';
-      case '/servicios':
-        return 'moduloServicios';
-      case '/productos':
-        return 'moduloProductos';
-      case '/facturacion':
-      case '/portal/facturas':
-        return 'moduloFacturas';
-      case '/chat':
-        return 'moduloChat';
-      case '/projects':
-        return 'moduloProyectos';
-      default:
-        return null; // elementos sin control por módulo
-    }
-  }
-
-  private isMenuItemAllowedByModules(item: MenuItem, allowed: Set<string>): boolean {
-    // If item has explicit moduleKey, use it directly
-    if (item.moduleKey) {
-      return allowed.has(item.moduleKey);
-    }
-    // Otherwise, map route to module key
-    const key = this.routeToModuleKey(item.route);
-    if (!key) return true; // no requiere gating
-    return allowed.has(key);
-  }
+  // routeToModuleKey + isMenuItemAllowedByModules are imported from
+  // data/sidebar-menu.items and called directly (no `this.`) inside menuItems().
 }

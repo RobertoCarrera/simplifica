@@ -1,7 +1,9 @@
 <!-- Mobile overlay -->
-@if (isOpen() && isMobile()) {
-  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" (click)="closeSidebar()"></div>
-}
+<app-sidebar-mobile-overlay
+  [isOpen]="isOpen"
+  [isMobile]="isMobileSignal"
+  (closed)="closeSidebar()"
+/>
 
 <!-- Sidebar -->
 <div
@@ -108,7 +110,7 @@
         <a
           [routerLink]="item.route"
           routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
-          (click)="setActiveItem(item.id); isMobile() && closeSidebar()"
+          (click)="isMobile() && closeSidebar()"
           (mouseenter)="onMouseEnter($event, item)"
           (mouseleave)="onMouseLeave()"
           class="flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
@@ -392,48 +394,13 @@
     </div>
 
     <!-- Footer Links: Configuración above Feedback -->
-    <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
-      <!-- Configuración -->
-      <a
-        routerLink="/configuracion"
-        routerLinkActive="bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400"
-        class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
-        [class.justify-center]="isCollapsed()"
-      >
-        <i class="fas fa-cog"></i>
-        @if (!isCollapsed()) {
-          <span>{{ 'nav.configuracion' | transloco }}</span>
-        }
-      </a>
-
-      <!-- Feedback Button -->
-      <button
-        type="button"
-        (click)="feedbackService.open()"
-        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
-        [class.justify-center]="isCollapsed()"
-      >
-        <i class="fas fa-circle-question"></i>
-        @if (!isCollapsed()) {
-          <span>Feedback</span>
-        }
-      </button>
-    </div>
+    <app-sidebar-footer-links [isCollapsed]="isCollapsed" />
   </div>
 
   <!-- Floating Tooltip (Fixed position) -->
-  @if (isCollapsed() && hoveredItem) {
-    <div
-      class="fixed transform -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg whitespace-nowrap z-[9999] shadow-lg pointer-events-none"
-      [style.top]="tooltipStyle.top"
-      [style.left]="tooltipStyle.left"
-    >
-      {{ hoveredItem.label | transloco }}
-      @if (hoveredItem.badge) {
-        <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{
-          hoveredItem.badge
-        }}</span>
-      }
-    </div>
-  }
+  <app-sidebar-floating-tooltip
+    [isCollapsed]="isCollapsed"
+    [hoveredItem]="hoveredItem"
+    [tooltipStyle]="tooltipStyle"
+  />
 </div>
