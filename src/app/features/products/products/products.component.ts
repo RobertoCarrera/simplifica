@@ -16,12 +16,21 @@ import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
 import { ConfirmModalComponent, ConfirmModalOptions } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { Product } from '../../../models/product';
-import { Router } from '@angular/router';
+import { SuppliersListComponent } from '../supplier-import/suppliers-list.component';
+import { SupplierImportComponent } from '../supplier-import/supplier-import.component';
+import { SupplierApiConfigComponent } from '../supplier-import/supplier-api-config.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfirmModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ConfirmModalComponent,
+    SuppliersListComponent,
+    SupplierImportComponent,
+    SupplierApiConfigComponent,
+  ],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +42,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   editingProduct = signal<Product | null>(null);
   searchTerm = signal<string>('');
   filteredProducts = signal<Product[]>([]);
+  activeTab = signal<'catalog' | 'proveedores' | 'importar' | 'api'>('catalog');
 
   newProduct: any = this.emptyDraft();
 
@@ -50,7 +60,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
   private productMetadataService = inject(ProductMetadataService);
   private toastService = inject(ToastService);
   private auth = inject(AuthService);
-  private router = inject(Router);
 
   @ViewChild(ConfirmModalComponent) confirmModal!: ConfirmModalComponent;
 
@@ -85,8 +94,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
       product.model?.toLowerCase().includes(term)));
   }
 
-  goToImport(): void { this.router.navigate(['/productos/importar']); }
-  goToApi(): void { this.router.navigate(['/productos/conectar-api']); }
+  goToImport(): void { this.activeTab.set('importar'); }
+  goToApi(): void { this.activeTab.set('api'); }
 
   resetForm(): void {
     this.newProduct = this.emptyDraft();
