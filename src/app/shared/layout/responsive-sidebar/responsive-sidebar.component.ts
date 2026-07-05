@@ -60,6 +60,7 @@ import { firstValueFrom, fromEvent, map, startWith } from 'rxjs';
 import { SidebarFloatingTooltipComponent } from './components/sidebar-floating-tooltip/sidebar-floating-tooltip.component';
 import { SidebarFooterLinksComponent } from './components/sidebar-footer-links/sidebar-footer-links.component';
 import { SidebarMobileOverlayComponent } from './components/sidebar-mobile-overlay/sidebar-mobile-overlay.component';
+import { SidebarMobilePwaActionsComponent } from './components/sidebar-mobile-pwa-actions/sidebar-mobile-pwa-actions.component';
 import {
   MenuItem,
   ALL_NAV_ITEMS,
@@ -85,6 +86,7 @@ import {
     SidebarFloatingTooltipComponent,
     SidebarFooterLinksComponent,
     SidebarMobileOverlayComponent,
+    SidebarMobilePwaActionsComponent,
   ],
   providers: [
     {
@@ -701,13 +703,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   toggleCollapse() {
     if (!this.isMobile()) {
       this.sidebarState.toggleCollapse();
-    }
-  }
-
-  async installPWA() {
-    const success = await this.pwaService.installPWA();
-    if (success) {
-      this.pwaService.vibrate([200, 100, 200]);
     }
   }
 
