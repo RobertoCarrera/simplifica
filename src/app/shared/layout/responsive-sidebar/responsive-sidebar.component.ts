@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import {
   LucideAngularModule,
@@ -46,7 +46,7 @@ import {
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
-import { AuthService, LinkedProfessional } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
 import {
   SupabaseModulesService,
   EffectiveModule,
@@ -54,13 +54,13 @@ import {
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
-import { AnalyticsService } from '../../../services/analytics.service';
 import { MailStoreService } from '../../../features/webmail/services/mail-store.service';
 import { firstValueFrom, fromEvent, map, startWith } from 'rxjs';
 import { SidebarFloatingTooltipComponent } from './components/sidebar-floating-tooltip/sidebar-floating-tooltip.component';
 import { SidebarFooterLinksComponent } from './components/sidebar-footer-links/sidebar-footer-links.component';
 import { SidebarMobileOverlayComponent } from './components/sidebar-mobile-overlay/sidebar-mobile-overlay.component';
 import { SidebarMobilePwaActionsComponent } from './components/sidebar-mobile-pwa-actions/sidebar-mobile-pwa-actions.component';
+import { SidebarUserProfileComponent } from './components/sidebar-user-profile/sidebar-user-profile.component';
 import {
   MenuItem,
   ALL_NAV_ITEMS,
@@ -87,6 +87,7 @@ import {
     SidebarFooterLinksComponent,
     SidebarMobileOverlayComponent,
     SidebarMobilePwaActionsComponent,
+    SidebarUserProfileComponent,
   ],
   providers: [
     {
@@ -137,19 +138,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
   private translocoService = inject(TranslocoService);
-  
-  // Reactive language signal - ensures computed values re-evaluate when language changes
-  private currentLang = toSignal(this.translocoService.langChanges$, {
-    initialValue: this.translocoService.getActiveLang(),
-  });
 
-  // Reactive roles translations - fires when translations load/change, avoids
-  // calling translate() synchronously before async files are fetched (bootstrap warning)
-  private _rolesTranslations = toSignal(
-    this.translocoService.selectTranslateObject('roles'),
-    { initialValue: null as Record<string, string> | null }
-  );
-  
   // Tooltip interaction state — converted to signals so the floating-tooltip
   // sub-component can consume them as @Input() Signal<...> and react without
   // the parent re-rendering the entire sidebar on every hover change.
@@ -174,14 +163,12 @@ export class ResponsiveSidebarComponent implements OnInit {
   onMouseLeave() {
     this.hoveredItem.set(null);
   }
-  private router = inject(Router);
   private devRoleService = inject(DevRoleService);
   authService = inject(AuthService); // público para template
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
   notificationsService = inject(SupabaseNotificationsService); // Public for template access if needed
   private permissionsService = inject(SupabasePermissionsService);
-  private analyticsService = inject(AnalyticsService);
 
 // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -248,34 +235,13 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
 
-  // Company Switcher State
+  // Company Switcher State — owned by the parent because the window-level
+  // `open-profile-switcher` listener (ngOnInit below) opens it. The child
+  // user-profile component mutates this same signal instance via @Input(),
+  // so toggles / selects / exits in the child and the global trigger both
+  // observe a single source of truth. Keeping it here also lets sub-components
+  // that need to close the switcher on navigation continue to work.
   isSwitcherOpen = signal(false);
-
-  availableCompanies = computed(() => {
-    const professionalCompanyIds = new Set(
-      this.authService.linkedProfessionals().map((p) => p.company_id)
-    );
-    const uniqueMap = new Map();
-    this.authService.companyMemberships().forEach((m) => {
-      // Only hide from "CAMBIAR EMPRESA" if role is purely 'professional' AND has a linked profile.
-      // Owners/admins/members keep the company entry even if they also have a professional profile.
-      if (professionalCompanyIds.has(m.company_id) && m.role === 'professional') return;
-      if (!uniqueMap.has(m.company_id)) {
-        uniqueMap.set(m.company_id, {
-          id: m.company_id,
-          name: m.company?.name || 'Empresa Sin Nombre',
-          role: m.role,
-          isCurrent: m.company_id === this.authService.currentCompanyId(),
-        });
-      } else {
-        // If already exists, maybe upgrade role if current is 'client' and new is 'owner' etc?
-        // For now, simple first-wins or we can implement priority.
-        // Assuming memberships might be ordered or random.
-        // Let's just keep the first one found for now to fix the visual bug.
-      }
-    });
-    return Array.from(uniqueMap.values());
-  });
 
   currentCompanyName = computed(() => {
     const currentId = this.authService.currentCompanyId();
@@ -301,61 +267,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
         branding.secondary_color || branding.secondary || settings.secondaryColor || '#10B981',
     };
   });
-
-  toggleSwitcher() {
-    this.isSwitcherOpen.update((v) => !v);
-  }
-
-  selectCompany(companyId: string) {
-    this.modulesService.clearCache();
-    this.analyticsService.clearSignals();
-    this.authService.switchCompany(companyId);
-    this.isSwitcherOpen.set(false);
-  }
-
-  // Professional Mode
-  readonly linkedProfessionals = computed(() => this.authService.linkedProfessionals());
-  readonly isInProfessionalMode = computed(() => this.authService.isInProfessionalMode());
-  readonly activeProfessionalId = computed(() => this.authService.activeProfessionalId());
-
-  /** True si el usuario es owner de al menos una empresa en la lista de companies disponibles */
-  readonly isOwnerOfAnyCompany = computed(() =>
-    this.availableCompanies().some((c) => c.role === 'owner')
-  );
-
-  selectProfessionalProfile(professionalId: string) {
-    this.authService.switchToProfessionalProfile(professionalId);
-    this.isSwitcherOpen.set(false);
-  }
-
-  exitProfessionalMode() {
-    this.authService.exitProfessionalMode();
-    this.isSwitcherOpen.set(false);
-  }
-
-  // Favorite star — toggle favorite company/profile
-  readonly favoriteCompanyId = computed(() => this.authService.favoriteCompanyId());
-  readonly favoriteProfessionalId = computed(() => this.authService.favoriteProfessionalId());
-
-  toggleFavoriteCompany(event: Event, companyId: string) {
-    event.stopPropagation(); // don't also trigger selectCompany
-    const current = this.authService.favoriteCompanyId();
-    if (current === companyId) {
-      this.authService.setFavoriteCompany(null);
-    } else {
-      this.authService.setFavoriteCompany(companyId);
-    }
-  }
-
-  toggleFavoriteProfessional(event: Event, professionalId: string) {
-    event.stopPropagation(); // don't also trigger selectProfessionalProfile
-    const current = this.authService.favoriteProfessionalId();
-    if (current === professionalId) {
-      this.authService.setFavoriteProfessional(null);
-    } else {
-      this.authService.setFavoriteProfessional(professionalId);
-    }
-  }
 
   // Computed values from service
   readonly isOpen = this.sidebarState.isOpen;
@@ -703,87 +614,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   toggleCollapse() {
     if (!this.isMobile()) {
       this.sidebarState.toggleCollapse();
-    }
-  }
-
-  // Computed role display - reactive to user profile and language changes
-  userRoleDisplay = computed(() => {
-    // Use _rolesTranslations (reactive to load + lang change) instead of translate()
-    // to avoid "Missing translation" warnings during app bootstrap, when the async
-    // translation file hasn't been fetched yet.
-    const roles = this._rolesTranslations();
-    const profile = this.authService.userProfileSignal();
-    const role = profile?.role || 'member';
-
-    // Translations not yet loaded — return readable Spanish fallback, no warning
-    if (!roles) {
-      if (profile?.is_super_admin) return 'Super Admin';
-      switch (role) {
-        case 'super_admin': return 'Super Admin';
-        case 'owner':       return 'Propietario';
-        case 'admin':       return 'Administrador';
-        case 'member':      return 'Miembro';
-        case 'client':      return 'Cliente';
-        case 'none':        return 'Sin acceso';
-        default:            return role;
-      }
-    }
-
-    if (profile?.is_super_admin) return roles['superAdmin'];
-    switch (role) {
-      case 'super_admin': return roles['superAdmin'];
-      case 'owner':       return roles['propietario'];
-      case 'admin':       return roles['administrador'];
-      case 'member':      return roles['miembro'];
-      case 'client':      return roles['cliente'];
-      case 'none':        return roles['sinAcceso'];
-      default:            return role;
-    }
-  });
-
-  getRoleDisplayName(role: string): string {
-    // Read currentLang to create reactive dependency on language changes
-    this.currentLang();
-    
-    switch (role) {
-      case 'super_admin':
-        return this.translocoService.translate('roles.superAdmin');
-      case 'owner':
-        return this.translocoService.translate('roles.propietario');
-      case 'admin':
-        return this.translocoService.translate('roles.administrador');
-      case 'supervisor':
-        return this.translocoService.translate('roles.supervisor');
-      case 'member':
-        return this.translocoService.translate('roles.miembro');
-      case 'client':
-        return this.translocoService.translate('roles.cliente');
-      case 'professional':
-        return this.translocoService.translate('roles.profesional');
-      case 'none':
-        return this.translocoService.translate('roles.sinAcceso');
-      default:
-        return role;
-    }
-  }
-
-  getUserInitial(): string {
-    const fullName = this.authService.userProfileSignal()?.full_name;
-    return fullName ? fullName.charAt(0).toUpperCase() : 'U';
-  }
-
-  getUserDisplayName(): string {
-    return (
-      this.authService.userProfileSignal()?.full_name || this.translocoService.translate('shared.usuario')
-    );
-  }
-
-  async logout(): Promise<void> {
-    try {
-      await this.authService.logout();
-      this.router.navigate(['/login']);
-    } catch (error) {
-      console.error('Error durante logout:', error);
     }
   }
 
