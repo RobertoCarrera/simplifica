@@ -409,15 +409,29 @@ export class ModulesAdminComponent implements OnInit {
   changingTierCompanyId = signal<string | null>(null);
 
   /**
-   * Move a company to a new plan. Super-admin only. After the RPC succeeds
-   * we reload the company list (so `subscription_tier` reflects the new plan)
-   * AND the per-company grants cache (so gift chips and the module list
-   * reflect the freshly-granted modules from plan_module_access).
+   * Move a company to a new plan. Super-admin only — the `change_company_plan`
+   * RPC returns 42501 otherwise. Non-super-admins see a toast and return early
+   * without calling the RPC. This is defense in depth on top of the route-level
+   * SuperAdminGuard: even though only super-admins can reach this page today,
+   * any future code path that calls this method directly (or a route config
+   * regression) would still be caught here with a clear UX message instead of
+   * the raw 42501 Supabase error.
+   * After the RPC succeeds we reload the company list (so `subscription_tier`
+   * reflects the new plan) AND the per-company grants cache (so gift chips and
+   * the module list reflect the freshly-granted modules from
+   * plan_module_access).
    */
   async changeCompanyTier(company: any, newTier: string) {
     const c = company;
     if (!c?.id || !newTier) return;
     if (newTier === c.subscription_tier) return; // no-op
+    if (!this.isSuperAdmin()) {
+      this.toast.error(
+        'Sin permisos',
+        'Solo los superadministradores pueden cambiar el plan de una empresa.',
+      );
+      return;
+    }
     this.changingTierCompanyId.set(c.id);
     const oldTier = c.subscription_tier;
     try {
