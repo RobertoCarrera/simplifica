@@ -446,24 +446,6 @@ export class SupabaseModulesService {
     );
   }
 
-  // ── Legacy User Methods (kept for reference or cleanup later) ──────────────
-  adminListUserModules(
-    companyId?: string,
-  ): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
-    return from(this.executeAdminListUserModules(companyId));
-  }
-
-  private async executeAdminListUserModules(
-    companyId?: string,
-  ): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
-    // implementation kept but likely unused in new UI
-    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_user_modules', {
-      p_company_id: companyId || null,
-    });
-    if (error) throw new Error(error.message);
-    return data as any;
-  }
-
   // ── Plan-driven access: plan_module_access ───────────────────────────────
   adminGetPlanModuleAccess(planId: string): Observable<{ module_key: string; included: boolean }[]> {
     return from(
