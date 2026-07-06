@@ -398,14 +398,15 @@ export const routes: Routes = [
     data: { moduleKey: "moduloProyectos" },
   },
 
-  // Admin modules
+  // Admin modules (superadmin only) — plan toggles, gifts, add-on management,
+  // company plan changes all live here and must never be reachable by tenant admins.
   {
     path: "admin/modulos",
     loadComponent: () =>
       import("./features/admin/modules/modules-admin.component").then(
         (m) => m.ModulesAdminComponent,
       ),
-    canActivate: [AuthGuard, AdminGuard],
+    canActivate: [AuthGuard, SuperAdminGuard],
   },
 
   // Company Email Accounts
