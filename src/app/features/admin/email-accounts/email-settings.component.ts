@@ -1,6 +1,7 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Dialog } from '@angular/cdk/dialog';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { CompanyEmailService } from '../../../services/company-email.service';
@@ -12,7 +13,16 @@ import {
   EMAIL_TYPE_LABELS,
   EMAIL_TYPE_DESCRIPTIONS,
 } from '../../../models/company-email.models';
+import { AllEmailType } from '../../../email-samples';
+import { TemplateEditorDialogComponent } from './template-editor-dialog/template-editor-dialog.component';
 import { EmailPreviewComponent } from './email-preview.component';
+
+/**
+ * Editor entry point: every email type is reachable, regardless of whether
+ * a `company_email_settings` row already exists. Un-seeded types auto-UPSERT
+ * the row on first pen click (PR2 spec #1876 "Editor opens for un-seeded type").
+ */
+type AllTypes = AllEmailType;
 
 @Component({
   selector: 'app-email-settings',
@@ -27,14 +37,20 @@ export class EmailSettingsComponent implements OnInit {
   private emailService = inject(CompanyEmailService);
   private toast = inject(ToastService);
   private translocoService = inject(TranslocoService);
+  private dialog = inject(Dialog);
 
   accounts: CompanyEmailAccount[] = [];
   settings: CompanyEmailSetting[] = [];
   loading = signal(false);
   saving = signal(false);
 
-  // All available email types
-  emailTypes: EmailType[] = [
+  /**
+   * All 26 email types (PR1's 20-entry `EmailType` union + 6 system types
+   * from `email-samples.json` / `AllEmailType`). Typed as `AllTypes` (alias
+   * of `AllEmailType`) so the compiler enforces exhaustiveness against the
+   * fixture matrix without modifying `company-email.models.ts`.
+   */
+  readonly emailTypes: readonly AllTypes[] = [
     'booking_confirmation',
     'invoice',
     'quote',
@@ -55,21 +71,17 @@ export class EmailSettingsComponent implements OnInit {
     'magic_link',
     'welcome',
     'staff_credentials',
+    'invite_marketer',
+    'google_review',
+    'budget_created',
+    'budget_reminder',
+    'budget_overdue',
+    'booking_change',
   ];
 
-  // Preview modal
+  // Preview modal (eye button — kept until PR3 deletes EmailPreviewComponent)
   showPreviewModal = signal(false);
   previewEmailType: EmailType | null = null;
-
-  // Template editor modal
-  showTemplateModal = signal(false);
-  editingTemplate: CompanyEmailSetting | null = null;
-  editingEmailType: EmailType | null = null;
-  templateSubject = '';
-  templateBody = '';
-  templateHeader = '';
-  templateButtonText = '';
-  savingTemplate = signal(false);
 
   async ngOnInit() {
     if (this.companyId) {
@@ -91,7 +103,10 @@ export class EmailSettingsComponent implements OnInit {
       this.accounts = accounts.filter((a) => a.is_active && a.is_verified);
       this.settings = settings;
     } catch (err: any) {
-      this.toast.error(this.translocoService.translate('emailSettings.toast.errorLoading'), this.translocoService.translate('emailSettings.toast.errorLoadingMsg'));
+      this.toast.error(
+        this.translocoService.translate('emailSettings.toast.errorLoading'),
+        this.translocoService.translate('emailSettings.toast.errorLoadingMsg')
+      );
       console.error(err);
     } finally {
       this.loading.set(false);
@@ -122,10 +137,16 @@ export class EmailSettingsComponent implements OnInit {
       await firstValueFrom(
         this.emailService.updateSetting(this.companyId, emailType, accountId)
       );
-      this.toast.success(this.translocoService.translate('emailSettings.toast.success'), this.translocoService.translate('emailSettings.toast.accountAssigned'));
+      this.toast.success(
+        this.translocoService.translate('emailSettings.toast.success'),
+        this.translocoService.translate('emailSettings.toast.accountAssigned')
+      );
       await this.loadData();
     } catch (err: any) {
-      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.updateError'));
+      this.toast.error(
+        this.translocoService.translate('emailSettings.toast.error'),
+        this.translocoService.translate('emailSettings.toast.updateError')
+      );
     } finally {
       this.saving.set(false);
     }
@@ -138,67 +159,92 @@ export class EmailSettingsComponent implements OnInit {
       );
       await this.loadData();
     } catch (err: any) {
-      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.toggleError'));
+      this.toast.error(
+        this.translocoService.translate('emailSettings.toast.error'),
+        this.translocoService.translate('emailSettings.toast.toggleError')
+      );
     }
   }
 
-  openPreview(emailType: EmailType) {
+  /**
+   * Eye-button handler. Opens the (kept-until-PR3) `EmailPreviewComponent`
+   * modal with the current `emailType`. The settings page renders a
+   * "Sin overrides" banner above the modal when no `company_email_settings`
+   * row exists, so the user knows they're seeing the per-type default.
+   */
+  openPreview(emailType: EmailType): void {
     this.previewEmailType = emailType;
     this.showPreviewModal.set(true);
   }
 
-  closePreview() {
+  closePreview(): void {
     this.showPreviewModal.set(false);
     this.previewEmailType = null;
   }
 
-  openTemplateEditor(emailType: EmailType) {
-    const setting = this.getSettingForType(emailType);
-    if (!setting) return;
-    this.editingTemplate = setting;
-    this.editingEmailType = emailType;
-    this.templateSubject = setting.custom_subject_template || '';
-    this.templateBody = setting.custom_body_template || '';
-    this.templateHeader = setting.custom_header_template || '';
-    this.templateButtonText = setting.custom_button_text || '';
-    this.showTemplateModal.set(true);
-  }
+  /**
+   * Pen-button handler. Opens the PR2a split-view editor dialog
+   * (`TemplateEditorDialogComponent`) for the given type.
+   *
+   * Auto-UPSERT path (PR2 spec #1876 "Editor opens for un-seeded type"):
+   * when no `company_email_settings` row exists for `(companyId, emailType)`
+   * yet, call `emailService.upsertTemplate(...)` first to pre-seed the row
+   * with `is_active=true, email_account_id=null`. The dialog then opens
+   * with the freshly-created row as its `setting` input; on save it
+   * `updateTemplate`s the same row (so no second row is created — confirmed
+   * by `(company_id, email_type)` UNIQUE constraint from PR1).
+   *
+   * After the dialog closes successfully (result === true), refresh the
+   * settings list so the new row shows up in the table with its toggle
+   * wired up and an "assigned account" dropdown option.
+   */
+  async openTemplateEditor(type: EmailType): Promise<void> {
+    if (!this.companyId) return;
 
-  closeTemplateEditor() {
-    this.showTemplateModal.set(false);
-    this.editingTemplate = null;
-    this.editingEmailType = null;
-    this.templateSubject = '';
-    this.templateBody = '';
-    this.templateHeader = '';
-    this.templateButtonText = '';
-  }
-
-  async saveTemplate() {
-    if (!this.editingTemplate) return;
-
-    this.savingTemplate.set(true);
-    try {
-      await firstValueFrom(
-        this.emailService.updateTemplate(
-          this.editingTemplate.id,
-          this.templateSubject,
-          this.templateBody,
-          this.templateHeader,
-          this.templateButtonText,
-        )
-      );
-      this.toast.success(this.translocoService.translate('emailSettings.toast.success'), this.translocoService.translate('emailSettings.toast.templateSaved'));
-      await this.loadData();
-      this.closeTemplateEditor();
-    } catch (err: any) {
-      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.templateSaveError'));
-    } finally {
-      this.savingTemplate.set(false);
+    let setting = this.getSettingForType(type);
+    if (!setting) {
+      try {
+        await firstValueFrom(
+          this.emailService.upsertTemplate(this.companyId, type, {
+            is_active: true,
+            email_account_id: null,
+          })
+        );
+        await this.loadData();
+        setting = this.getSettingForType(type);
+      } catch (err: any) {
+        this.toast.error(
+          this.translocoService.translate('emailSettings.toast.error'),
+          this.translocoService.translate('emailSettings.toast.templateSaveError')
+        );
+        console.error('openTemplateEditor upsert failed', err);
+        return;
+      }
     }
+
+    const sampleData = this.emailService.getSampleFor(type);
+    const ref = this.dialog.open(TemplateEditorDialogComponent, {
+      data: {
+        companyId: this.companyId,
+        emailType: type,
+        setting,
+        sampleData,
+      },
+      width: '1100px',
+    });
+
+    ref.closed.subscribe((reloaded) => {
+      if (reloaded) {
+        this.toast.success(
+          this.translocoService.translate('emailSettings.toast.success'),
+          this.translocoService.translate('emailSettings.toast.templateSaved')
+        );
+        void this.loadData();
+      }
+    });
   }
 
-  trackByEmailType(index: number, type: EmailType): string {
+  trackByEmailType(index: number, type: AllTypes): string {
     return type;
   }
 }
