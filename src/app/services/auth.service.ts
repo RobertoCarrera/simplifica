@@ -1112,6 +1112,11 @@ export class AuthService {
     // Audit: log company switch
     this.logAuthEvent('COMPANY_SWITCH', { target_company_id: targetCompanyId, from_company_id: this.companyId() });
 
+    // CRITICAL: invalidate the module-effective cache so the sidebar refetches
+    // for the new company. Without this, the user would keep seeing the
+    // old company's modules in the sidebar after a company switch.
+    this.modulesService.clearCache();
+
     try { sessionStorage.setItem('last_active_company_id', targetCompanyId); } catch { /* quota */ }
 
     // Reload User Profile in the service
