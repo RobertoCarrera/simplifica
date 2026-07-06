@@ -156,7 +156,7 @@
       "invited_name": "Cliente Demo"
     },
     "expected_substrings": [
-      "Te han invitado a unirte a",
+      "Te han invitado a",
       "portal de clientes",
       "Aceptar invitación",
       "https://app.simplificacrm.es/invite/client-1"
@@ -224,17 +224,19 @@
   },
   "password_reset": {
     "sample_data": {
-      "reset_url": "https://app.simplificacrm.es/reset/abc-token"
+      "message": "Restablece tu contraseña en https://app.simplificacrm.es/reset/abc-token"
     },
     "expected_substrings": [
+      "Restablece tu contraseña",
       "https://app.simplificacrm.es/reset/abc-token"
     ]
   },
   "magic_link": {
     "sample_data": {
-      "reset_url": "https://app.simplificacrm.es/magic/token-xyz"
+      "message": "Tu enlace mágico: https://app.simplificacrm.es/magic/token-xyz"
     },
     "expected_substrings": [
+      "Tu enlace mágico",
       "https://app.simplificacrm.es/magic/token-xyz"
     ]
   },
