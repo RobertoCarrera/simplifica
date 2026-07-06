@@ -76,7 +76,7 @@
     <!-- Companies Grid -->
     @if (!loading()) {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-        @for (c of filteredCompanies; track c) {
+        @for (c of filteredCompanies; track c.id) {
           <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col transition-all hover:shadow-md">
             <!-- Company Card Header -->
             <div class="p-5 border-b border-gray-100 bg-gray-50 dark:bg-gray-900/50">
@@ -100,13 +100,13 @@
                       </span>
                     }
                     <select
-                      [value]="c.subscription_tier || ''"
-                      (change)="onTierSelectChange(c, $event)"
+                      [ngModel]="c.subscription_tier"
+                      (ngModelChange)="changeCompanyTier(c, $event)"
                       title="Cambiar plan de la empresa"
                       class="appearance-none bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-300 text-xs font-medium uppercase tracking-wide rounded-full pl-2.5 pr-7 py-0.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
                       @for (plan of plans(); track plan.id) {
-                        <option [value]="plan.id" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white normal-case">{{ plan.name }}</option>
+                        <option [ngValue]="plan.id" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white normal-case">{{ plan.name }}</option>
                       }
                     </select>
                   </div>
