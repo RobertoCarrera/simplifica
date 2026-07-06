@@ -859,11 +859,14 @@
                     Módulos incluidos
                   </p>
                   <ul class="space-y-2 flex-1">
-                    @for (key of plan.included_modules; track key) {
+                    @for (key of planAccess().get(plan.id) ?? []; track key) {
                       <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
                         <span>{{ moduleLabel(key) }}</span>
                       </li>
+                    }
+                    @if ((planAccess().get(plan.id) ?? []).length === 0) {
+                      <li class="text-xs text-gray-400 dark:text-gray-500 italic">Sin módulos incluidos todavía</li>
                     }
                   </ul>
 
