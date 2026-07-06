@@ -200,30 +200,18 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const isSuperAdmin = this.authService.userRole() === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
     return [...this.allMenuItems]
       .filter((item) => {
-        // HARDCODED: Profesionales NO ven "Proyectos" en ninguna company.
-        if (item.sidebarKey === 'moduloProyectos' && this.authService.userRole() === 'professional') {
-          return false;
-        }
-        const entry = orderMap.get(item.sidebarKey);
         // Master visibility: if explicitly hidden (visible=false), filter out for everyone
+        const entry = orderMap.get(item.sidebarKey);
         if (entry !== undefined && !entry.visible) return false;
-        // Per-role visibility: team members only see items with visibleToTeam=true (superadmins bypass)
+        // Per-role visibility: team members only see items with visibleToTeam=true
         if (entry && entry.visibleToTeam === false && !isSuperAdmin) return false;
         // If dev mode is on, only superadmins can see it
         if (entry?.devMode && !isSuperAdmin) return false;
-        // Module-level guard: hide items whose module is explicitly disabled
-        // for the current user's company (isModuleEnabled returns false).
-        // null = not loaded yet → don't filter (don't lock out before data loads)
-        //
-        // IMPORTANT: only apply this to PRODUCTION module keys (modulo*, marketing,
-        // historialClinico, etc.). Core items (core_/webmail, core_/clientes,
-        // core_/inicio, core_/gdpr, etc.) are NOT in the modules_catalog and
-        // isModuleEnabled would return false for them, hiding core nav items
-        // like Webmail. This was a regression introduced 2026-06-10 by an
-        // overly broad filter — see commit 2b1ab22f. Core items are governed
-        // only by sidebar_navigation_order (visible / visibleToTeam) above.
-        const isCoreItem = !item.sidebarKey || item.sidebarKey.startsWith('core_/');
-        if (!isCoreItem && !isSuperAdmin) {
+        // Module-level guard: the unified resolution (plan_includes ∪ addons
+        // ∪ manual_grants − manual_revocations) is computed by the
+        // get_effective_modules RPC. Items not in the catalog (core_/inicio
+        // etc.) are governed by the plan_module_access table directly.
+        if (item.sidebarKey && !isSuperAdmin) {
           const enabled = this.modulesService.isModuleEnabled(item.sidebarKey);
           if (enabled === false) return false;
         }
