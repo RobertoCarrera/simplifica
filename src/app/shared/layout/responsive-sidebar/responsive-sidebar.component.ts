@@ -235,12 +235,12 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
 
-  // Company Switcher State — owned by the parent because the window-level
-  // `open-profile-switcher` listener (ngOnInit below) opens it. The child
-  // user-profile component mutates this same signal instance via @Input(),
-  // so toggles / selects / exits in the child and the global trigger both
-  // observe a single source of truth. Keeping it here also lets sub-components
-  // that need to close the switcher on navigation continue to work.
+  // Company Switcher State — owned by the parent so any sub-component that
+  // needs to mutate the switcher (open / toggle / close) shares a single
+  // source of truth via the signal ref. The child user-profile component
+  // mutates this same signal instance via @Input(), so toggles / selects /
+  // exits in the child observe the same state without round-tripping through
+  // outputs.
   isSwitcherOpen = signal(false);
 
   currentCompanyName = computed(() => {
@@ -554,11 +554,6 @@ private sortedAllMenuItems = computed<MenuItem[]>(() => {
   });
 
   ngOnInit() {
-    // Listen for mobile profile switcher trigger
-    window.addEventListener('open-profile-switcher', () => {
-      this.isSwitcherOpen.set(true);
-    });
-
     // Auto-collapse on mobile
     if (this.isMobile()) {
       this.sidebarState.setCollapsed(false);

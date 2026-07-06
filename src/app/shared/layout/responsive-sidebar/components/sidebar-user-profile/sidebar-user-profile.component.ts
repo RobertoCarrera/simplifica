@@ -1,9 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  EventEmitter,
   Input,
-  Output,
   Signal,
   WritableSignal,
   computed,
@@ -27,12 +25,10 @@ import { AnalyticsService } from '../../../../../services/analytics.service';
  * Extracted from responsive-sidebar.component.html (was lines 171–339).
  *
  * Design contract (PR #3 of sidebar refactor):
- *  - Parent owns the OPEN/CLOSED state of the switcher dropdown. The parent
- *    exposes its local `isSwitcherOpen` signal via an event listener
- *    (`window.open-profile-switcher`) — that listener stays in the parent.
- *    The child receives the SAME signal reference via `@Input() Signal<boolean>`
+ *  - Parent owns the OPEN/CLOSED state of the switcher dropdown. The child
+ *    receives the SAME signal reference via `@Input() Signal<boolean>`
  *    so mutations done here (toggle, select, exit) propagate back to the parent
- *    and the global open-profile-switcher trigger still works.
+ *    and any other consumer of `isSwitcherOpen` observes a single source of truth.
  *  - `isCollapsed` is forwarded from the parent's SidebarStateService so the
  *    avatar/name block can be hidden when the sidebar is collapsed (only the
  *    logout icon stays visible, matching original behaviour).
@@ -58,17 +54,12 @@ import { AnalyticsService } from '../../../../../services/analytics.service';
 export class SidebarUserProfileComponent {
   @Input({ required: true }) isCollapsed!: Signal<boolean>;
   @Input({ required: true }) currentCompanyName!: Signal<string>;
-  /** Mutable signal from the parent. The window 'open-profile-switcher'
-   *  listener (parent) and the toggle/select/exit handlers (this child) both
-   *  mutate it; consumers in either component observe a single source of truth.
-   *  Typed as `WritableSignal` so `.set()` / `.update()` are usable without
-   *  casting — the runtime object IS writable; only the interface is. */
+  /** Mutable signal from the parent. The toggle/select/exit handlers (this
+   *  child) and the parent observe a single source of truth by sharing the
+   *  same signal instance. Typed as `WritableSignal` so `.set()` / `.update()`
+   *  are usable without casting — the runtime object IS writable; only the
+   *  interface is. */
   @Input({ required: true }) isSwitcherOpen!: WritableSignal<boolean>;
-
-  // Optional outputs — kept for future cross-cutting needs (analytics, etc.).
-  // Parent does not currently consume them.
-  @Output() switcherToggled = new EventEmitter<void>();
-  @Output() closeSwitcher = new EventEmitter<void>();
 
   private authService = inject(AuthService);
   private translocoService = inject(TranslocoService);
@@ -97,12 +88,10 @@ export class SidebarUserProfileComponent {
 
   // ---------- Switcher state ----------
   toggleSwitcher() {
-    // Mutating the parent's signal instance directly is intentional — both
-    // the parent (window listener) and this child (toggle/select/exit)
-    // observe a single source of truth without round-tripping through
-    // outputs/state.
+    // Mutating the parent's signal instance directly is intentional — the
+    // child (toggle/select/exit) and the parent observe a single source of
+    // truth without round-tripping through outputs/state.
     this.isSwitcherOpen.update((v: boolean) => !v);
-    this.switcherToggled.emit();
   }
 
   availableCompanies = computed(() => {
@@ -258,10 +247,9 @@ export class SidebarUserProfileComponent {
   }
 
   /** Close the switcher. Called by handlers that perform an action and dismiss
-   *  the dropdown. Goes through the signal ref so the parent's listener also
-   *  observes the close. */
+   *  the dropdown. Goes through the signal ref so the parent observes the
+   *  close. */
   private _closeSwitcher() {
     this.isSwitcherOpen.set(false);
-    this.closeSwitcher.emit();
   }
 }

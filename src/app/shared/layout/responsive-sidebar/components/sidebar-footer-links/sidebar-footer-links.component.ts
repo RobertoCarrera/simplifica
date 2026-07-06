@@ -5,7 +5,6 @@ import {
   Signal,
   inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FeedbackService } from '../../../../feedback/feedback.service';
@@ -21,7 +20,7 @@ import { FeedbackService } from '../../../../feedback/feedback.service';
 @Component({
   selector: 'app-sidebar-footer-links',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe],
+  imports: [RouterModule, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
