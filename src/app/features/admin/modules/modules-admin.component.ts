@@ -150,21 +150,22 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
-  /** Active (non-revoked) module grants for a company. */
+  /** Active MANUAL grants for a company (excludes plan-synced rows). */
   giftedModules(company: any): Array<{
     module_key: string; status: string; reason: string | null;
     created_at: string; granted_by_name: string | null;
   }> {
     return (this.companyModuleGrants().get(company.id) || [])
-      .filter((g) => g.status === 'active');
+      .filter((g) => g.status === 'active' && g.reason !== 'plan sync');
   }
 
-  /** All module grants (active + revoked) — used by the chip list so revoked gifts stay visible. */
+  /** All MANUAL module grants (active + revoked) for the chip list. */
   allModuleGrants(company: any): Array<{
     module_key: string; status: string; reason: string | null;
     created_at: string; granted_by_name: string | null;
   }> {
-    return this.companyModuleGrants().get(company.id) || [];
+    return (this.companyModuleGrants().get(company.id) || [])
+      .filter((g) => g.reason !== 'plan sync');
   }
 
   /** Active add-on grants for a company. */
