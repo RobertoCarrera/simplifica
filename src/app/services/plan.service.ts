@@ -11,6 +11,14 @@ export interface Plan {
   currency: string;
   included_users: number;
   extra_user_cents: number;
+  /**
+   * @deprecated Snapshotted from the deprecated `plans.included_modules` text[]
+   * column. The source of truth for module membership is `plan_module_access`
+   * (per plan) and `company_module_grants` (per company). Reads are populated
+   * from the deprecated column on `getPlans()`; nothing should WRITE to it
+   * any more — use `ModulesService.adminSetPlanModuleAccess` for per-row
+   * toggles. Will be removed from the type once all consumers migrate.
+   */
   included_modules: string[];
   sort_order: number;
   is_active: boolean;
@@ -38,6 +46,13 @@ export interface PlanAddon {
  * Read-only catalog of plans and add-ons.
  * Source of truth is the public.plans and public.plan_addons tables (RLS: SELECT public).
  * Writes (admin edits) must go through the admin_upsert_plan / admin_upsert_addon RPCs.
+ *
+ * Plan → module membership is owned by `plan_module_access`, not by
+ * `admin_upsert_plan`. Per-row toggles go through
+ * `ModulesService.adminSetPlanModuleAccess` (commit d392a07d). Calling
+ * `updatePlan()` here only persists PLAN METADATA (name, tagline, price,
+ * included_users, is_highlighted, …) — module lists are intentionally
+ * untouched.
  */
 /** Curated whitelist of modules assignable to plans (F-PCA-008). */
 export interface PlanVisibleModule {
@@ -160,7 +175,19 @@ export class PlanService {
     })());
   }
 
-/** Admin: upsert a plan (mutates included_modules + everything else). Requires super_admin. */
+  /**
+   * Admin: upsert a plan's METADATA. Requires super_admin.
+   *
+   * Module membership is NOT touched here — the deprecated `p_included_modules`
+   * parameter was removed in migration 20260705000008 and the plan → module
+   * write path moved to `plan_module_access` (per-row toggles via
+   * `ModulesService.adminSetPlanModuleAccess`). Passing `p_module_keys` is
+   * intentionally not exposed here: this RPC is the "save plan metadata" path
+   * used by `/admin/modulos`, where the form has no module checkboxes.
+   *
+   * SQLSTATE 42501 is translated to the same Spanish message other admin
+   * RPCs in this service use, so the toast can be uniform.
+   */
   updatePlan(plan: Plan): Observable<Plan> {
     return from(
       (async () => {
@@ -171,14 +198,16 @@ export class PlanService {
           p_description: plan.description,
           p_base_price_eur_cents: plan.base_price_eur_cents,
           p_currency: plan.currency,
-          
           p_included_users: plan.included_users,
           p_extra_user_cents: plan.extra_user_cents,
-          p_included_modules: plan.included_modules,
           p_sort_order: plan.sort_order,
           p_is_active: plan.is_active,
           p_is_highlighted: plan.is_highlighted,
+          // p_module_keys intentionally omitted → RPC leaves plan_module_access untouched.
+          // p_included_modules was removed: admin_upsert_plan no longer writes to the
+          // deprecated plans.included_modules column.
         });
+        if (error && (error as any).code === '42501') throw new Error('No tienes permisos de super_admin');
         if (error) throw error;
         // Invalidate cache so the next getPlans() refetches.
         this._plans.set(null);
@@ -187,16 +216,14 @@ export class PlanService {
     );
   }
 
-  /** Toggle a single module in a plan's included_modules. Optimistic local, then RPC. */
-  togglePlanModule(plan: Plan, moduleKey: string, included: boolean): Observable<Plan> {
-    const next: Plan = {
-      ...plan,
-      included_modules: included
-        ? Array.from(new Set([...plan.included_modules, moduleKey]))
-        : plan.included_modules.filter((k) => k !== moduleKey),
-    };
-    return this.updatePlan(next);
-  }
+  // Note: per-module toggles used to live here as `togglePlanModule(plan,
+  // moduleKey, included)`. They were removed in favour of
+  // `ModulesService.adminSetPlanModuleAccess(planId, moduleKey, included)`
+  // (commit d392a07d), which is the canonical write path against
+  // `plan_module_access` — it validates the key against the FK to
+  // `modules_catalog`, is race-condition safe, and matches what the
+  // `/admin/modulos` matrix UI already calls. If you find yourself reaching
+  // for a "toggle" entry point on this service, use the modules service.
 
   /** Format a price in cents as e.g. "39 €" or "39 €/mes". */
   static formatPrice(cents: number, currency = 'EUR'): string {
