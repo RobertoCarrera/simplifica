@@ -47,6 +47,7 @@ import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { MailStoreService } from '../../../features/webmail/services/mail-store.service';
 import { fromEvent, map, startWith } from 'rxjs';
@@ -328,6 +329,65 @@ export class ResponsiveSidebarComponent implements OnInit {
   toggleCollapse() {
     if (!this.isMobile()) {
       this.sidebarState.toggleCollapse();
+    }
+  }
+
+  // ── DEBUG: temporary panel — copy-paste this when sidebar shows wrong
+  //    modules. Renders current company, sessionStorage cache, the
+  //    _modules signal, the visible menu item list, and whether
+  //    get_effective_modules would have returned a different answer.
+  // Uses `authService` and `modulesService` already injected above.
+
+  /** Toggle the debug panel by adding ?debug=sidebar to the URL. */
+  debugSidebar(): boolean {
+    try {
+      return new URLSearchParams(window.location.search).get('debug') === 'sidebar';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Build a one-line-per-field payload so the user can copy-paste it. */
+  sidebarDebugPayload(): string {
+    const authCompany = this.authService.currentCompanyId?.() ?? null;
+    const userRole = this.authService.userRole?.() ?? null;
+    const isSuperAdmin =
+      userRole === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
+
+    let cachedRaw: string = '<no sessionStorage entry>';
+    try {
+      const raw = sessionStorage.getItem('simplifica_modules_cache');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        cachedRaw = `${arr.length} module(s): ` + arr.map((m: any) => m.key).join(', ');
+      }
+    } catch {
+      cachedRaw = '<parse error>';
+    }
+
+    const menuItems = this.menuItems?.() ?? [];
+    const menuKeys = menuItems.map((it: any) => it.sidebarKey ?? it.moduleKey ?? '?').join(', ');
+
+    return [
+      `companyId        : ${authCompany}`,
+      `userRole         : ${userRole}`,
+      `isSuperAdmin     : ${isSuperAdmin}`,
+      `sessionStorage   : ${cachedRaw}`,
+      `visibleMenuItems : ${menuKeys || '(empty)'}`,
+    ].join('\n');
+  }
+
+  async copySidebarDebug(): Promise<void> {
+    const text = this.sidebarDebugPayload();
+    if (!text) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        console.warn('Clipboard API unavailable; copy manually.');
+      }
+    } catch (e) {
+      console.warn('Copy failed', e);
     }
   }
 }
