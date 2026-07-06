@@ -816,7 +816,11 @@ export class ModulesAdminComponent implements OnInit {
     );
     const sidebarIcons = new Map(SIDEBAR_CATALOG.map((c) => [c.key, c.icon]));
     return Object.entries(this.moduleLabelMap)
-      .filter(([k]) => !devKeys.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
+      .filter(([k]) =>
+        !devKeys.has(k) &&
+        !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k) &&
+        this.moduleScope(k) !== 'core'  // CORE modules are always included via the plan; can't be gifted as add-ons.
+      )
       .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
