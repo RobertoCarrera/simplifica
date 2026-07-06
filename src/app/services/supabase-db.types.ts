@@ -9689,7 +9689,16 @@ export type Database = {
           description: string | null
           extra_user_cents: number
           id: string
-          included_modules: string[]
+          /**
+           * @deprecated The `plans.included_modules` column was dropped in
+           * migration 20260705000009. The source of truth for module
+           * membership is `plan_module_access` (per plan) and
+           * `company_module_grants` (per company). Reads from the RPC now
+           * return undefined for this field. Do not read from this in new
+           * code — regenerate this file with `supabase gen types` when
+           * convenient.
+           */
+          included_modules?: string[] | null
           included_users: number
           is_active: boolean
           is_highlighted: boolean
