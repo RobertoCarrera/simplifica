@@ -390,4 +390,22 @@ export class ResponsiveSidebarComponent implements OnInit {
       console.warn('Copy failed', e);
     }
   }
+
+  constructor() {
+    // TEMP: expose a global so the DEBUG SIDEBAR button can dump state via alert().
+    (window as any).__sidebarDebug = () => () => {
+      try {
+        const text = this.sidebarDebugPayload();
+        // eslint-disable-next-line no-alert
+        alert('SIDEBAR DEBUG\\n\\n' + text);
+        // Also log to console for copy-paste without re-pressing OK.
+        console.warn('=== SIDEBAR DEBUG ===\\n' + text + '\\n===================');
+        return text;
+      } catch (e) {
+        // eslint-disable-next-line no-alert
+        alert('debug failed: ' + (e as Error).message);
+        return '';
+      }
+    };
+  }
 }
