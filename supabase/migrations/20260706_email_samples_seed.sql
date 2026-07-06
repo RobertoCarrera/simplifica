@@ -115,9 +115,12 @@ INSERT INTO public.email_sample_fixtures (email_type, sample_data, expected_subs
    '{"change_type":"rescheduled","audience":"client","audience_name":"Ana García","service_name":"Fisioterapia deportiva","starts_at":"2026-07-10 16:30","previous_starts_at":"2026-07-09 10:00","booking_url":"https://app.simplificacrm.es/bookings/bk-1"}'::jsonb,
    ARRAY['reserva se ha reprogramado','Fisioterapia deportiva','Ana García','Anterior: 2026-07-09 10:00','https://app.simplificacrm.es/bookings/bk-1']);
 
--- The snapshot harness needs to read this table; allow the service_role
--- (used by tests) and any SECURITY DEFINER helper that needs it.
-GRANT SELECT ON public.email_sample_fixtures TO authenticated;
+-- Tighten access: revoke the implicit PUBLIC grant, then grant only to
+-- service_role (used by the snapshot harness) and to the email renderer
+-- helper functions (SECURITY DEFINER bypasses this GRANT but we keep the
+-- table locked down anyway). No client role has any need for direct
+-- SELECT — the renderer surfaces the data through `preview_email_template`.
+REVOKE ALL ON TABLE public.email_sample_fixtures FROM PUBLIC;
 GRANT SELECT ON public.email_sample_fixtures TO service_role;
 
 COMMENT ON COLUMN public.email_sample_fixtures.sample_data IS

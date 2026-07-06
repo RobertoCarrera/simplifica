@@ -21,7 +21,11 @@
 // ── Re-exports (escape helpers) ───────────────────────────────────────────────
 
 export { escapeHtml, interpolateSafe } from './escape.ts';
-import { interpolateSafe as _interpolateSafe } from './escape.ts';
+import { escapeHtml, interpolateSafe as _interpolateSafe } from './escape.ts';
+
+// `escapeHtml` is the local binding used by the per-type default-branch
+// interpolations below; `interpolateSafe` (aliased to `_interpolateSafe`)
+// handles the `{{var}}` substitution path for custom bodies and headers.
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -265,10 +269,10 @@ const renderBookingConfirmation: Renderer = (args) => {
   ${headerBlock(customHeader, data)}
   <h1 style="color:${company.settings?.branding?.primary_color || '#4f46e5'};text-align:center;">Reserva confirmada</h1>
   <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Servicio</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${data.servicio || ''}</td></tr>
-    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${data.fecha || ''}</td></tr>
-    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Hora</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${data.hora || ''}</td></tr>
-    <tr><td style="padding:8px 0;font-weight:bold;">Empresa</td><td style="padding:8px 0;">${data.empresa || company.name}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Servicio</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.servicio ?? ''))}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.fecha ?? ''))}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Hora</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.hora ?? ''))}</td></tr>
+    <tr><td style="padding:8px 0;font-weight:bold;">Empresa</td><td style="padding:8px 0;">${escapeHtml(String(data.empresa ?? '')) || company.name}</td></tr>
   </table>
   <p style="text-align:center;color:#666;font-size:12px;">${company.settings?.email_branding?.footer_text ?? buildEmailFooter(company)}${buildCompanyAddress(company) ? ' · ' + buildCompanyAddress(company) : ''}</p>
 </body>
@@ -278,7 +282,8 @@ const renderBookingConfirmation: Renderer = (args) => {
 
 const renderInvoice: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
-  const invoiceNum = data.numero_factura || '';
+  const invoiceNum = escapeHtml(String(data.numero_factura ?? ''));
+  const safeInvoiceUrl = escapeHtml(String(data.invoice_url ?? ''));
   const subject = customSubject || `Factura ${invoiceNum} - ${company.name}`;
   const btnText = customButtonText || 'Ver factura PDF';
   if (customBody) {
@@ -288,7 +293,7 @@ const renderInvoice: Renderer = (args) => {
     };
   }
   const buttonHtml = data.invoice_url
-    ? `<a href="${data.invoice_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeInvoiceUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   return {
     subject,
@@ -309,7 +314,8 @@ const renderInvoice: Renderer = (args) => {
 
 const renderQuote: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
-  const quoteNum = data.numero_presupuesto || '';
+  const quoteNum = escapeHtml(String(data.numero_presupuesto ?? ''));
+  const safeQuoteUrl = escapeHtml(String(data.quote_url ?? ''));
   const subject = customSubject || `Presupuesto ${quoteNum} - ${company.name}`;
   const btnText = customButtonText || 'Ver presupuesto';
   if (customBody) {
@@ -319,7 +325,7 @@ const renderQuote: Renderer = (args) => {
     };
   }
   const buttonHtml = data.quote_url
-    ? `<a href="${data.quote_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeQuoteUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   return {
     subject,
@@ -341,6 +347,7 @@ const renderConsent: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
   const subject = customSubject || `Solicitud de consentimiento RGPD - ${company.name}`;
   const btnText = customButtonText || 'Revisar y validar datos';
+  const safeConsentUrl = escapeHtml(String(data.consent_url ?? ''));
   if (customBody) {
     return {
       subject,
@@ -348,7 +355,7 @@ const renderConsent: Renderer = (args) => {
     };
   }
   const buttonHtml = data.consent_url
-    ? `<a href="${data.consent_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeConsentUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   return {
     subject,
@@ -395,14 +402,17 @@ function renderInviteInternal(
     };
   }
   const btnText = customButtonText || (isOwner ? 'Aceptar e introducir datos de empresa' : 'Aceptar invitación');
+  const safeInviteUrl = escapeHtml(String(data.invite_url ?? ''));
+  const safeInviterName = escapeHtml(String(data.inviter_name ?? ''));
+  const safeMessage = escapeHtml(String(data.message ?? ''));
   const buttonHtml = data.invite_url
-    ? `<a href="${data.invite_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeInviteUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   const inviterLine = data.inviter_name
-    ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${data.inviter_name}</strong></p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${safeInviterName}</strong></p>`
     : '';
   const messageLine = data.message
-    ? `<div style="background:#f9fafb;border-left:4px solid ${company.settings?.branding?.primary_color || '#4f46e5'};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${data.message}"</div>`
+    ? `<div style="background:#f9fafb;border-left:4px solid ${company.settings?.branding?.primary_color || '#4f46e5'};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${safeMessage}"</div>`
     : '';
   const extraInfoOwner = isOwner
     ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Como propietario, podrás configurar los datos de tu empresa, facturación y gestionar a tu equipo.</p>`
@@ -447,7 +457,7 @@ function renderInviteRoleInternal(
     invite_client: 'Cliente',
   };
   const defaultLabel = roleLabels[args._forceType] || 'Miembro';
-  const displayRoleLabel = data.role_label || defaultLabel;
+  const displayRoleLabel = data.role_label ? escapeHtml(String(data.role_label)) : defaultLabel;
   const isClient = args._forceType === 'invite_client';
   const subject = customSubject || (isClient
     ? `Te han invitado a unirte a ${company.name}`
@@ -459,14 +469,17 @@ function renderInviteRoleInternal(
     };
   }
   const btnText = customButtonText || 'Aceptar invitación';
+  const safeInviteUrl = escapeHtml(String(data.invite_url ?? ''));
+  const safeInviterName = escapeHtml(String(data.inviter_name ?? ''));
+  const safeMessage = escapeHtml(String(data.message ?? ''));
   const buttonHtml = data.invite_url
-    ? `<a href="${data.invite_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeInviteUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   const inviterLine = data.inviter_name
-    ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${data.inviter_name}</strong></p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${safeInviterName}</strong></p>`
     : '';
   const messageLine = data.message
-    ? `<div style="background:#f9fafb;border-left:4px solid ${company.settings?.branding?.primary_color || '#4f46e5'};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${data.message}"</div>`
+    ? `<div style="background:#f9fafb;border-left:4px solid ${company.settings?.branding?.primary_color || '#4f46e5'};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${safeMessage}"</div>`
     : '';
   const clientNote = isClient
     ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${company.name} para gestionar tus reservas y documentos.</p>`
@@ -503,10 +516,11 @@ const renderInviteClient: Renderer = (args) => renderInviteRoleInternal({ ...arg
 
 const renderWaitlist: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
-  const heading = data.heading || '¡Estás en la lista!';
-  const bodyText = data.body_text || 'Te avisaremos cuando puedas reservar.';
+  const heading = data.heading ? escapeHtml(String(data.heading)) : '¡Estás en la lista!';
+  const bodyText = data.body_text ? escapeHtml(String(data.body_text)) : 'Te avisaremos cuando puedas reservar.';
   const subject = customSubject || heading;
   const btnText = customButtonText || 'Reservar ahora';
+  const safeWaitlistUrl = escapeHtml(String(data.waitlist_url ?? ''));
   if (customBody) {
     return {
       subject,
@@ -514,7 +528,7 @@ const renderWaitlist: Renderer = (args) => {
     };
   }
   const buttonHtml = data.waitlist_url
-    ? `<a href="${data.waitlist_url}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+    ? `<a href="${safeWaitlistUrl}" style="display:inline-block;background:${company.settings?.branding?.primary_color || '#4f46e5'};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
     : '';
   return {
     subject,
@@ -538,7 +552,12 @@ const renderWaitlist: Renderer = (args) => {
 const renderInactiveNotice: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
   const subject = customSubject || `Clientes inactivos - ${company.name}`;
-  const clientList = (data.client_names || []).map((name: string) => `<li style="padding:4px 0;">${sanitizeText(name, 200)}</li>`).join('');
+  // Defense in depth: sanitizeText strips angle brackets and trims; escapeHtml
+  // additionally encodes any residual special chars (`&`, `"`, `'`) so a
+  // malicious client name cannot break out of the <li>.
+  const clientList = (data.client_names || []).map((name: string) =>
+    `<li style="padding:4px 0;">${escapeHtml(sanitizeText(name, 200))}</li>`
+  ).join('');
   if (customBody) {
     return {
       subject,
@@ -565,7 +584,7 @@ const renderInactiveNotice: Renderer = (args) => {
 const renderGeneric: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
   const subject = customSubject || `Mensaje de ${company.name}`;
-  const message = data.message || '';
+  const message = escapeHtml(String(data.message ?? ''));
   if (customBody) {
     return {
       subject,
@@ -589,8 +608,8 @@ const renderGeneric: Renderer = (args) => {
 
 const renderGoogleReview: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
-  const clientName = data.client_name || '';
-  const reviewUrl = data.review_url || 'https://g.page/review';
+  const clientName = data.client_name ? escapeHtml(String(data.client_name)) : '';
+  const reviewUrl = data.review_url ? escapeHtml(String(data.review_url)) : 'https://g.page/review';
   const subject = customSubject || `¡Gracias por tu visita, ${clientName}! 🌟`;
   if (customBody) {
     return {
@@ -627,11 +646,16 @@ function renderBudgetInternal(
 ): RenderResult {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
   const kind = args._forceType as 'budget_created' | 'budget_reminder' | 'budget_overdue';
+  // Subject line interpolates raw values to keep it plain (no HTML); escapeHtml
+  // not strictly needed because the subject is not rendered as HTML, but we
+  // keep it consistent with the body.
+  const safePeriod = escapeHtml(String(data.period_label ?? ''));
+  const safeTotal = escapeHtml(String(data.total_formatted ?? ''));
   const dataSubject =
-    kind === 'budget_created' ? `Nuevo presupuesto ${data.period_label || ''} — ${data.total_formatted || ''}`.trim()
-      : kind === 'budget_reminder' ? `Tu presupuesto vence pronto — ${data.total_formatted || ''}`.trim()
-        : `Presupuesto vencido — ${data.total_formatted || ''}`.trim();
-  const subject = customSubject || dataSubject || `Presupuesto ${data.period_label || ''} - ${company.name}`.trim();
+    kind === 'budget_created' ? `Nuevo presupuesto ${safePeriod} — ${safeTotal}`.trim()
+      : kind === 'budget_reminder' ? `Tu presupuesto vence pronto — ${safeTotal}`.trim()
+        : `Presupuesto vencido — ${safeTotal}`.trim();
+  const subject = customSubject || dataSubject || `Presupuesto ${safePeriod} - ${company.name}`.trim();
   const btnText = customButtonText || data.cta_text || 'Ver presupuesto';
   if (customBody) {
     return {
@@ -642,17 +666,23 @@ function renderBudgetInternal(
   const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
   const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
   const fontFamily = sanitizeFontFamily(company.settings?.email_branding?.font_family || 'Arial');
-  const intro = data.intro ||
+  const intro = data.intro ? escapeHtml(String(data.intro)) :
     (kind === 'budget_created'
       ? 'Ya está disponible tu presupuesto.'
       : kind === 'budget_reminder'
         ? 'Tu presupuesto vence pronto.'
         : 'Tu presupuesto ha vencido y aún no hemos recibido el pago.');
+  const safeClientName = escapeHtml(String(data.client_name ?? ''));
+  const safePaymentUrl = escapeHtml(String(data.payment_url ?? ''));
+  const safeDueDate = escapeHtml(String(data.due_date_formatted ?? ''));
+  const safePeriodLabel = escapeHtml(String(data.period_label ?? ''));
+  const safeTotalFormatted = escapeHtml(String(data.total_formatted ?? ''));
+  const safeFooterText = escapeHtml(String(data.footer_text ?? ''));
   const clientLine = data.client_name
-    ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${data.client_name}</strong>,</p>`
+    ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${safeClientName}</strong>,</p>`
     : '';
   const buttonHtml = data.payment_url
-    ? `<a href="${data.payment_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
+    ? `<a href="${safePaymentUrl}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
     : '';
   const accentColor = kind === 'budget_overdue' ? '#dc2626' : kind === 'budget_reminder' ? '#f59e0b' : primaryColor;
   const headingColor = kind === 'budget_overdue' ? '#dc2626' : primaryColor;
@@ -661,13 +691,13 @@ function renderBudgetInternal(
       : kind === 'budget_reminder' ? 'Tu presupuesto vence pronto'
         : 'Presupuesto vencido';
   const dueLine = data.due_date_formatted
-    ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Fecha de vencimiento: <strong>${data.due_date_formatted}</strong></p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Fecha de vencimiento: <strong>${safeDueDate}</strong></p>`
     : '';
   const periodLine = data.period_label
-    ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Periodo: <strong>${data.period_label}</strong></p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Periodo: <strong>${safePeriodLabel}</strong></p>`
     : '';
   const totalLine = data.total_formatted
-    ? `<p style="text-align:center;color:#111;font-size:28px;font-weight:bold;margin:12px 0;">${data.total_formatted}</p>`
+    ? `<p style="text-align:center;color:#111;font-size:28px;font-weight:bold;margin:12px 0;">${safeTotalFormatted}</p>`
     : '';
   const daysToDueLine = (typeof data.days_to_due === 'number' && kind !== 'budget_created')
     ? `<p style="text-align:center;color:${kind === 'budget_overdue' ? '#dc2626' : '#f59e0b'};font-size:14px;font-weight:bold;margin:4px 0;">${
@@ -679,7 +709,7 @@ function renderBudgetInternal(
     }</p>`
     : '';
   const footerLine = data.footer_text
-    ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${data.footer_text}</p>`
+    ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${safeFooterText}</p>`
     : '';
   return {
     subject,
@@ -725,7 +755,8 @@ const renderBookingChange: Renderer = (args) => {
     deleted: 'Tu reserva se ha eliminado',
   };
   const audiencePrefix = audience === 'admin' ? '[Admin] ' : '';
-  const dataSubject = `${audiencePrefix}${verbByType[changeType] || verbByType.updated}${data.service_name ? ' — ' + data.service_name : ''}`;
+  const safeServiceName = escapeHtml(String(data.service_name ?? ''));
+  const dataSubject = `${audiencePrefix}${verbByType[changeType] || verbByType.updated}${data.service_name ? ' — ' + safeServiceName : ''}`;
   const subject = customSubject || dataSubject || `${audiencePrefix}Actualización de reserva — ${company.name}`;
   const btnText = customButtonText || data.cta_text || (audience === 'client' ? 'Ver reserva' : 'Ver detalles');
   const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
@@ -744,38 +775,47 @@ const renderBookingChange: Renderer = (args) => {
   const headingColor =
     changeType === 'cancelled' || changeType === 'deleted' ? '#dc2626' : primaryColor;
   const headingText = verbByType[changeType] || verbByType.updated;
-  const intro = data.intro ||
+  const intro = data.intro ? escapeHtml(String(data.intro)) :
     (audience === 'client'
       ? (changeType === 'created' ? 'Te confirmamos la siguiente reserva:' : 'Los detalles de tu reserva han cambiado:')
       : audience === 'professional'
         ? (changeType === 'created' ? 'Tienes una nueva reserva asignada:' : 'Una de tus reservas ha cambiado:')
         : 'Una reserva en tu empresa ha cambiado:');
+  const safeAudienceName = escapeHtml(String(data.audience_name ?? ''));
+  const safeStartsAt = escapeHtml(String(data.starts_at ?? ''));
+  const safeEndsAt = escapeHtml(String(data.ends_at ?? ''));
+  const safePreviousStartsAt = escapeHtml(String(data.previous_starts_at ?? ''));
+  const safeClientName = escapeHtml(String(data.client_name ?? ''));
+  const safeProfessionalName = escapeHtml(String(data.professional_name ?? ''));
+  const safeReason = escapeHtml(String(data.reason ?? ''));
+  const safeBookingUrl = escapeHtml(String(data.booking_url ?? ''));
+  const safeFooterText = escapeHtml(String(data.footer_text ?? ''));
   const greet = (data.audience_name as string)
-    ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${data.audience_name}</strong>,</p>`
+    ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${safeAudienceName}</strong>,</p>`
     : '';
   const serviceLine = data.service_name
-    ? `<p style="text-align:center;color:#111;font-size:18px;font-weight:600;margin:12px 0;">${data.service_name}</p>`
+    ? `<p style="text-align:center;color:#111;font-size:18px;font-weight:600;margin:12px 0;">${safeServiceName}</p>`
     : '';
   const dateLine = data.starts_at
-    ? `<p style="text-align:center;color:#374151;font-size:15px;margin:8px 0;"><strong>Fecha y hora:</strong> ${data.starts_at}${data.ends_at ? ' — ' + data.ends_at : ''}</p>`
+    ? `<p style="text-align:center;color:#374151;font-size:15px;margin:8px 0;"><strong>Fecha y hora:</strong> ${safeStartsAt}${data.ends_at ? ' — ' + safeEndsAt : ''}</p>`
     : '';
   const previousDateLine = data.previous_starts_at && changeType === 'rescheduled'
-    ? `<p style="text-align:center;color:#6b7280;font-size:13px;margin:4px 0;text-decoration:line-through;">Anterior: ${data.previous_starts_at}</p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:13px;margin:4px 0;text-decoration:line-through;">Anterior: ${safePreviousStartsAt}</p>`
     : '';
   const clientLine = data.client_name && audience !== 'client'
-    ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Cliente: <strong>${data.client_name}</strong></p>`
+    ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Cliente: <strong>${safeClientName}</strong></p>`
     : '';
   const professionalLine = data.professional_name && audience !== 'professional'
-    ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Profesional: <strong>${data.professional_name}</strong></p>`
+    ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Profesional: <strong>${safeProfessionalName}</strong></p>`
     : '';
   const reasonLine = data.reason
-    ? `<p style="text-align:center;color:#6b7280;font-size:13px;font-style:italic;margin:8px 0;">Motivo: ${data.reason}</p>`
+    ? `<p style="text-align:center;color:#6b7280;font-size:13px;font-style:italic;margin:8px 0;">Motivo: ${safeReason}</p>`
     : '';
   const buttonHtml = data.booking_url
-    ? `<a href="${data.booking_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
+    ? `<a href="${safeBookingUrl}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
     : '';
   const footerLine = data.footer_text
-    ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${data.footer_text}</p>`
+    ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${safeFooterText}</p>`
     : '';
   return {
     subject,
