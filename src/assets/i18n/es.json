@@ -2293,6 +2293,14 @@
     },
     "preview": {
       "noOverrides": "Mostrando la plantilla por defecto (sin personalizaciones)"
+    },
+    "categories": {
+      "reservas": "Reservas",
+      "facturacion": "Facturación",
+      "consentimiento": "Consentimiento",
+      "invitaciones": "Invitaciones",
+      "credenciales": "Credenciales",
+      "notificaciones": "Notificaciones"
     }
   },
   "emailBranding": {

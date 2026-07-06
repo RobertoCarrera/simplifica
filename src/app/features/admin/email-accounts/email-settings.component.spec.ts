@@ -165,12 +165,12 @@ describe('EmailSettingsComponent (PR2b)', () => {
   });
 
   it('expands emailTypes to 26 entries (PR1 20 + 6 system types)', () => {
-    expect(component.emailTypes.length).toBe(26);
-    expect(new Set(component.emailTypes).size).toBe(26); // no duplicates
+    expect(component.emailTypes().length).toBe(26);
+    expect(new Set(component.emailTypes()).size).toBe(26); // no duplicates
     // Sanity: each fixture-matrix key (`EMAIL_SAMPLES`) is present in
     // the rendered list (exhaustiveness check).
     for (const t of Object.keys(EMAIL_SAMPLES)) {
-      expect(component.emailTypes).toContain(t as EmailType);
+      expect(component.emailTypes()).toContain(t as EmailType);
     }
   });
 
@@ -320,5 +320,93 @@ describe('EmailSettingsComponent (PR2b)', () => {
 
     expect(toast.error).toHaveBeenCalled();
     expect(dialog.opens.length).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------
+  // PR2c polish: email-type categorization
+  // ---------------------------------------------------------------------
+
+  it('groups every email type into one of the 6 categories', () => {
+    const groups = component.categorizedTypes();
+    const allGrouped = groups.flatMap((g) => g.types);
+    expect(allGrouped.length).toBe(26);
+    // Every type appears in exactly one bucket (no duplicates across groups).
+    expect(new Set(allGrouped).size).toBe(26);
+    // The 6 known categories are present.
+    const ids = groups.map((g) => g.category);
+    expect(ids).toContain('reservas');
+    expect(ids).toContain('facturacion');
+    expect(ids).toContain('consentimiento');
+    expect(ids).toContain('invitaciones');
+    expect(ids).toContain('credenciales');
+    expect(ids).toContain('notificaciones');
+  });
+
+  it('emits categories in the fixed order (Reservas -> Notificaciones)', () => {
+    const groups = component.categorizedTypes();
+    const orders = groups.map((g) => g.order);
+    const sorted = [...orders].sort((a, b) => a - b);
+    expect(orders).toEqual(sorted);
+  });
+
+  it('never renders empty category headers', () => {
+    const groups = component.categorizedTypes();
+    for (const g of groups) {
+      expect(g.types.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('places the 5 booking/waitlist types under Reservas', () => {
+    const reservas = component.categorizedTypes().find((g) => g.category === 'reservas');
+    expect(reservas).toBeDefined();
+    expect(reservas!.types).toContain('booking_confirmation');
+    expect(reservas!.types).toContain('booking_reminder');
+    expect(reservas!.types).toContain('booking_cancellation');
+    expect(reservas!.types).toContain('booking_change');
+    expect(reservas!.types).toContain('waitlist');
+  });
+
+  it('places invoice, quote and the 3 budget_* types under Facturacion', () => {
+    const fact = component.categorizedTypes().find((g) => g.category === 'facturacion');
+    expect(fact).toBeDefined();
+    expect(fact!.types).toContain('invoice');
+    expect(fact!.types).toContain('quote');
+    expect(fact!.types).toContain('budget_created');
+    expect(fact!.types).toContain('budget_reminder');
+    expect(fact!.types).toContain('budget_overdue');
+  });
+
+  it('places every invite_* type under Invitaciones (including invite_marketer)', () => {
+    const inv = component.categorizedTypes().find((g) => g.category === 'invitaciones');
+    expect(inv).toBeDefined();
+    expect(inv!.types).toContain('invite');
+    expect(inv!.types).toContain('invite_owner');
+    expect(inv!.types).toContain('invite_admin');
+    expect(inv!.types).toContain('invite_member');
+    expect(inv!.types).toContain('invite_professional');
+    expect(inv!.types).toContain('invite_agent');
+    expect(inv!.types).toContain('invite_marketer');
+    expect(inv!.types).toContain('invite_client');
+  });
+
+  it('recomputes categorizedTypes when the emailTypes signal changes', () => {
+    const before = component.categorizedTypes().map((g) => g.category);
+    expect(before).toContain('reservas');
+
+    // Replace the list with a single type that lives in Consentimiento.
+    component.emailTypes.set(['consent']);
+    const after = component.categorizedTypes().map((g) => g.category);
+    expect(after).toEqual(['consentimiento']);
+    expect(after).not.toContain('reservas');
+
+    // Restore for downstream specs that depend on the 26-type default.
+    component.emailTypes.set([
+      'booking_confirmation', 'invoice', 'quote', 'consent', 'invite',
+      'invite_owner', 'invite_admin', 'invite_member', 'invite_professional',
+      'invite_agent', 'invite_client', 'waitlist', 'inactive_notice', 'generic',
+      'booking_reminder', 'booking_cancellation', 'password_reset', 'magic_link',
+      'welcome', 'staff_credentials', 'invite_marketer', 'google_review',
+      'budget_created', 'budget_reminder', 'budget_overdue', 'booking_change',
+    ]);
   });
 });
