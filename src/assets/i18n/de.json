@@ -2834,23 +2834,31 @@
       "editTemplate": "Vorlage bearbeiten"
     },
     "templateEditor": {
-      "templateSelector": "Vorlage auswählen",
       "title": "Vorlage bearbeiten",
-      "whenSent": "Wann es gesendet wird:",
-      "subjectLabel": "Betreff",
-      "bodyLabel": "E-Mail-Text",
-      "variableHint": "Sie können Variablen wie {{{{raw}}}} verwenden. Wenn leer, wird die Standardvorlage verwendet.",
-      "customSubject": "Benutzerdefinierter Betreff",
-      "headerBlock": "HTML-Kopfblock <span class=\"text-xs text-gray-400\">(optional)</span>",
-      "buttonText": "Hauptbutton-Text <span class=\"text-xs text-gray-400\">(optional)</span>",
-      "customBody": "Benutzerdefinierter E-Mail-Text",
-      "defaultBodyHint": "Wenn leer, wird die Standardvorlage verwendet.",
-      "subjectPlaceholder": "z. B. Ihre Buchung bei [company_name] ist bestätigt",
-      "buttonPlaceholder": "z. B. Einladung annehmen, Rechnung ansehen...",
-      "bodyPlaceholder": "Schreiben Sie hier den HTML- oder Klartext-Inhalt der E-Mail...",
-      "headerPlaceholder": "Benutzerdefinierter HTML-Code, der unter dem Logo hinzugefügt wird (z. B. eine Willkommensnachricht, Anweisungen usw.)",
-      "cancel": "Abbrechen",
-      "saveTemplate": "Vorlage speichern"
+      "fields": {
+        "subject": "Betreff",
+        "header": "Kopfzeile",
+        "buttonText": "Button-Text",
+        "body": "Text (HTML)"
+      },
+      "hints": {
+        "variables": "Verfügbare Variablen: {{vars}}",
+        "preview": "Die Vorschau wird in Echtzeit aktualisiert"
+      },
+      "buttons": {
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "saving": "Wird gespeichert..."
+      },
+      "preview": {
+        "loading": "Vorschau wird aktualisiert...",
+        "error": "Vorschau konnte nicht geladen werden",
+        "forbidden": "Sie sind nicht berechtigt, diese Vorlage in der Vorschau anzuzeigen"
+      },
+      "toast": {
+        "saved": "Vorlage gespeichert",
+        "saveError": "Fehler beim Speichern der Vorlage"
+      }
     },
     "toast": {
       "success": "Erfolg",
@@ -2862,6 +2870,9 @@
       "toggleError": "Status konnte nicht geändert werden.",
       "templateSaved": "Vorlage gespeichert",
       "templateSaveError": "Vorlage konnte nicht gespeichert werden."
+    },
+    "preview": {
+      "noOverrides": "Standardvorlage wird angezeigt (keine Anpassungen)"
     }
   },
   "emailBranding": {

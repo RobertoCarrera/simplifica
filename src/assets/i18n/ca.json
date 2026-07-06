@@ -2247,19 +2247,30 @@
     },
     "templateEditor": {
       "title": "Editar plantilla",
-      "whenSent": "Quan s'envia:",
-      "variableHint": "Pots fer servir variables com {{{{raw}}}}. Si ho deixes buit s'usa la plantilla per defecte.",
-      "customSubject": "Assumpte personalitzat",
-      "headerBlock": "Bloc de capçalera HTML <span class=\"text-xs text-gray-400\">(opcional)</span>",
-      "buttonText": "Text del botó principal <span class=\"text-xs text-gray-400\">(opcional)</span>",
-      "customBody": "Cos del correu personalitzat",
-      "defaultBodyHint": "Si ho deixes buit s'usa la plantilla per defecte.",
-      "subjectPlaceholder": "p. ex.: La teva reserva a [company_name] està confirmada",
-      "buttonPlaceholder": "p. ex.: Acceptar invitació, Veure factura...",
-      "bodyPlaceholder": "Escriu aquí el contingut HTML o text pla del correu...",
-      "headerPlaceholder": "HTML personalitzat que s'afegeix sota el logo (p. ex.: un missatge de benvinguda, instruccions, etc.)",
-      "cancel": "Cancel·lar",
-      "saveTemplate": "Guardar plantilla"
+      "fields": {
+        "subject": "Assumpte",
+        "header": "Capçalera",
+        "buttonText": "Text del botó",
+        "body": "Cos (HTML)"
+      },
+      "hints": {
+        "variables": "Variables disponibles: {{vars}}",
+        "preview": "La previsualització s'actualitza en temps real"
+      },
+      "buttons": {
+        "save": "Desar",
+        "cancel": "Cancel·lar",
+        "saving": "Desant..."
+      },
+      "preview": {
+        "loading": "Actualitzant previsualització...",
+        "error": "No s'ha pogut carregar la previsualització",
+        "forbidden": "No tens permís per previsualitzar aquesta plantilla"
+      },
+      "toast": {
+        "saved": "Plantilla desada",
+        "saveError": "Error en desar la plantilla"
+      }
     },
     "toast": {
       "success": "Èxit",
@@ -2271,6 +2282,9 @@
       "toggleError": "No es va poder canviar l'estat.",
       "templateSaved": "Plantilla guardada",
       "templateSaveError": "No es va poder guardar la plantilla."
+    },
+    "preview": {
+      "noOverrides": "Mostrant la plantilla per defecte (sense personalitzacions)"
     }
   },
   "emailBranding": {
@@ -2723,7 +2737,7 @@
       "noHaHabidoEjecucion": "No ha hagut execució"
     }
   },
-"gdpr": {
+  "gdpr": {
     "title": "RGPD",
     "subtitle": "Configuració del RGPD",
     "consentRequests": "Sol·licituds de Consentiment",

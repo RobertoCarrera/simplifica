@@ -101,20 +101,6 @@
     </button>
   }
 
-  <!-- Navigation — core items render instantly, production items appear once modules load -->
-  <button onclick="window.__sidebarDebug()()" style="position:fixed;top:80px;right:10px;z-index:99999;padding:6px 10px;background:#f59e0b;color:#000;border:2px solid #000;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;">DEBUG SIDEBAR</button>
-<button onclick="try{Object.keys(sessionStorage).forEach(k=>sessionStorage.removeItem(k));Object.keys(localStorage).forEach(k=>localStorage.removeItem(k));}catch(e){};window.location.reload()" style="position:fixed;top:80px;right:170px;z-index:99999;padding:6px 10px;background:#ef4444;color:#fff;border:2px solid #000;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;">CLEAR CACHE + RELOAD</button>
-
-  <!-- DEBUG PANEL: temporary — copy this when sidebar shows wrong modules -->
-  @if (debugSidebar()) {
-    <div class="m-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 rounded text-[11px] text-amber-900 dark:text-amber-200 font-mono">
-      <div class="flex items-center justify-between mb-1">
-        <strong>Sidebar debug</strong>
-        <button (click)="copySidebarDebug()" class="px-2 py-0.5 rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40">Copiar</button>
-      </div>
-      <div class="whitespace-pre-wrap break-all">{{ sidebarDebugPayload() }}</div>
-    </div>
-  }
   <nav
     class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden"
   >

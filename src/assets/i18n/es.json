@@ -2255,19 +2255,30 @@
     },
     "templateEditor": {
       "title": "Editar plantilla",
-      "whenSent": "Cuándo se envía:",
-      "variableHint": "Podés usar variables como {{{{raw}}}}. Si lo dejás vacío se usa la plantilla por defecto.",
-      "customSubject": "Asunto personalizado",
-      "headerBlock": "Bloque de cabecera HTML <span class=\"text-xs text-gray-400\">(opcional)</span>",
-      "buttonText": "Texto del botón principal <span class=\"text-xs text-gray-400\">(opcional)</span>",
-      "customBody": "Cuerpo del email personalizado",
-      "defaultBodyHint": "Si lo dejás vacío se usa la plantilla por defecto.",
-      "subjectPlaceholder": "Ej: Tu reserva en [company_name] está confirmada",
-      "buttonPlaceholder": "Ej: Aceptar invitación, Ver factura...",
-      "bodyPlaceholder": "Escribí aquí el contenido HTML o texto plano del email...",
-      "headerPlaceholder": "HTML personalizado que se añade debajo del logo (ej: un mensaje de bienvenida, instrucciones, etc.)",
-      "cancel": "Cancelar",
-      "saveTemplate": "Guardar plantilla"
+      "fields": {
+        "subject": "Asunto",
+        "header": "Cabecera",
+        "buttonText": "Texto del botón",
+        "body": "Cuerpo (HTML)"
+      },
+      "hints": {
+        "variables": "Variables disponibles: {{vars}}",
+        "preview": "La previsualización se actualiza en tiempo real"
+      },
+      "buttons": {
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "saving": "Guardando..."
+      },
+      "preview": {
+        "loading": "Actualizando previsualización...",
+        "error": "No se pudo cargar la previsualización",
+        "forbidden": "No tienes permiso para previsualizar esta plantilla"
+      },
+      "toast": {
+        "saved": "Plantilla guardada",
+        "saveError": "Error al guardar la plantilla"
+      }
     },
     "toast": {
       "success": "Éxito",
@@ -2279,6 +2290,9 @@
       "toggleError": "No se pudo cambiar el estado.",
       "templateSaved": "Plantilla guardada",
       "templateSaveError": "No se pudo guardar la plantilla."
+    },
+    "preview": {
+      "noOverrides": "Mostrando la plantilla por defecto (sin personalizaciones)"
     }
   },
   "emailBranding": {
