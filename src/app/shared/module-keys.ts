@@ -6,10 +6,16 @@
  * `public.module_key_canonical_map` (created by migration
  * 20260630000001_align_plans_module_keys.sql). Both MUST stay in sync.
  *
- * The Angular UI reads `plans.included_modules` rows that may still
- * carry legacy keys (pre-migration 0001 data, or a partial migration
- * apply). `LEGACY_MODULE_KEY_ALIASES` resolves those to canonical keys
- * so the UI never displays a raw legacy key.
+ * As of migration 20260705000009 (commit e23c3b33) the
+ * `plans.included_modules` column and the `company_modules` table were
+ * dropped. Per-plan membership now lives in `plan_module_access`
+ * (FK to `modules_catalog`), and per-company access lives in
+ * `company_module_grants`. Rows in either table may still carry
+ * legacy keys (pre-migration 0001 data, or a partial migration
+ * apply), so `LEGACY_MODULE_KEY_ALIASES` resolves those to canonical
+ * keys here on the client before any UI consumer renders them. A
+ * server-side mirror of this map (`module_key_canonical_map`) covers
+ * any read paths the client does not touch.
  */
 
 /** Single source of truth for module catalog entries used by the admin surface. */

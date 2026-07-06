@@ -1,8 +1,15 @@
 /**
  * Unit tests for PlanService — covers PR 2 changes:
- *   - getPlans() canonicalizes included_modules (defense in depth vs migration 0001)
  *   - updatePlan() throws 'No tienes permisos de super_admin' on error.code === '42501'
  *   - updatePlan() re-throws non-42501 errors unchanged
+ *
+ * NOTE on removed coverage: `getPlans() canonicalizes included_modules`
+ * was removed when migration 20260705000009 dropped the
+ * `plans.included_modules` column (commit e23c3b33). The source of truth
+ * for plan → module membership is now `plan_module_access` (per plan)
+ * and `company_module_grants` (per company). The legacy-key alias map in
+ * `src/app/shared/module-keys.ts` is still available for any other
+ * surface that reads pre-migration keys.
  *
  * Test runner: Karma+Jasmine (`npm run test`). Requires Chrome.
  *
@@ -49,8 +56,18 @@ function setupService(impl: Parameters<typeof makeSupabaseStub>[0]) {
 }
 
 describe('PlanService (PR 2 additions)', () => {
-  describe('getPlans', () => {
-    it('canonicalizes legacy module keys before storing in the signal', async () => {
+  describe('getPlans (post e23c3b33)', () => {
+    // SKIPPED — migration 20260705000009 (commit e23c3b33) dropped the
+    // `plans.included_modules` column and removed the canonicalize-on-read
+    // path inside `getPlans()`. Per-plan module membership is now sourced
+    // from `plan_module_access` (loaded via `admin_get_plan_module_access`
+    // in `SupabaseModulesService`, not from `PlanService`). The legacy-key
+    // alias map in `src/app/shared/module-keys.ts` remains the single
+    // source of truth for resolving pre-migration keys on other surfaces.
+    //
+    // When `plan_module_access` rows need canonicalization at the UI edge,
+    // that helper lives next to the component that loads them, not here.
+    xit('canonicalizes legacy module keys before storing in the signal', async () => {
       const { service } = setupService({
         select: {
           data: [

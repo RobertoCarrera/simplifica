@@ -6,13 +6,22 @@
  *   - Edit button visibility follows flag + super_admin role (F-PCA-001, ADR-05)
  *   - updatePlanMetadata() calls planService.updatePlan() and toasts success
  *   - 42501 from RPC is surfaced as a 'No tienes permisos de super_admin' toast
- *   - F-PCA-006 tier cascade promotion
  *
  * PR 4:
  *   - Add-on edit form (F-ADDON-002)
  *   - New add-on creation (F-ADDON-003)
  *   - 23505 duplicate-id surfaces Spanish toast
  *   - toggleAddonPlan multi-select
+ *
+ * REMOVED (commit e23c3b33, follow-up refactor ef6e38c4):
+ *   - F-PCA-006 tier cascade promotion — the cascade wrote through
+ *     `plans.included_modules`, which was dropped in
+ *     migration 20260705000009. `toggleModuleInPlan` now writes
+ *     one plan at a time via `admin_set_plan_module_access` → the
+ *     `plan_module_access` table; cascade semantics are no longer a
+ *     client concern (the RPC validates and the read model rebuilds).
+ *     The describe block is kept as `describe.skip` for archaeological
+ *     context and to make the removal explicit.
  *
  * Test runner: Karma+Jasmine (`npm run test`). Requires Chrome.
  *
@@ -102,7 +111,6 @@ function setup({
   const planServiceStub = {
     getPlans: () => of(plans),
     getAddons: () => of(addons),
-    togglePlanModule: () => of(SAMPLE_PLAN),
     updatePlan,
     updateAddon,
   };
@@ -115,6 +123,11 @@ function setup({
 
   const modulesServiceStub = {
     adminListCompanies: () => of({ companies: [] }),
+    // New write path — toggleModuleInPlan() routes through
+    // `admin_set_plan_module_access` (plan_module_access), not
+    // `PlanService.togglePlanModule`. The default is a no-op success.
+    adminSetPlanModuleAccess: () => of(undefined),
+    adminGetPlanModuleAccess: () => of([]),
   };
 
   const supabaseStub = {
@@ -211,7 +224,14 @@ describe('ModulesAdminComponent — PR 3 inline plan-edit form', () => {
   });
 });
 
-describe('ModulesAdminComponent — F-PCA-006 tier cascade promotion', () => {
+describe.skip('ModulesAdminComponent — F-PCA-006 tier cascade promotion (removed in e23c3b33)', () => {
+  // REMOVED — migration 20260705000009 dropped the `plans.included_modules`
+  // column and refactor ef6e38c4 moved per-plan writes through
+  // `admin_set_plan_module_access` → `plan_module_access`. The cascade
+  // promotion feature itself was retired: each plan × module toggle is
+  // now an explicit per-row write. There is no cascade to test on the
+  // client side anymore. Server-side cascade (if reintroduced) would
+  // belong in a Postgres regression test, not here.
   const NEW_MODULE = 'core_/facturacion';
 
   it('cascades a module toggle ON to every higher-tier plan (sort_order > current)', async () => {
