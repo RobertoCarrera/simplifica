@@ -564,6 +564,66 @@ export class ModulesAdminComponent implements OnInit {
 
   isEditorEnabled(): boolean { return this.isSuperAdmin(); }
 
+  /**
+   * Tailwind classes for the plan badge on each company card. Color-codes
+   * the plan so the superadmin can read tier at a glance:
+   *   - free      → gray   (the default / no-cost tier)
+   *   - starter   → blue   (entry-level paid)
+   *   - pro       → purple (mid-tier)
+   *   - business  → amber  (top-tier, gold-ish)
+   * Unknown / custom tiers fall back to the original blue badge.
+   *
+   * The id normalisation is forgiving: `starter`, `plan_s`, `plan-s`, or
+   * `planS` all map to blue. This matches how plan ids are written in seed
+   * data and admin UIs across the codebase.
+   */
+  getPlanBadgeClass(tier: string | null | undefined): string {
+    const t = (tier || '').toLowerCase().replace(/[-\s]/g, '_');
+    if (t === 'free' || t === 'plan_free' || t === 'basic') {
+      return 'bg-gray-100 text-gray-800';
+    }
+    if (t === 'starter' || t === 'plan_s' || t === 'plans' || t === 'plan_starter') {
+      return 'bg-blue-100 text-blue-800';
+    }
+    if (t === 'pro' || t === 'plan_pro') {
+      return 'bg-purple-100 text-purple-800';
+    }
+    if (t === 'business' || t === 'plan_business' || t === 'enterprise') {
+      return 'bg-amber-100 text-amber-800';
+    }
+    return 'bg-blue-100 text-blue-800';
+  }
+
+  /**
+   * Human-readable plan name for the company card. Resolves the
+   * `subscription_tier` id against the loaded `plans()` signal so we show
+   * "Business" instead of the raw "business" id. Falls back to a
+   * Title-Cased version of the id (or 'Basic' if missing) when the plan
+   * hasn't been loaded yet — keeps the layout stable on first paint.
+   */
+  planName(company: any): string {
+    const id = company?.subscription_tier;
+    if (!id) return 'Basic';
+    const plan = this.plans().find((p) => p.id === id);
+    if (plan?.name) return plan.name;
+    // Title-case the id as a graceful fallback (handles "plan_s" → "Plan S").
+    return String(id)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /**
+   * Cap text for the company card seat count, e.g. "15 usuarios máx" or
+   * null when the company has no seat cap (max_users null/0/undefined).
+   * For now we only render the cap — the live "X / Y" count needs an extra
+   * seat-count RPC and is intentionally deferred to a follow-up.
+   */
+  maxUsersLabel(company: any): string | null {
+    const max = company?.max_users;
+    if (max == null || max <= 0) return null;
+    return `${max} ${max === 1 ? 'usuario máx' : 'usuarios máx'}`;
+  }
+
   isModuleInCompanyPlan(company: any, moduleKey: string): boolean {
     const planId = company?.subscription_tier;
     if (!planId) return false;
