@@ -102,7 +102,7 @@ import { firstValueFrom } from 'rxjs';
                           <span class="truncate font-mono">{{ supplier.base_url }}</span>
                         }
                       </div>
-                      <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                      <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 mt-0.5 flex-wrap">
                         <span>
                           <i class="far fa-clock mr-1"></i>
                           Actualizado: {{ formatDate(supplier.updated_at) }}
@@ -111,6 +111,12 @@ import { firstValueFrom } from 'rxjs';
                           <i class="fas fa-box mr-1"></i>
                           {{ cacheCountBySupplier()[supplier.id] || 0 }} en cache
                         </span>
+                        @if (supplier.last_sync_at) {
+                          <span class="flex items-center gap-1 text-green-600 dark:text-green-400" title="Última sync automática">
+                            <i class="fas fa-check-circle"></i>
+                            Auto-sync: {{ formatDate(supplier.last_sync_at) }}
+                          </span>
+                        }
                       </div>
                     </div>
                   </div>
