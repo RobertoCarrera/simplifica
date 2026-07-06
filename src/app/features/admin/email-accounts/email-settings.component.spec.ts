@@ -21,8 +21,7 @@
  * `tsc --noEmit -p tsconfig.app.json`.
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { Dialog, DialogRef } from '@angular/cdk/dialog';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
