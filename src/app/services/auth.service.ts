@@ -790,10 +790,14 @@ export class AuthService {
         this.userProfileSubject.next(appUser);
         this.userProfileSignal.set(appUser);
         this.userRole.set(appUser.role);
-        
+
         // CORRECCIÓN SEGURIDAD DOMINIOS:
-        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global)
-        this.isSuperAdmin.set(appUser.role === 'super_admin' || !!appUser.is_super_admin);
+        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global).
+        // The is_super_admin profile flag is informational only — using it
+        // here would let an owner with a stray flag bypass module-level
+        // gating in the sidebar. The flag remains for RPC-level audit, not
+        // for UI bypasses.
+        this.isSuperAdmin.set(appUser.role === 'super_admin');
         
         if (appUser.company_id) {
           this.companyId.set(appUser.company_id);
