@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _e2e_debug: {
-        Row: {
-          data: Json | null
-          id: number
-          step: string | null
-          ts: string | null
-        }
-        Insert: {
-          data?: Json | null
-          id?: number
-          step?: string | null
-          ts?: string | null
-        }
-        Update: {
-          data?: Json | null
-          id?: number
-          step?: string | null
-          ts?: string | null
-        }
-        Relationships: []
-      }
       addresses: {
         Row: {
           company_id: string | null
@@ -112,42 +91,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      admin_settings: {
-        Row: {
-          connected_at: string | null
-          id: number
-          is_active: boolean | null
-          stripe_access_token: string | null
-          stripe_account_id: string | null
-          stripe_refresh_token: string | null
-          stripe_token_expires_at: string | null
-          stripe_user_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          connected_at?: string | null
-          id?: number
-          is_active?: boolean | null
-          stripe_access_token?: string | null
-          stripe_account_id?: string | null
-          stripe_refresh_token?: string | null
-          stripe_token_expires_at?: string | null
-          stripe_user_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          connected_at?: string | null
-          id?: number
-          is_active?: boolean | null
-          stripe_access_token?: string | null
-          stripe_account_id?: string | null
-          stripe_refresh_token?: string | null
-          stripe_token_expires_at?: string | null
-          stripe_user_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       ai_usage_logs: {
         Row: {
@@ -1492,6 +1435,51 @@ export type Database = {
           },
         ]
       }
+      catalog_suppliers: {
+        Row: {
+          adapter_type: string
+          auth_config: Json
+          auto_sync_enabled: boolean
+          auto_sync_frequency: string
+          base_url: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sync_config: Json
+          updated_at: string
+        }
+        Insert: {
+          adapter_type?: string
+          auth_config?: Json
+          auto_sync_enabled?: boolean
+          auto_sync_frequency?: string
+          base_url?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sync_config?: Json
+          updated_at?: string
+        }
+        Update: {
+          adapter_type?: string
+          auth_config?: Json
+          auto_sync_enabled?: boolean
+          auto_sync_frequency?: string
+          base_url?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sync_config?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       class_type_levels: {
         Row: {
           class_type_id: number
@@ -2341,6 +2329,7 @@ export type Database = {
           company_id: string
           consent_date: string | null
           consent_ip: string | null
+          consent_migration_sent_at: string | null
           consent_status: Database["public"]["Enums"]["consent_status"] | null
           created_at: string | null
           created_by: string | null
@@ -2410,6 +2399,8 @@ export type Database = {
           surname: string | null
           tags: string[] | null
           tax_region: string | null
+          terms_of_service_consent: boolean | null
+          terms_of_service_consent_date: string | null
           tier: string | null
           trade_name: string | null
           updated_at: string | null
@@ -2433,6 +2424,7 @@ export type Database = {
           company_id: string
           consent_date?: string | null
           consent_ip?: string | null
+          consent_migration_sent_at?: string | null
           consent_status?: Database["public"]["Enums"]["consent_status"] | null
           created_at?: string | null
           created_by?: string | null
@@ -2502,6 +2494,8 @@ export type Database = {
           surname?: string | null
           tags?: string[] | null
           tax_region?: string | null
+          terms_of_service_consent?: boolean | null
+          terms_of_service_consent_date?: string | null
           tier?: string | null
           trade_name?: string | null
           updated_at?: string | null
@@ -2525,6 +2519,7 @@ export type Database = {
           company_id?: string
           consent_date?: string | null
           consent_ip?: string | null
+          consent_migration_sent_at?: string | null
           consent_status?: Database["public"]["Enums"]["consent_status"] | null
           created_at?: string | null
           created_by?: string | null
@@ -2594,6 +2589,8 @@ export type Database = {
           surname?: string | null
           tags?: string[] | null
           tax_region?: string | null
+          terms_of_service_consent?: boolean | null
+          terms_of_service_consent_date?: string | null
           tier?: string | null
           trade_name?: string | null
           updated_at?: string | null
@@ -2713,7 +2710,7 @@ export type Database = {
           portal_features: Json | null
           settings: Json | null
           slug: string | null
-          subscription_tier: string | null
+          subscription_tier: string
           updated_at: string | null
           website: string | null
         }
@@ -2738,7 +2735,7 @@ export type Database = {
           portal_features?: Json | null
           settings?: Json | null
           slug?: string | null
-          subscription_tier?: string | null
+          subscription_tier: string
           updated_at?: string | null
           website?: string | null
         }
@@ -2763,7 +2760,7 @@ export type Database = {
           portal_features?: Json | null
           settings?: Json | null
           slug?: string | null
-          subscription_tier?: string | null
+          subscription_tier?: string
           updated_at?: string | null
           website?: string | null
         }
@@ -2773,6 +2770,112 @@ export type Database = {
             columns: ["dpa_contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_subscription_tier_fkey"
+            columns: ["subscription_tier"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_addon_grants: {
+        Row: {
+          addon_id: string
+          company_id: string
+          created_at: string
+          ends_at: string | null
+          granted_by: string | null
+          id: string
+          price_eur_cents_override: number | null
+          reason: string | null
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addon_id: string
+          company_id: string
+          created_at?: string
+          ends_at?: string | null
+          granted_by?: string | null
+          id?: string
+          price_eur_cents_override?: number | null
+          reason?: string | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addon_id?: string
+          company_id?: string
+          created_at?: string
+          ends_at?: string | null
+          granted_by?: string | null
+          id?: string
+          price_eur_cents_override?: number | null
+          reason?: string | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_addon_grants_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "plan_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_addon_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
             referencedColumns: ["id"]
           },
         ]
@@ -3490,52 +3593,166 @@ export type Database = {
           },
         ]
       }
-      company_modules: {
+      company_module_grants: {
         Row: {
           company_id: string
-          created_at: string | null
+          created_at: string
+          granted_by: string | null
           module_key: string
+          reason: string | null
           status: string
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           company_id: string
-          created_at?: string | null
+          created_at?: string
+          granted_by?: string | null
           module_key: string
-          status: string
-          updated_at?: string | null
+          reason?: string | null
+          status?: string
+          updated_at?: string
         }
         Update: {
           company_id?: string
-          created_at?: string | null
+          created_at?: string
+          granted_by?: string | null
           module_key?: string
+          reason?: string | null
           status?: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "company_modules_company_id_fkey"
+            foreignKeyName: "company_module_grants_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "admin_company_analysis"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "company_modules_company_id_fkey"
+            foreignKeyName: "company_module_grants_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "company_modules_company_id_fkey"
+            foreignKeyName: "company_module_grants_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "users_with_company"
             referencedColumns: ["company_id"]
           },
           {
-            foreignKeyName: "company_modules_company_id_fkey"
+            foreignKeyName: "company_module_grants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "company_module_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_grants_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules_catalog"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      company_module_overrides: {
+        Row: {
+          changed_by: string | null
+          company_id: string
+          created_at: string
+          id: number
+          module_key: string
+          reason: string | null
+          status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          company_id: string
+          created_at?: string
+          id?: number
+          module_key: string
+          reason?: string | null
+          status: string
+        }
+        Update: {
+          changed_by?: string | null
+          company_id?: string
+          created_at?: string
+          id?: number
+          module_key?: string
+          reason?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_module_overrides_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "company_module_overrides_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
@@ -5370,6 +5587,50 @@ export type Database = {
           },
         ]
       }
+      email_tracking_events: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip: unknown
+          recipient_email: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip?: unknown
+          recipient_email: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip?: unknown
+          recipient_email?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracking_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_commissions_config: {
         Row: {
           commission_percentage: number | null
@@ -6680,92 +6941,6 @@ export type Database = {
           id?: string
           updated_at?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      grupo_bonos: {
-        Row: {
-          activated_at: string | null
-          caducidad_mes: number
-          clases_restantes: number
-          created_at: string | null
-          estado: string
-          grupo_id: number
-          id: number
-          payment_id: number | null
-          purchase_date: string | null
-          user_id: number
-        }
-        Insert: {
-          activated_at?: string | null
-          caducidad_mes: number
-          clases_restantes?: number
-          created_at?: string | null
-          estado?: string
-          grupo_id: number
-          id?: number
-          payment_id?: number | null
-          purchase_date?: string | null
-          user_id: number
-        }
-        Update: {
-          activated_at?: string | null
-          caducidad_mes?: number
-          clases_restantes?: number
-          created_at?: string | null
-          estado?: string
-          grupo_id?: number
-          id?: number
-          payment_id?: number | null
-          purchase_date?: string | null
-          user_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grupo_bonos_grupo_id_fkey"
-            columns: ["grupo_id"]
-            isOneToOne: false
-            referencedRelation: "grupos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grupos: {
-        Row: {
-          caducidad_mes: number
-          class_type_id: number | null
-          created_at: string | null
-          description: string | null
-          id: number
-          is_active: boolean | null
-          n_clases: number
-          name: string
-          price: number
-          updated_at: string | null
-        }
-        Insert: {
-          caducidad_mes: number
-          class_type_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          id?: number
-          is_active?: boolean | null
-          n_clases: number
-          name: string
-          price: number
-          updated_at?: string | null
-        }
-        Update: {
-          caducidad_mes?: number
-          class_type_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          id?: number
-          is_active?: boolean | null
-          n_clases?: number
-          name?: string
-          price?: number
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -8957,6 +9132,24 @@ export type Database = {
           },
         ]
       }
+      module_key_canonical_map: {
+        Row: {
+          canonical_key: string
+          legacy_key: string
+          note: string | null
+        }
+        Insert: {
+          canonical_key: string
+          legacy_key: string
+          note?: string | null
+        }
+        Update: {
+          canonical_key?: string
+          legacy_key?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       modules: {
         Row: {
           created_at: string | null
@@ -8993,18 +9186,30 @@ export type Database = {
       modules_catalog: {
         Row: {
           created_at: string | null
+          icon: string
+          is_dev_mode: boolean
           key: string
           label: string
+          scope: string
+          superadmin_only: boolean
         }
         Insert: {
           created_at?: string | null
+          icon?: string
+          is_dev_mode?: boolean
           key: string
           label: string
+          scope?: string
+          superadmin_only?: boolean
         }
         Update: {
           created_at?: string | null
+          icon?: string
+          is_dev_mode?: boolean
           key?: string
           label?: string
+          scope?: string
+          superadmin_only?: boolean
         }
         Relationships: []
       }
@@ -9638,67 +9843,113 @@ export type Database = {
       plan_addons: {
         Row: {
           applies_to_plans: string[]
-          billing_period: string
           created_at: string
           currency: string
           description: string
           icon: string
           id: string
+          included_modules: string[]
           is_active: boolean
           name: string
-          price_cents: number
+          price_eur_cents: number
           sort_order: number
           updated_at: string
         }
         Insert: {
           applies_to_plans?: string[]
-          billing_period?: string
           created_at?: string
           currency?: string
           description: string
           icon?: string
           id: string
+          included_modules?: string[]
           is_active?: boolean
           name: string
-          price_cents: number
+          price_eur_cents: number
           sort_order?: number
           updated_at?: string
         }
         Update: {
           applies_to_plans?: string[]
-          billing_period?: string
           created_at?: string
           currency?: string
           description?: string
           icon?: string
           id?: string
+          included_modules?: string[]
           is_active?: boolean
           name?: string
-          price_cents?: number
+          price_eur_cents?: number
           sort_order?: number
           updated_at?: string
         }
         Relationships: []
       }
+      plan_module_access: {
+        Row: {
+          created_at: string
+          module_key: string
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          module_key: string
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          module_key?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_module_access_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "modules_catalog"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "plan_module_access_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_visible_modules: {
+        Row: {
+          created_at: string
+          display_label: string
+          icon: string
+          module_key: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          display_label: string
+          icon?: string
+          module_key: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          display_label?: string
+          icon?: string
+          module_key?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
-          base_price_cents: number
-          billing_period: string
+          base_price_eur_cents: number
           created_at: string
           currency: string
           description: string | null
           extra_user_cents: number
           id: string
-          /**
-           * @deprecated The `plans.included_modules` column was dropped in
-           * migration 20260705000009. The source of truth for module
-           * membership is `plan_module_access` (per plan) and
-           * `company_module_grants` (per company). Reads from the RPC now
-           * return undefined for this field. Do not read from this in new
-           * code — regenerate this file with `supabase gen types` when
-           * convenient.
-           */
-          included_modules?: string[] | null
           included_users: number
           is_active: boolean
           is_highlighted: boolean
@@ -9708,14 +9959,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          base_price_cents: number
-          billing_period?: string
+          base_price_eur_cents: number
           created_at?: string
           currency?: string
           description?: string | null
           extra_user_cents?: number
           id: string
-          included_modules?: string[]
           included_users: number
           is_active?: boolean
           is_highlighted?: boolean
@@ -9725,14 +9974,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          base_price_cents?: number
-          billing_period?: string
+          base_price_eur_cents?: number
           created_at?: string
           currency?: string
           description?: string | null
           extra_user_cents?: number
           id?: string
-          included_modules?: string[]
           included_users?: number
           is_active?: boolean
           is_highlighted?: boolean
@@ -11631,18 +11878,21 @@ export type Database = {
           description: string
           discount_amount: number | null
           discount_percent: number | null
+          discount_type: string | null
           id: string
           line_number: number
           notes: string | null
           product_id: string | null
           quantity: number
           quote_id: string
+          section_id: string | null
           service_id: string | null
           subtotal: number
           tax_amount: number
           tax_rate: number
           total: number
           unit_price: number
+          unit_type: string | null
           updated_at: string | null
           variant_id: string | null
         }
@@ -11653,18 +11903,21 @@ export type Database = {
           description: string
           discount_amount?: number | null
           discount_percent?: number | null
+          discount_type?: string | null
           id?: string
           line_number: number
           notes?: string | null
           product_id?: string | null
           quantity?: number
           quote_id: string
+          section_id?: string | null
           service_id?: string | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
           total?: number
           unit_price: number
+          unit_type?: string | null
           updated_at?: string | null
           variant_id?: string | null
         }
@@ -11675,18 +11928,21 @@ export type Database = {
           description?: string
           discount_amount?: number | null
           discount_percent?: number | null
+          discount_type?: string | null
           id?: string
           line_number?: number
           notes?: string | null
           product_id?: string | null
           quantity?: number
           quote_id?: string
+          section_id?: string | null
           service_id?: string | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
           total?: number
           unit_price?: number
+          unit_type?: string | null
           updated_at?: string | null
           variant_id?: string | null
         }
@@ -11734,6 +11990,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quote_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "quote_sections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quote_items_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -11752,6 +12015,157 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "service_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_payment_plan: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          installment_number: number
+          invoice_id: string | null
+          percentage: number
+          quote_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          installment_number?: number
+          invoice_id?: string | null
+          percentage?: number
+          quote_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          installment_number?: number
+          invoice_id?: string | null
+          percentage?: number
+          quote_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_payment_plan_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_payment_plan_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_payment_plan_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "quote_payment_plan_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "quote_payment_plan_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_payment_plan_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_sections: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          name: string
+          quote_id: string
+          sort_order: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          quote_id: string
+          sort_order?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          quote_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_sections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_sections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_sections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "quote_sections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "quote_sections_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -11943,6 +12357,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -11953,12 +12368,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -11968,6 +12390,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -11995,12 +12418,14 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }
         Insert: {
           accepted_at?: string | null
           anonymized_at?: string | null
           booking_id?: string | null
+          cancellation_policy?: string | null
           client_id: string
           client_ip_address?: unknown
           client_user_agent?: string | null
@@ -12011,12 +12436,19 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          delivery_terms?: string | null
+          deposit_amount?: number | null
           deposit_percentage?: number | null
+          deposit_type?: string | null
           description?: string | null
           digital_signature?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          early_payment_days?: number | null
+          early_payment_discount_percent?: number | null
           full_quote_number?: string | null
+          global_discount_percent?: number | null
+          has_payment_plan?: boolean | null
           id?: string
           invoice_id?: string | null
           invoice_on_date?: string | null
@@ -12026,6 +12458,7 @@ export type Database = {
           last_run_at?: string | null
           next_run_at?: string | null
           notes?: string | null
+          payment_terms_text?: string | null
           pdf_generated_at?: string | null
           pdf_url?: string | null
           quote_date?: string
@@ -12053,12 +12486,14 @@ export type Database = {
           total_amount?: number
           updated_at?: string | null
           valid_until: string
+          warranty_text?: string | null
           year?: number
         }
         Update: {
           accepted_at?: string | null
           anonymized_at?: string | null
           booking_id?: string | null
+          cancellation_policy?: string | null
           client_id?: string
           client_ip_address?: unknown
           client_user_agent?: string | null
@@ -12069,12 +12504,19 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          delivery_terms?: string | null
+          deposit_amount?: number | null
           deposit_percentage?: number | null
+          deposit_type?: string | null
           description?: string | null
           digital_signature?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          early_payment_days?: number | null
+          early_payment_discount_percent?: number | null
           full_quote_number?: string | null
+          global_discount_percent?: number | null
+          has_payment_plan?: boolean | null
           id?: string
           invoice_id?: string | null
           invoice_on_date?: string | null
@@ -12084,6 +12526,7 @@ export type Database = {
           last_run_at?: string | null
           next_run_at?: string | null
           notes?: string | null
+          payment_terms_text?: string | null
           pdf_generated_at?: string | null
           pdf_url?: string | null
           quote_date?: string
@@ -12111,6 +12554,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string | null
           valid_until?: string
+          warranty_text?: string | null
           year?: number
         }
         Relationships: [
@@ -13596,6 +14040,44 @@ export type Database = {
           },
         ]
       }
+      supplier_field_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean
+          source_path: string
+          supplier_id: string
+          target_field: string
+          transform: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          source_path: string
+          supplier_id: string
+          target_field: string
+          transform?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          source_path?: string
+          supplier_id?: string
+          target_field?: string
+          transform?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_field_mappings_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_products: {
         Row: {
           catalog_product_id: string
@@ -13681,9 +14163,156 @@ export type Database = {
           },
         ]
       }
+      supplier_products_cache: {
+        Row: {
+          availability: string | null
+          brand: string | null
+          category: string | null
+          company_id: string
+          currency: string
+          description: string | null
+          external_id: string | null
+          fetched_at: string
+          id: string
+          imported_at: string | null
+          imported_product_id: string | null
+          model: string | null
+          name: string | null
+          raw_data: Json
+          stock_quantity: number | null
+          supplier_id: string
+          supplier_price: number | null
+        }
+        Insert: {
+          availability?: string | null
+          brand?: string | null
+          category?: string | null
+          company_id: string
+          currency?: string
+          description?: string | null
+          external_id?: string | null
+          fetched_at?: string
+          id?: string
+          imported_at?: string | null
+          imported_product_id?: string | null
+          model?: string | null
+          name?: string | null
+          raw_data?: Json
+          stock_quantity?: number | null
+          supplier_id: string
+          supplier_price?: number | null
+        }
+        Update: {
+          availability?: string | null
+          brand?: string | null
+          category?: string | null
+          company_id?: string
+          currency?: string
+          description?: string | null
+          external_id?: string | null
+          fetched_at?: string
+          id?: string
+          imported_at?: string | null
+          imported_product_id?: string | null
+          model?: string | null
+          name?: string | null
+          raw_data?: Json
+          stock_quantity?: number | null
+          supplier_id?: string
+          supplier_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_products_cache_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_cache_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_cache_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "supplier_products_cache_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "supplier_products_cache_imported_product_id_fkey"
+            columns: ["imported_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_cache_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_snippets: {
+        Row: {
+          base_url: string
+          category: string | null
+          created_at: string
+          description: string | null
+          documentation_url: string | null
+          field_mappings: Json
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sync_config: Json
+        }
+        Insert: {
+          base_url: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          documentation_url?: string | null
+          field_mappings?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sync_config?: Json
+        }
+        Update: {
+          base_url?: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          documentation_url?: string | null
+          field_mappings?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sync_config?: Json
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null
+          auto_sync_enabled: boolean
+          auto_sync_frequency: string
           company_id: string
           created_at: string | null
           deleted_at: string | null
@@ -13691,12 +14320,15 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          sync_config: Json
           tax_id: string | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
           address?: string | null
+          auto_sync_enabled?: boolean
+          auto_sync_frequency?: string
           company_id: string
           created_at?: string | null
           deleted_at?: string | null
@@ -13704,12 +14336,15 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          sync_config?: Json
           tax_id?: string | null
           updated_at?: string | null
           website?: string | null
         }
         Update: {
           address?: string | null
+          auto_sync_enabled?: boolean
+          auto_sync_frequency?: string
           company_id?: string
           created_at?: string | null
           deleted_at?: string | null
@@ -13717,6 +14352,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          sync_config?: Json
           tax_id?: string | null
           updated_at?: string | null
           website?: string | null
@@ -16213,10 +16849,6 @@ export type Database = {
             }
             Returns: Json
           }
-      accept_company_invitation_admin: {
-        Args: { p_auth_user_id: string; p_invitation_token: string }
-        Returns: Json
-      }
       accept_company_invitation_by_email: {
         Args: { p_auth_user_id: string; p_email: string }
         Returns: Json
@@ -16232,6 +16864,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -16242,12 +16875,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -16257,6 +16897,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -16284,6 +16925,7 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }
         SetofOptions: {
@@ -16297,12 +16939,10 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: undefined
       }
-      activate_invited_user:
-        | { Args: { auth_user_id: string; user_email: string }; Returns: Json }
-        | {
-            Args: { p_auth_user_id: string; p_user_email: string }
-            Returns: Json
-          }
+      activate_invited_user: {
+        Args: { p_auth_user_id: string; p_user_email: string }
+        Returns: Json
+      }
       add_client_note: {
         Args: { p_client_id: string; p_company_id: string; p_content: string }
         Returns: string
@@ -16354,23 +16994,112 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_delete_domain: { Args: { p_domain_id: string }; Returns: Json }
-      admin_list_companies: { Args: never; Returns: Json }
-      admin_list_company_modules: {
-        Args: { p_company_id: string }
-        Returns: Json
+      admin_delete_addon: { Args: { p_id: string }; Returns: undefined }
+      admin_delete_company_addon_grant: {
+        Args: { p_id: string }
+        Returns: undefined
       }
+      admin_delete_company_module_grant: {
+        Args: { p_company_id: string; p_module_key: string }
+        Returns: undefined
+      }
+      admin_delete_domain: { Args: { p_domain_id: string }; Returns: Json }
+      admin_delete_module_catalog: {
+        Args: { p_module_key: string }
+        Returns: undefined
+      }
+      admin_get_company_addon_grants: {
+        Args: { p_company_id: string }
+        Returns: {
+          addon_id: string
+          created_at: string
+          ends_at: string
+          granted_by_name: string
+          id: string
+          price_override: number
+          reason: string
+          starts_at: string
+          status: string
+        }[]
+      }
+      admin_get_company_module_grants: {
+        Args: { p_company_id: string }
+        Returns: {
+          created_at: string
+          granted_by_name: string
+          module_key: string
+          reason: string
+          status: string
+        }[]
+      }
+      admin_get_plan_module_access: {
+        Args: { p_plan_id: string }
+        Returns: {
+          included: boolean
+          module_key: string
+        }[]
+      }
+      admin_list_companies: { Args: never; Returns: Json }
       admin_list_user_modules: {
         Args: { p_company_id?: string }
         Returns: Json
       }
-      admin_set_company_module: {
+      admin_manage_plan_visible_modules: {
         Args: {
+          p_action: string
+          p_display_label?: string
+          p_icon?: string
           p_module_key: string
-          p_status: string
-          p_target_company_id: string
+          p_sort_order?: number
         }
         Returns: Json
+      }
+      admin_reload_schema: { Args: never; Returns: undefined }
+      admin_resync_company_to_plan: {
+        Args: { p_company_id: string; p_remove_orphan_grants?: boolean }
+        Returns: number
+      }
+      admin_set_company_addon_grant: {
+        Args: {
+          p_addon_id: string
+          p_company_id: string
+          p_ends_at?: string
+          p_price_eur_cents_override?: number
+          p_reason?: string
+          p_status?: string
+        }
+        Returns: string
+      }
+      admin_set_company_module:
+        | {
+            Args: {
+              p_module_key: string
+              p_status: string
+              p_target_company_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_force?: boolean
+              p_module_key: string
+              p_status: string
+              p_target_company_id: string
+            }
+            Returns: Json
+          }
+      admin_set_company_module_grant: {
+        Args: {
+          p_company_id: string
+          p_module_key: string
+          p_reason?: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      admin_set_plan_module_access: {
+        Args: { p_included: boolean; p_module_key: string; p_plan_id: string }
+        Returns: undefined
       }
       admin_set_user_module: {
         Args: {
@@ -16380,10 +17109,26 @@ export type Database = {
         }
         Returns: undefined
       }
-      admin_toggle_company_module: {
-        Args: { p_company_id: string; p_module_key: string; p_status: string }
-        Returns: Json
-      }
+      admin_update_module_catalog:
+        | {
+            Args: {
+              p_icon?: string
+              p_is_dev_mode?: boolean
+              p_label: string
+              p_module_key: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_icon?: string
+              p_is_dev_mode?: boolean
+              p_label: string
+              p_module_key: string
+              p_scope?: string
+            }
+            Returns: Json
+          }
       admin_update_sidebar_navigation_order: {
         Args: { p_entries: Json }
         Returns: boolean
@@ -16391,27 +17136,27 @@ export type Database = {
       admin_upsert_addon: {
         Args: {
           p_applies_to_plans: string[]
-          p_billing_period: string
           p_currency: string
           p_description: string
           p_icon: string
           p_id: string
+          p_included_modules?: string[]
           p_is_active: boolean
           p_name: string
-          p_price_cents: number
+          p_price_eur_cents: number
           p_sort_order: number
         }
         Returns: {
           applies_to_plans: string[]
-          billing_period: string
           created_at: string
           currency: string
           description: string
           icon: string
           id: string
+          included_modules: string[]
           is_active: boolean
           name: string
-          price_cents: number
+          price_eur_cents: number
           sort_order: number
           updated_at: string
         }
@@ -16424,43 +17169,20 @@ export type Database = {
       }
       admin_upsert_plan: {
         Args: {
-          p_base_price_cents: number
-          p_billing_period: string
+          p_base_price_eur_cents: number
           p_currency: string
           p_description: string
           p_extra_user_cents: number
           p_id: string
-          p_included_modules: string[]
           p_included_users: number
           p_is_active: boolean
           p_is_highlighted: boolean
+          p_module_keys?: string[]
           p_name: string
           p_sort_order: number
           p_tagline: string
         }
-        Returns: {
-          base_price_cents: number
-          billing_period: string
-          created_at: string
-          currency: string
-          description: string | null
-          extra_user_cents: number
-          id: string
-          included_modules: string[]
-          included_users: number
-          is_active: boolean
-          is_highlighted: boolean
-          name: string
-          sort_order: number
-          tagline: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "plans"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
       }
       anonymize_client_data:
         | { Args: { p_client_id: string }; Returns: Json }
@@ -16587,25 +17309,8 @@ export type Database = {
         Returns: boolean
       }
       change_company_plan: {
-        Args: { p_company_id: string; p_plan_id: string }
-        Returns: {
-          assigned_by: string | null
-          company_id: string
-          created_at: string
-          ended_at: string | null
-          id: string
-          notes: string | null
-          plan_id: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "company_plan_subscriptions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Args: { p_company_id: string; p_new_tier: string }
+        Returns: undefined
       }
       check_company_exists: {
         Args: { p_company_name: string }
@@ -16613,15 +17318,6 @@ export type Database = {
           company_exists: boolean
           company_id: string
           company_name: string
-        }[]
-      }
-      check_gdpr_compliance: {
-        Args: never
-        Returns: {
-          check_name: string
-          is_compliant: boolean
-          status: string
-          value: string
         }[]
       }
       check_professional_blocked: {
@@ -16635,6 +17331,15 @@ export type Database = {
       check_public_company_module: {
         Args: { p_company_id: string; p_module_key: string }
         Returns: boolean
+      }
+      check_seat_available: {
+        Args: { p_company_id: string }
+        Returns: {
+          available: number
+          current: number
+          is_client_excluded: boolean
+          max: number
+        }[]
       }
       check_stage_coverage_after_hide: {
         Args: { p_company_id: string; p_stage_id: string }
@@ -16722,6 +17427,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -16732,12 +17438,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -16747,6 +17460,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -16774,6 +17488,7 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }[]
         SetofOptions: {
@@ -17138,6 +17853,10 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: string
       }
+      create_invoice_for_installment: {
+        Args: { p_installment_id: string }
+        Returns: string
+      }
       create_locality_rpc: {
         Args: {
           p_country?: string
@@ -17378,6 +18097,7 @@ export type Database = {
         Args: { plaintext: string }
         Returns: string
       }
+      encrypt_supplier_token: { Args: { token_text: string }; Returns: string }
       encrypt_text: {
         Args: { key: string; plaintext: string }
         Returns: string
@@ -17639,63 +18359,6 @@ export type Database = {
               isOneToOne: false
               isSetofReturn: true
             }
-          }
-      f_mail_get_threads:
-        | {
-            Args: {
-              p_account_id: string
-              p_folder_id: string
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              has_attachments: boolean
-              is_read: boolean
-              last_message_at: string
-              message_count: number
-              participants: Json[]
-              snippet: string
-              subject: string
-              thread_id: string
-            }[]
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_folder_name: string
-              p_limit?: number
-              p_offset?: number
-            }
-            Returns: {
-              has_attachments: boolean
-              is_read: boolean
-              last_message_at: string
-              message_count: number
-              participants: string[]
-              snippet: string
-              subject: string
-              thread_id: string
-            }[]
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_folder_role: string
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              has_attachments: boolean
-              is_read: boolean
-              last_message_at: string
-              message_count: number
-              participants: Json[]
-              snippet: string
-              subject: string
-              thread_id: string
-            }[]
           }
       f_marketing_get_audience: {
         Args: { p_company_id: string; p_criteria: Json }
@@ -17981,6 +18644,10 @@ export type Database = {
         Args: { company_uuid: string; file_name: string; subfolder?: string }
         Returns: string
       }
+      generate_payment_plan: {
+        Args: { p_plan_config?: Json; p_quote_id: string }
+        Returns: undefined
+      }
       generate_privacy_policy_html: {
         Args: { p_company_id: string }
         Returns: string
@@ -18232,6 +18899,21 @@ export type Database = {
         }[]
       }
       get_config_units: { Args: never; Returns: Json }
+      get_consent_request_by_email: {
+        Args: { p_company_id: string; p_email: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          company_id: string
+          company_name: string
+          company_nif: string
+          consent_status: string
+          has_account: boolean
+          invitation_status: string
+          privacy_policy_url: string
+          subject_email: string
+        }[]
+      }
       get_current_company_plan: {
         Args: { p_company_id: string }
         Returns: {
@@ -18307,10 +18989,18 @@ export type Database = {
       }
       get_effective_modules: {
         Args: { p_auth_user_id?: string; p_input_company_id?: string }
-        Returns: Json
+        Returns: {
+          enabled: boolean
+          key: string
+          name: string
+        }[]
       }
       get_effective_role_id: {
         Args: { p_auth_user_id: string; p_company_id: string }
+        Returns: string
+      }
+      get_email_template_preview: {
+        Args: { p_company_id: string; p_email_type: string }
         Returns: string
       }
       get_employee_company_id: { Args: never; Returns: string }
@@ -18946,6 +19636,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -18956,12 +19647,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -18971,6 +19669,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -18998,11 +19697,38 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }
         SetofOptions: {
           from: "*"
           to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_recurring_budget_status_atomic: {
+        Args: { p_budget_id: string; p_new_status: string }
+        Returns: {
+          client_id: string
+          company_id: string
+          created_at: string
+          due_date: string
+          id: string
+          issue_date: string
+          notes: string | null
+          period: string
+          recurrence_type: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "recurring_budgets"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -19073,16 +19799,26 @@ export type Database = {
         }
         Returns: Json
       }
-      portal_withdraw_my_consent: {
-        Args: { p_consent_type: string; p_evidence?: Json }
-        Returns: Json
-      }
       process_client_consent: {
         Args: {
+          p_consent_method?: string
           p_ip: string
           p_marketing_consent: boolean
           p_token: string
           p_user_agent: string
+        }
+        Returns: Json
+      }
+      process_email_consent: {
+        Args: {
+          p_company_id: string
+          p_consent_method?: string
+          p_email: string
+          p_ip?: string
+          p_marketing_consent: boolean
+          p_privacy_consent: boolean
+          p_tos_consent: boolean
+          p_ua?: string
         }
         Returns: Json
       }
@@ -19125,7 +19861,12 @@ export type Database = {
         Returns: Json
       }
       reject_client_consent: {
-        Args: { p_ip: string; p_token: string; p_user_agent: string }
+        Args: {
+          p_consent_method?: string
+          p_ip: string
+          p_token: string
+          p_user_agent: string
+        }
         Returns: Json
       }
       reject_company_invitation: {
@@ -19138,6 +19879,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -19148,12 +19890,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -19163,6 +19912,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -19190,6 +19940,7 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }
         SetofOptions: {
@@ -19317,6 +20068,7 @@ export type Database = {
           accepted_at: string | null
           anonymized_at: string | null
           booking_id: string | null
+          cancellation_policy: string | null
           client_id: string
           client_ip_address: unknown
           client_user_agent: string | null
@@ -19327,12 +20079,19 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          delivery_terms: string | null
+          deposit_amount: number | null
           deposit_percentage: number | null
+          deposit_type: string | null
           description: string | null
           digital_signature: string | null
           discount_amount: number | null
           discount_percent: number | null
+          early_payment_days: number | null
+          early_payment_discount_percent: number | null
           full_quote_number: string | null
+          global_discount_percent: number | null
+          has_payment_plan: boolean | null
           id: string
           invoice_id: string | null
           invoice_on_date: string | null
@@ -19342,6 +20101,7 @@ export type Database = {
           last_run_at: string | null
           next_run_at: string | null
           notes: string | null
+          payment_terms_text: string | null
           pdf_generated_at: string | null
           pdf_url: string | null
           quote_date: string
@@ -19369,6 +20129,7 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           valid_until: string
+          warranty_text: string | null
           year: number
         }
         SetofOptions: {
@@ -19420,6 +20181,18 @@ export type Database = {
         Returns: undefined
       }
       sync_client_profile: { Args: never; Returns: Json }
+      sync_company_max_users: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
+      sync_company_modules_to_plan: {
+        Args: { p_company_id: string; p_plan_modules: string[] }
+        Returns: undefined
+      }
+      sync_plan_grants_for_company: {
+        Args: { p_company_id: string; p_new_tier: string }
+        Returns: undefined
+      }
       toggle_smart_folders_rpc: {
         Args: { p_account_id: string; p_enabled: boolean }
         Returns: {
@@ -19515,9 +20288,7 @@ export type Database = {
         }
         Returns: Json
       }
-      upsert_client:
-        | { Args: { p_data: Json; p_id: string }; Returns: Json }
-        | { Args: { payload: Json }; Returns: Json }
+      upsert_client: { Args: { payload: Json }; Returns: Json }
       upsert_client_rpc: {
         Args: {
           p_address?: string
