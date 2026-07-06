@@ -965,7 +965,26 @@ export class ModulesAdminComponent implements OnInit {
     const btn = (event?.currentTarget as HTMLElement) ?? null;
     if (btn) {
       const rect = btn.getBoundingClientRect();
-      this.iconPickerAnchor.set({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      // Pop-up is 420px wide and ~280px tall. Compute a position that
+      // never overflows the viewport on either axis.
+      const POPUP_W = 420;
+      const POPUP_H = 280;
+      const MARGIN = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Vertical: open downward if there's room, otherwise upward.
+      const spaceBelow = vh - rect.bottom - MARGIN;
+      const spaceAbove = rect.top - MARGIN;
+      const top =
+        spaceBelow >= POPUP_H
+          ? rect.bottom + 4
+          : spaceAbove >= POPUP_H
+          ? rect.top - POPUP_H - 4
+          : Math.max(MARGIN, rect.bottom + 4);  // fallback: still try down
+      // Horizontal: anchor the pop-up's right edge to the button's right
+      // edge, but clamp so it never overflows the left edge either.
+      const right = Math.max(MARGIN, vw - rect.right);
+      this.iconPickerAnchor.set({ top, right });
     }
   }
 
