@@ -97,8 +97,12 @@ export class MenuVisibilityService {
   private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const orderMap = this.modulesService.sidebarOrderSignal();
     const isSuperAdmin =
-      this.authService.userRole() === 'super_admin' ||
-      !!this.authService.userProfile?.is_super_admin;
+      // Strict: only count as super_admin for the sidebar filter when the
+      // app_role is actually 'super_admin'. The userProfile.is_super_admin
+      // flag is for RPC-level bypasses, NOT for skipping the per-module
+      // plan filter. Otherwise an owner with a stray is_super_admin=true
+      // would see modules their plan doesn't include.
+      this.authService.userRole() === 'super_admin';
     return [...this.allMenuItems]
       .filter((item) => {
         const entry = orderMap.get(item.sidebarKey);
