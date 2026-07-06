@@ -1074,6 +1074,12 @@
               <i class="fas fa-gift mr-1"></i> Regalar
             </button>
           </div>
+          @if (selectedGiftModuleLabel(); as modLabel) {
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-[11px] text-amber-800 dark:text-amber-200">
+              <i class="fas fa-info-circle mt-0.5 text-amber-500"></i>
+              <span>Vas a activar <strong>{{ modLabel }}</strong> para {{ giftCo.name }}. Los módulos siempre se regalan sin coste.</span>
+            </div>
+          }
           @if (giftableModuleCount(giftCo) === 0) {
             <p class="text-[11px] text-amber-700 dark:text-amber-400">Esta empresa ya tiene regalados todos los módulos giftables disponibles.</p>
           }
@@ -1097,6 +1103,45 @@
             <input type="number" min="0" step="0.01" [ngModel]="giftPriceOverrideEuros()" (ngModelChange)="giftPriceOverrideEuros.set($event == null ? null : +$event)" placeholder="Precio custom € (vacío = precio del add-on, 0 = gratis)"
               class="md:col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
           </div>
+
+          <!-- Live price preview: shows original price, custom price, and discount % so the
+               superadmin can see the discount they are applying before gifting. -->
+          @if (giftAddonPricePreview(); as preview) {
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-[11px] text-amber-800 dark:text-amber-200">
+              <i class="fas fa-receipt mt-0.5 text-amber-500"></i>
+              <div class="flex-1">
+                @switch (preview.kind) {
+                  @case ('normal') {
+                    <span>Precio normal del catálogo: <strong>{{ preview.originalLabel }}</strong>. El add-on se regalará a este precio.</span>
+                  }
+                  @case ('free') {
+                    <span>
+                      <strong class="text-emerald-700 dark:text-emerald-300">GRATIS</strong> para {{ giftCo.name }}.
+                      Precio original: <span class="line-through opacity-70">{{ preview.originalLabel }}</span> (descuento del 100 %).
+                    </span>
+                  }
+                  @case ('same') {
+                    <span>Mismo precio que el catálogo: <strong>{{ preview.customLabel }}</strong>. La empresa seguirá pagando lo habitual.</span>
+                  }
+                  @case ('upcharge') {
+                    <span>
+                      <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-300"></i>
+                      Estás cobrando <strong>{{ preview.customLabel }}</strong>, por encima del precio de catálogo
+                      <strong>{{ preview.originalLabel }}</strong>. ¿Seguro?
+                    </span>
+                  }
+                  @case ('discount') {
+                    <span>
+                      <strong>{{ preview.customLabel }}</strong> en lugar de
+                      <span class="line-through opacity-70">{{ preview.originalLabel }}</span>
+                      — descuento del <strong class="text-emerald-700 dark:text-emerald-300">{{ preview.discountPct }} %</strong>.
+                    </span>
+                  }
+                }
+              </div>
+            </div>
+          }
+
           <button (click)="grantAddonGift()" [disabled]="!giftAddonId() || giftSaving()"
             class="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-lg transition-colors">
             <i class="fas fa-puzzle-piece mr-1"></i> Regalar add-on

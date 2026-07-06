@@ -241,6 +241,77 @@ export class ModulesAdminComponent implements OnInit {
   giftReason = signal<string>('');
   giftSaving = signal<boolean>(false);
 
+  /**
+   * The full PlanAddon currently picked in the gift modal — looked up by id
+   * against the global addons() cache so the preview works even if the
+   * company already has it granted (giftableAddons filters those out).
+   * Null when the dropdown is on the placeholder option.
+   */
+  selectedGiftAddon = computed<PlanAddon | null>(() => {
+    const id = this.giftAddonId();
+    if (!id) return null;
+    return this.addons().find((a) => a.id === id) ?? null;
+  });
+
+  /**
+   * Live preview of the price the admin is about to grant. Re-evaluates every
+   * time the add-on selection OR the custom price changes. The shape drives
+   * the gift modal: one of
+   *   - null         → no add-on picked, hide the preview entirely
+   *   - {kind:'normal'}    → add-on picked, no custom price yet → show "Precio normal: X €/mes"
+   *   - {kind:'free'}      → custom = 0 → show "GRATIS" with the original price struck-through
+   *   - {kind:'same'}      → custom == original → "Mismo precio que el catálogo"
+   *   - {kind:'upcharge'}  → custom > original → "Recargo: custom X vs Y original"
+   *   - {kind:'discount'}  → custom < original → "Descuento del N%" with original → custom
+   */
+  giftAddonPricePreview = computed<
+    | null
+    | { kind: 'normal'; originalLabel: string; originalEuros: number }
+    | { kind: 'free'; originalLabel: string; originalEuros: number }
+    | { kind: 'same'; originalLabel: string; originalEuros: number; customLabel: string }
+    | { kind: 'upcharge'; originalLabel: string; originalEuros: number; customLabel: string }
+    | { kind: 'discount'; originalLabel: string; originalEuros: number; customLabel: string; discountPct: number }
+  >(() => {
+    const addon = this.selectedGiftAddon();
+    if (!addon) return null;
+
+    const originalCents = addon.price_eur_cents ?? 0;
+    const originalEuros = originalCents / 100;
+    const originalLabel = PlanService.formatPriceFull(originalCents, addon.currency);
+    const custom = this.giftPriceOverrideEuros();
+
+    // No custom price entered (null, NaN, negative) → just show the catalog price.
+    if (custom == null || isNaN(custom as number) || custom < 0) {
+      return { kind: 'normal', originalLabel, originalEuros };
+    }
+
+    const customLabel = PlanService.formatPriceFull(Math.round(custom * 100), addon.currency);
+
+    if (custom === 0) {
+      return { kind: 'free', originalLabel, originalEuros };
+    }
+
+    // Catalog price is free (0) and custom > 0 → up-charge scenario.
+    if (originalEuros === 0) {
+      return { kind: 'upcharge', originalLabel, originalEuros, customLabel };
+    }
+
+    if (custom >= originalEuros) {
+      return custom === originalEuros
+        ? { kind: 'same', originalLabel, originalEuros, customLabel }
+        : { kind: 'upcharge', originalLabel, originalEuros, customLabel };
+    }
+
+    const discountPct = Math.round(((originalEuros - custom) / originalEuros) * 100);
+    return { kind: 'discount', originalLabel, originalEuros, customLabel, discountPct };
+  });
+
+  /** Label of the module currently picked in the gift modal, or null. */
+  selectedGiftModuleLabel = computed<string | null>(() => {
+    const key = this.giftModuleKey();
+    return key ? this.moduleLabel(key) : null;
+  });
+
   openGiftModal(company: any) {
     this.giftModalCompany.set(company);
     this.giftModuleKey.set('');
