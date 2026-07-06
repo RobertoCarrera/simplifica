@@ -463,4 +463,128 @@ export class SupabaseModulesService {
     if (error) throw new Error(error.message);
     return data as any;
   }
+
+  // ── Plan-driven access: plan_module_access ───────────────────────────────
+  adminGetPlanModuleAccess(planId: string): Observable<{ module_key: string; included: boolean }[]> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc('admin_get_plan_module_access', {
+          p_plan_id: planId,
+        });
+        if (error) throw new Error(error.message);
+        return (data || []) as { module_key: string; included: boolean }[];
+      })()
+    );
+  }
+
+  adminSetPlanModuleAccess(planId: string, moduleKey: string, included: boolean): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_set_plan_module_access', {
+          p_plan_id: planId,
+          p_module_key: moduleKey,
+          p_included: included,
+        });
+        if (error) throw new Error(error.message);
+      })()
+    );
+  }
+
+  // ── Plan-driven access: company_module_grants ───────────────────────────
+  adminGetCompanyModuleGrants(companyId: string): Observable<Array<{
+    module_key: string; status: string; reason: string | null; created_at: string;
+  }>> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc('admin_get_company_module_grants', {
+          p_company_id: companyId,
+        });
+        if (error) throw new Error(error.message);
+        return (data || []) as any[];
+      })()
+    );
+  }
+
+  adminSetCompanyModuleGrant(
+    companyId: string,
+    moduleKey: string,
+    status: 'active' | 'revoked',
+    reason?: string,
+  ): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_set_company_module_grant', {
+          p_company_id: companyId,
+          p_module_key: moduleKey,
+          p_status: status,
+          p_reason: reason || null,
+        });
+        if (error) throw new Error(error.message);
+      })()
+    );
+  }
+
+  adminDeleteCompanyModuleGrant(companyId: string, moduleKey: string): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_delete_company_module_grant', {
+          p_company_id: companyId,
+          p_module_key: moduleKey,
+        });
+        if (error) throw new Error(error.message);
+      })()
+    );
+  }
+
+  // ── Plan-driven access: company_addon_grants (giftable add-ons) ─────────
+  adminGetCompanyAddonGrants(companyId: string): Observable<Array<{
+    id: string; addon_id: string; status: string;
+    price_override: number | null; reason: string | null;
+    starts_at: string; ends_at: string | null; created_at: string;
+  }>> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc('admin_get_company_addon_grants', {
+          p_company_id: companyId,
+        });
+        if (error) throw new Error(error.message);
+        return (data || []) as any[];
+      })()
+    );
+  }
+
+  adminSetCompanyAddonGrant(
+    companyId: string,
+    addonId: string,
+    status: 'active' | 'revoked' = 'active',
+    priceOverrideCents: number | null = null,
+    reason?: string,
+    endsAt: Date | null = null,
+  ): Observable<string> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc('admin_set_company_addon_grant', {
+          p_company_id: companyId,
+          p_addon_id: addonId,
+          p_status: status,
+          p_price_eur_cents_override: priceOverrideCents,
+          p_reason: reason || null,
+          p_ends_at: endsAt ? endsAt.toISOString() : null,
+        });
+        if (error) throw new Error(error.message);
+        return data as string;
+      })()
+    );
+  }
+
+  adminDeleteCompanyAddonGrant(grantId: string): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('admin_delete_company_addon_grant', {
+          p_id: grantId,
+        });
+        if (error) throw new Error(error.message);
+      })()
+    );
+  }
 }

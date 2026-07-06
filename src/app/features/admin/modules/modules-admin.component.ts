@@ -860,6 +860,13 @@ export class ModulesAdminComponent implements OnInit {
       ]);
       this.plans.set(plans);
       this.addons.set(addons);
+      // Eagerly load the new plan_module_access map for every plan.
+      // The toggle matrix reads from it; loading upfront makes the
+      // matrix render correctly the first time the user opens the tab.
+      for (const p of plans) {
+        // fire-and-forget; loadPlanAccess updates its own signal
+        this.loadPlanAccess(p.id);
+      }
     } catch (e) {
       console.error('Error loading pricing:', e);
       this.toast.error('Error', 'No se pudo cargar el catálogo de planes.');
@@ -883,18 +890,38 @@ export class ModulesAdminComponent implements OnInit {
     return this.moduleLabelMap[key] || key;
   }
 
-  isModuleInPlan(plan: Plan, moduleKey: string): boolean {
-    // Core modules are intrinsically included in every plan — they cannot
-    // be toggled off, but should always render as "on" in the matrix.
-    if (this.moduleScope(moduleKey) === 'core') return true;
-    return plan.included_modules.includes(moduleKey);
-  }
+
 
   /**
    * Toggle a module in/out of a plan's included_modules.
    * Optimistic update: flips the local signal first, then calls the RPC.
    * On error, reverts and shows a toast.
    */
+  /**
+   * Plan × module access map. Keyed by plan_id, value is Set<module_key>.
+   * Loaded by loadPlanAccess() and used by isModuleInPlan() so the toggle
+   * matrix reflects plan_module_access (the new source of truth), not the
+   * deprecated plans.included_modules array.
+   */
+  planAccess = signal<Map<string, Set<string>>>(new Map());
+  planAccessLoading = signal<string | null>(null); // plan_id currently loading
+
+  async loadPlanAccess(planId: string) {
+    this.planAccessLoading.set(planId);
+    try {
+      const rows = await firstValueFrom(this.modulesService.adminGetPlanModuleAccess(planId));
+      const set = new Set(rows.filter((r) => r.included).map((r) => r.module_key));
+      const next = new Map(this.planAccess());
+      next.set(planId, set);
+      this.planAccess.set(next);
+    } catch (e: any) {
+      console.error('Error loading plan access', e);
+      this.toast.error('Error', e?.message || 'No se pudo cargar el acceso del plan.');
+    } finally {
+      this.planAccessLoading.set(null);
+    }
+  }
+
   async toggleModuleInPlan(plan: Plan, moduleKey: string) {
     // Core modules are locked on — no toggle.
     if (this.moduleScope(moduleKey) === 'core') return;
@@ -904,16 +931,17 @@ export class ModulesAdminComponent implements OnInit {
     this.pricingSavingKey.set(key);
 
     // Optimistic local update
-    const updated: Plan = {
-      ...plan,
-      included_modules: wantIncluded
-        ? Array.from(new Set([...plan.included_modules, moduleKey]))
-        : plan.included_modules.filter((k) => k !== moduleKey),
-    };
-    this.plans.set(this.plans().map((p) => (p.id === plan.id ? updated : p)));
+    const set = new Set(this.planAccess().get(plan.id) || []);
+    if (wantIncluded) set.add(moduleKey);
+    else set.delete(moduleKey);
+    const next = new Map(this.planAccess());
+    next.set(plan.id, set);
+    this.planAccess.set(next);
 
     try {
-      await firstValueFrom(this.planService.togglePlanModule(plan, moduleKey, wantIncluded));
+      await firstValueFrom(
+        this.modulesService.adminSetPlanModuleAccess(plan.id, moduleKey, wantIncluded),
+      );
       this.toast.success(
         'Plan actualizado',
         wantIncluded
@@ -922,12 +950,22 @@ export class ModulesAdminComponent implements OnInit {
       );
     } catch (e: any) {
       // Revert
-      this.plans.set(this.plans().map((p) => (p.id === plan.id ? plan : p)));
+      const setR = new Set(this.planAccess().get(plan.id) || []);
+      if (wasIncluded) setR.add(moduleKey);
+      else setR.delete(moduleKey);
+      const nextR = new Map(this.planAccess());
+      nextR.set(plan.id, setR);
+      this.planAccess.set(nextR);
       console.error('Error updating plan module:', e);
       this.toast.error('Error', e?.message || 'No se pudo actualizar el plan.');
     } finally {
       this.pricingSavingKey.set(null);
     }
+  }
+
+  isModuleInPlan(plan: Plan, moduleKey: string): boolean {
+    if (this.moduleScope(moduleKey) === 'core') return true;
+    return !!this.planAccess().get(plan.id)?.has(moduleKey);
   }
 
   isPricingCellSaving(planId: string, moduleKey: string): boolean {
