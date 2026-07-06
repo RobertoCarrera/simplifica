@@ -434,9 +434,24 @@ export class ModulesAdminComponent implements OnInit {
    * the raw 42501 Supabase error.
    * After the RPC succeeds we reload the company list (so `subscription_tier`
    * reflects the new plan) AND the per-company grants cache (so gift chips and
-   * the module list reflect the freshly-granted modules from
-   * plan_module_access).
+    * the module list reflect the freshly-granted modules from
+    * plan_module_access).
+    */
+
+  /**
+   * Read the new tier from the <select> DOM directly and forward to
+   * changeCompanyTier. We can't use `$any($event.target).value` inline
+   * because Angular re-evaluates `[value]` AFTER the (change) handler runs,
+   * which can cause the handler to see the OLD value. Reading the DOM
+   * value here, in a dedicated handler that runs synchronously with the
+   * event, guarantees we see the user's selection.
    */
+  onTierSelectChange(company: any, event: Event): void {
+    const select = event.target as HTMLSelectElement | null;
+    const newTier = select?.value ?? '';
+    void this.changeCompanyTier(company, newTier);
+  }
+
   async changeCompanyTier(company: any, newTier: string) {
     const c = company;
     if (!c?.id || !newTier) {
