@@ -250,6 +250,38 @@
     }
   }
 
+  <!-- Debug panel: last plan-change attempt. Visible on the Empresas tab
+       so the user can copy-paste it into a bug report. The textarea is
+       read-only so accidental editing doesn't matter; the copy button uses
+       the standard Clipboard API. -->
+  @if (activeTab() === 'companies' && lastPlanChangeDebug()) {
+    @let dbg = lastPlanChangeDebug()!;
+    <div class="mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+          <i class="fas fa-bug"></i> Debug · Último intento de cambio de plan
+        </h3>
+        <button
+          type="button"
+          (click)="copyDebugToClipboard()"
+          class="text-xs px-2 py-1 rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+        >
+          <i class="fas fa-copy mr-1"></i> Copiar
+        </button>
+      </div>
+      <p class="text-xs text-amber-700 dark:text-amber-400 mb-2">
+        Comparte este JSON cuando el cambio de plan falle. Incluye rol, IDs,
+        tier solicitado, resultado del RPC y el tier re-leído tras el refresh.
+      </p>
+      <textarea
+        readonly
+        rows="14"
+        class="w-full font-mono text-[11px] leading-tight text-amber-900 dark:text-amber-200 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded p-2"
+        [value]="formatDebugForCopy()"
+      ></textarea>
+    </div>
+  }
+
   <!-- ═══════════════════════════════════════════════════════ SIDEBAR ORDER TAB -->
   @if (activeTab() === 'sidebar') {
     @if (!isSuperAdmin()) {

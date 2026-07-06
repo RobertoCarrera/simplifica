@@ -407,6 +407,22 @@ export class ModulesAdminComponent implements OnInit {
   // ── Subscription tier change ──────────────────────────────────────────────
   /** ID of the company whose tier is currently being updated (for inline spinner). */
   changingTierCompanyId = signal<string | null>(null);
+  /** Last debug payload from a plan-change attempt. The template renders
+   *  it inside the Empresas tab so the user can copy-paste into a bug
+   *  report. Includes the auth context, the company we tried to mutate,
+   *  the desired tier, the RPC result, and the timestamp. */
+  lastPlanChangeDebug = signal<{
+    at: string;
+    authRole: string | null;
+    isSuperAdmin: boolean;
+    companyId: string;
+    oldTier: string;
+    newTier: string;
+    rpcName: string;
+    rpcOk: boolean;
+    rpcError: string | null;
+    reloadedTier: string | null;
+  } | null>(null);
 
   /**
    * Move a company to a new plan. Super-admin only — the `change_company_plan`
@@ -423,9 +439,49 @@ export class ModulesAdminComponent implements OnInit {
    */
   async changeCompanyTier(company: any, newTier: string) {
     const c = company;
-    if (!c?.id || !newTier) return;
-    if (newTier === c.subscription_tier) return; // no-op
+    if (!c?.id || !newTier) {
+      this.lastPlanChangeDebug.set({
+        at: new Date().toISOString(),
+        authRole: this.auth.userRole(),
+        isSuperAdmin: this.isSuperAdmin(),
+        companyId: c?.id ?? '<missing>',
+        oldTier: c?.subscription_tier ?? '<missing>',
+        newTier: newTier ?? '<missing>',
+        rpcName: 'change_company_plan',
+        rpcOk: false,
+        rpcError: 'invalid arguments',
+        reloadedTier: null,
+      });
+      return;
+    }
+    if (newTier === c.subscription_tier) {
+      this.lastPlanChangeDebug.set({
+        at: new Date().toISOString(),
+        authRole: this.auth.userRole(),
+        isSuperAdmin: this.isSuperAdmin(),
+        companyId: c.id,
+        oldTier: c.subscription_tier,
+        newTier,
+        rpcName: 'change_company_plan',
+        rpcOk: true,
+        rpcError: 'no-op (same tier)',
+        reloadedTier: c.subscription_tier,
+      });
+      return;
+    }
     if (!this.isSuperAdmin()) {
+      this.lastPlanChangeDebug.set({
+        at: new Date().toISOString(),
+        authRole: this.auth.userRole(),
+        isSuperAdmin: false,
+        companyId: c.id,
+        oldTier: c.subscription_tier,
+        newTier,
+        rpcName: 'change_company_plan',
+        rpcOk: false,
+        rpcError: 'client guard: isSuperAdmin() returned false',
+        reloadedTier: null,
+      });
       this.toast.error(
         'Sin permisos',
         'Solo los superadministradores pueden cambiar el plan de una empresa.',
@@ -434,24 +490,40 @@ export class ModulesAdminComponent implements OnInit {
     }
     this.changingTierCompanyId.set(c.id);
     const oldTier = c.subscription_tier;
+    let rpcOk = false;
+    let rpcError: string | null = null;
     try {
       await firstValueFrom(this.modulesService.changeCompanyPlan(c.id, newTier));
+      rpcOk = true;
       await this.loadCompanies();
-      // loadCompanies() re-fires loadCompanyGrants() for every company, so
-      // the gift chips and module list will reflect the new tier.
       this.toast.success(
         'Plan actualizado',
         `${c.name} ahora está en plan ${newTier}.`,
       );
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo cambiar el plan.');
+      rpcError = e?.message ?? String(e);
+      this.toast.error('Error', rpcError ?? 'No se pudo cambiar el plan.');
       console.error('changeCompanyTier failed', { companyId: c.id, oldTier, newTier, e });
     } finally {
+      const reloaded = this.companies.find((x: any) => x.id === c.id);
+      this.lastPlanChangeDebug.set({
+        at: new Date().toISOString(),
+        authRole: this.auth.userRole(),
+        isSuperAdmin: this.isSuperAdmin(),
+        companyId: c.id,
+        oldTier,
+        newTier,
+        rpcName: 'change_company_plan',
+        rpcOk,
+        rpcError,
+        reloadedTier: reloaded?.subscription_tier ?? '<company-not-found-after-reload>',
+      });
       this.changingTierCompanyId.set(null);
     }
   }
 
-  // Filtered companies for search box
+  
+// Filtered companies for search box
   get filteredCompanies() {
     const q = (this.companyQuery || '').toLowerCase().trim();
     if (!q) return this.companies;
@@ -1225,6 +1297,31 @@ export class ModulesAdminComponent implements OnInit {
   isSuperAdmin(): boolean {
     const role = this.auth.userRole();
     return role === 'super_admin' || !!this.auth.userProfile?.is_super_admin;
+  }
+
+  /** Pretty-print the last plan-change debug payload as JSON for the copy
+   *  button. The textarea in the template binds to this. */
+  formatDebugForCopy(): string {
+    const dbg = this.lastPlanChangeDebug();
+    if (!dbg) return '';
+    return JSON.stringify(dbg, null, 2);
+  }
+
+  /** Copy the debug payload to the clipboard. Falls back to selecting
+   *  the textarea content if the Clipboard API is unavailable. */
+  async copyDebugToClipboard(): Promise<void> {
+    const text = this.formatDebugForCopy();
+    if (!text) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        this.toast.success('Copiado', 'JSON copiado al portapapeles.');
+      } else {
+        this.toast.error('Sin portapapeles', 'Copia manualmente del textarea.');
+      }
+    } catch (e: any) {
+      this.toast.error('Error al copiar', e?.message || 'Copia manualmente del textarea.');
+    }
   }
 
   switchTab(tab: 'companies' | 'sidebar' | 'modules' | 'addons' | 'pricing') {
