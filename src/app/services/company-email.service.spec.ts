@@ -81,9 +81,10 @@ function makeSupabaseStub(opts: SupabaseStubOptions = {}) {
     },
     from(_table: string) {
       const builder: any = {
-        upsert(_payload: unknown, _conflict?: unknown) {
-          builder.__lastPayload = arguments[0];
-          builder.__lastConflict = arguments[1];
+        upsert(..._rest: unknown[]) {
+          const [_payload, _conflict] = _rest;
+          builder.__lastPayload = _payload;
+          builder.__lastConflict = _conflict;
           return builder;
         },
         select() {
