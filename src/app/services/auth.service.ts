@@ -2230,19 +2230,30 @@ export class AuthService {
   /**
    * Enviar invitación por email usando Edge Function + SMTP de Supabase (SES)
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
+   *
+   * `target_tier` solo aplica a invitaciones de `owner` enviadas por un
+   * super_admin: hace que la nueva empresa se cree directamente en el plan
+   * indicado en lugar de en 'free'. Para cualquier otro caso, el Edge
+   * Function fuerza `target_tier = NULL` server-side, así que es seguro
+   * enviarlo desde la UI siempre que el rol seleccionado sea 'owner'.
    */
-  async sendCompanyInvite(params: { email: string; role?: string; message?: string; resend?: boolean }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
+  async sendCompanyInvite(params: { email: string; role?: string; message?: string; resend?: boolean; target_tier?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
     if (params.role === 'owner' && !this.userProfileSignal()?.is_super_admin) {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
     try {
       const inviteRole = params.role || 'member';
+      // Only forward target_tier when role === 'owner'; the Edge Function
+      // will additionally validate the caller is super_admin. Client-side
+      // guard keeps the payload minimal and avoids surprising field noise.
+      const targetTier = inviteRole === 'owner' && params.target_tier ? params.target_tier : undefined;
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
         body: {
           email: params.email,
           role: inviteRole,
           message: params.message || null,
           resend: !!params.resend,
+          ...(targetTier ? { target_tier: targetTier } : {}),
           // Pass the portal URL so the function can redirect client invites to the correct origin.
           // In dev this resolves to localhost:4201; in prod to portal.simplificacrm.es.
           ...(inviteRole === 'client' ? { portal_url: environment.portalUrl } : {}),

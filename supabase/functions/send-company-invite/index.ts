@@ -1,7 +1,7 @@
 // Edge Function: send-company-invite
 // Purpose: Owner/Admin triggers company invitation email using Supabase Auth SMTP (SES configured)
 // Flow:
-// 1) Validate requester (JWT) and parse body { email, role?, message? }
+// 1) Validate requester (JWT) and parse body { email, role?, message?, target_tier? }
 // 2) Call RPC invite_user_to_company(p_company_id?, p_email, p_role, p_message) or your variant
 // 3) Fetch token via get_company_invitation_token(invitation_id)
 // 4) Call supabase.auth.admin.inviteUserByEmail(email, { redirectTo: `${APP_URL}/invite?token=${token}` })
@@ -12,6 +12,18 @@
 //   - role=staff   → APP_URL/invite (app.simplificacrm.es)
 // This prevents client users from hitting StaffGuard on the staff app, which blocks them
 // with "profile is null" because they have no staff profile.
+//
+// target_tier (super_admin only):
+//   When a super_admin invites a new owner, they can set `target_tier` to
+//   one of 'free'|'starter'|'pro'|'business' to make the new company
+//   start on that plan. Stored on company_invitations.target_tier and
+//   consumed by accept_company_invitation → create_company_with_owner.
+//   For non-owner invites the value is silently dropped (server-side
+//   force to NULL). Invalid values are rejected with 400.
+//
+// ⚠️  NEEDS REDEPLOY  — local edits here do NOT take effect until
+// `supabase functions deploy send-company-invite --no-verify-jwt` (or
+// via the dashboard) is run against the linked remote project.
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -328,6 +340,37 @@ serve(async (req) => {
         }
       });
     }
+    // ── target_tier (super_admin owner invite only) ─────────────────────
+    // Server-side authorization: only a super_admin inviting an owner may
+    // set target_tier. Any other combination (non-owner role, or non-SA
+    // caller) forces target_tier to NULL — the field is silently dropped
+    // so we never leak the feature into lower-privilege surfaces.
+    const VALID_TARGET_TIERS = [
+      'free',
+      'starter',
+      'pro',
+      'business'
+    ];
+    let targetTier = null;
+    const rawTargetTier = body?.target_tier;
+    if (rawTargetTier != null && rawTargetTier !== '') {
+      const candidate = String(rawTargetTier).trim().toLowerCase();
+      if (!VALID_TARGET_TIERS.includes(candidate)) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'invalid_request',
+          message: `target_tier must be one of: ${VALID_TARGET_TIERS.join(', ')}`
+        }), {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            ...SECURITY_HEADERS,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      targetTier = candidate;
+    }
     // Sanitize message: strip HTML, enforce max length to prevent email injection / DoS
     const rawMessage = body?.message != null ? String(body.message) : null;
     const message = rawMessage ? rawMessage.replace(/<[^>]*>/g, '').replace(/[<>"'&]/g, (c)=>({
@@ -425,6 +468,12 @@ serve(async (req) => {
     }
     const globalRole = Array.isArray(userData.app_role) ? userData.app_role[0]?.name : userData.app_role?.name;
     const isSuperAdmin = globalRole === 'super_admin';
+    // target_tier is reserved for super_admin inviting an owner. Drop the
+    // field server-side for every other combination so lower-privilege
+    // callers can't smuggle a tier into company_invitations.
+    if (!(isSuperAdmin && role === 'owner')) {
+      targetTier = null;
+    }
     if (!isSuperAdmin && !VALID_INVITE_ROLES.includes(role)) {
       return new Response(JSON.stringify({
         success: false,
@@ -552,7 +601,9 @@ serve(async (req) => {
         invited_by_user_id: currentUser.id,
         message: message,
         last_sent_at: new Date().toISOString(),
-        send_count: (existingPendingInvite.send_count || 0) + 1
+        send_count: (existingPendingInvite.send_count || 0) + 1,
+        // target_tier is forced to NULL above when not (super_admin+owner).
+        target_tier: targetTier
       }).eq('id', existingPendingInvite.id).select('id, token').single();
       if (!updErr && updated) {
         invitationId = updated.id;
@@ -582,7 +633,9 @@ serve(async (req) => {
         invited_by_user_id: currentUser.id,
         message: message,
         last_sent_at: new Date().toISOString(),
-        send_count: 1
+        send_count: 1,
+        // target_tier is forced to NULL above when not (super_admin+owner).
+        target_tier: targetTier
       }).select('id, token').single();
       if (createErr) {
         // Handle unique violation (resend)
@@ -602,7 +655,9 @@ serve(async (req) => {
               invited_by_user_id: currentUser.id,
               message: message,
               last_sent_at: new Date().toISOString(),
-              send_count: (existing.send_count || 0) + 1
+              send_count: (existing.send_count || 0) + 1,
+              // target_tier is forced to NULL above when not (super_admin+owner).
+              target_tier: targetTier
             }).eq('id', existing.id).select('id, token').single();
             if (!updErr && updated) {
               invitationId = updated.id;

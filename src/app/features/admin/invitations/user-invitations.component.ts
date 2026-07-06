@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SupabaseService } from '../../../services/supabase.service';
+import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { PlanService } from '../../../services/plan.service';
 
 interface InvitationResult {
   success: boolean;
@@ -68,6 +69,7 @@ interface InvitationResult {
             id="role"
             [(ngModel)]="invitation.role"
             name="role"
+            (ngModelChange)="onRoleChange()"
             required
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
@@ -80,6 +82,27 @@ interface InvitationResult {
             <option value="supervisor">Supervisor</option>
             <option value="owner">Propietario</option>
           </select>
+        </div>
+
+        <!-- Plan inicial (solo para invitaciones de owner) -->
+        <div *ngIf="invitation.role === 'owner'">
+          <label for="targetTier" class="block text-sm font-medium text-gray-700 mb-1">
+            Plan inicial de la nueva empresa
+          </label>
+          <select
+            id="targetTier"
+            [(ngModel)]="invitation.target_tier"
+            name="target_tier"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option *ngIf="!isSuperAdmin()" value="free">Free</option>
+            <option *ngFor="let plan of plans()" [value]="plan.id">
+              {{ plan.name }}
+            </option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">
+            Solo super_admin puede elegir un plan distinto a Free. La nueva empresa se creará directamente en este plan.
+          </p>
         </div>
 
         <div class="flex gap-3">
@@ -171,14 +194,22 @@ interface InvitationResult {
     }
   `]
 })
-export class UserInvitationsComponent {
-  private supabaseService = inject(SupabaseService);
+export class UserInvitationsComponent implements OnInit {
+  private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private planService = inject(PlanService);
+
+  // Read-only signal exposed by PlanService; repointed at the cached list
+  // so the template can iterate it without re-subscribing.
+  plans = this.planService.plansSignal;
+
+  isSuperAdmin = signal(false);
 
   invitation = {
     email: '',
     name: '',
-    role: 'member'
+    role: 'member',
+    target_tier: 'free'
   };
 
   invitations: Array<{
@@ -193,6 +224,32 @@ export class UserInvitationsComponent {
   showDebug = false; // Cambiar a true para ver debug info
   lastResult: any = null;
 
+  ngOnInit(): void {
+    // Detect super_admin via the user profile signal so the plan selector
+    // becomes available without an extra round-trip. Fallback to fetching
+    // plans if the signal cache is empty (cold start).
+    const profile = this.authService.userProfileSignal();
+    const isSa = !!(profile?.is_super_admin);
+    this.isSuperAdmin.set(isSa);
+
+    if (!this.plans()) {
+      this.planService.getPlans().subscribe({
+        next: () => { /* signal updated by service */ },
+        error: () => { /* non-fatal: selector will just not show tiered options */ },
+      });
+    }
+  }
+
+  onRoleChange(): void {
+    // Reset target_tier to 'free' whenever the role moves away from owner
+    // so a stale tier never leaks into a non-owner invite.
+    if (this.invitation.role !== 'owner') {
+      this.invitation.target_tier = 'free';
+    } else if (!this.isSuperAdmin()) {
+      this.invitation.target_tier = 'free';
+    }
+  }
+
   async inviteUser() {
     if (!this.invitation.email || !this.invitation.name) {
       this.toastService.error('Campo requerido', 'Por favor completa todos los campos');
@@ -202,53 +259,40 @@ export class UserInvitationsComponent {
     this.isLoading.set(true);
 
     try {
-      // Llamar a la función de Supabase
-      const { data, error } = await this.supabaseService.executeFunction('invite_user_to_company', {
-        user_email: this.invitation.email,
-        user_name: this.invitation.name,
-        user_role: this.invitation.role
+      // Edge Function path (send-company-invite): supports target_tier for
+      // owner invites from a super_admin. The service forwards target_tier
+      // only when role === 'owner' (see AuthService.sendCompanyInvite).
+      const result = await this.authService.sendCompanyInvite({
+        email: this.invitation.email,
+        role: this.invitation.role,
+        target_tier: this.invitation.role === 'owner' ? this.invitation.target_tier : undefined,
       });
 
-      this.lastResult = { data, error };
+      this.lastResult = { data: result, error: null };
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Error al invitar usuario');
       }
 
-      // Si la función devuelve un JSON con success
-      if (data && typeof data === 'object' && 'success' in data) {
-        const result = data as any;
-        if (result.success) {
-          this.toastService.success('¡Éxito!', result.message || 'Usuario invitado correctamente');
+      const successMessage = this.invitation.role === 'owner'
+        ? `Invitación enviada. La nueva empresa empezará en el plan "${this.invitation.target_tier}".`
+        : 'Invitación enviada';
 
-          this.invitations.unshift({
-            email: this.invitation.email,
-            success: true,
-            message: result.message,
-            timestamp: new Date()
-          });
+      this.toastService.success('¡Éxito!', result.info || successMessage);
 
-          this.clearForm();
-        } else {
-          throw new Error(result.error || 'Error al invitar usuario');
-        }
-      } else {
-        this.toastService.success('¡Éxito!', 'Usuario invitado correctamente');
+      this.invitations.unshift({
+        email: this.invitation.email,
+        success: true,
+        message: successMessage,
+        timestamp: new Date()
+      });
 
-        this.invitations.unshift({
-          email: this.invitation.email,
-          success: true,
-          message: 'Invitación enviada',
-          timestamp: new Date()
-        });
-
-        this.clearForm();
-      }
+      this.clearForm();
 
     } catch (error: any) {
       console.error('Error inviting user:', error);
 
-      const errorMessage = error.message || 'Error al invitar usuario';
+      const errorMessage = error?.message || 'Error al invitar usuario';
       this.toastService.error('Error', errorMessage);
 
       this.invitations.unshift({
@@ -266,7 +310,8 @@ export class UserInvitationsComponent {
     this.invitation = {
       email: '',
       name: '',
-      role: 'member'
+      role: 'member',
+      target_tier: 'free'
     };
   }
 }
