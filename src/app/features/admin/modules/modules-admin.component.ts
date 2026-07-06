@@ -1301,6 +1301,12 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
+  /** Template-friendly accessor: returns the Set<module_key> for a plan,
+   *  or an empty Set (never undefined) so the template can iterate safely. */
+  planKeysFor(planId: string): Set<string> {
+    return this.planAccess().get(planId) ?? (new Set<string>());
+  }
+
   async toggleModuleInPlan(plan: Plan, moduleKey: string) {
     // Core modules are locked on — no toggle.
     if (this.moduleScope(moduleKey) === 'core') return;
