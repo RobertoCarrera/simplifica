@@ -103,6 +103,7 @@
 
   <!-- Navigation — core items render instantly, production items appear once modules load -->
   <button onclick="window.__sidebarDebug()()" style="position:fixed;top:80px;right:10px;z-index:99999;padding:6px 10px;background:#f59e0b;color:#000;border:2px solid #000;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;">DEBUG SIDEBAR</button>
+<button onclick="try{Object.keys(sessionStorage).forEach(k=>sessionStorage.removeItem(k));Object.keys(localStorage).forEach(k=>localStorage.removeItem(k));}catch(e){};window.location.reload()" style="position:fixed;top:80px;right:170px;z-index:99999;padding:6px 10px;background:#ef4444;color:#fff;border:2px solid #000;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;">CLEAR CACHE + RELOAD</button>
 
   <!-- DEBUG PANEL: temporary — copy this when sidebar shows wrong modules -->
   @if (debugSidebar()) {
