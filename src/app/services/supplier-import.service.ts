@@ -327,11 +327,98 @@ export class SupplierImportService {
 
   // ─── Import cache products to actual products table ──────────────────
 
+  /**
+   * Detect which cache rows conflict with existing products (by name match).
+   * Returns a Set with the cache ids that have a conflict.
+   * Excludes cache rows already imported (they already link to a product).
+   */
+  async detectConflicts(supplierId: string): Promise<Set<string>> {
+    const companyId = this.auth.companyId();
+    if (!companyId) return new Set();
+
+    const client = this.supabase.getClient();
+
+    const [{ data: cache }, { data: products }] = await Promise.all([
+      client
+        .from('supplier_products_cache')
+        .select('id, name, imported_product_id')
+        .eq('supplier_id', supplierId)
+        .eq('company_id', companyId)
+        .is('imported_at', null),
+      client
+        .from('products')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .is('deleted_at', null),
+    ]);
+
+    const productNames = new Map<string, string>();
+    for (const p of products || []) {
+      productNames.set((p.name || '').toLowerCase().trim(), p.id);
+    }
+
+    const conflicts = new Set<string>();
+    for (const row of cache || []) {
+      const cacheName = (row.name || '').toLowerCase().trim();
+      if (!cacheName) continue;
+      const matchingProductId = productNames.get(cacheName);
+      // Conflict only if name matches AND the product is not already linked to this cache row
+      if (matchingProductId && matchingProductId !== (row as any).imported_product_id) {
+        conflicts.add(row.id);
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Find an existing global brand/category by name (case-insensitive), or create one.
+   * Used to normalize supplier data before inserting into `products`.
+   */
+  private async findOrCreateGlobal(
+    table: 'product_brands' | 'product_categories',
+    name: string,
+  ): Promise<string | null> {
+    const client = this.supabase.getClient();
+    const cleanName = name.trim();
+    if (!cleanName) return null;
+
+    const { data: existing } = await client
+      .from(table)
+      .select('id')
+      .is('company_id', null)
+      .ilike('name', cleanName)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) return (existing as any).id;
+
+    const { data: created, error } = await client
+      .from(table)
+      .insert({ name: cleanName, company_id: null })
+      .select('id')
+      .single();
+
+    if (!error && created) return (created as any).id;
+
+    // Race condition: another caller may have just inserted the same row.
+    const { data: retry } = await client
+      .from(table)
+      .select('id')
+      .is('company_id', null)
+      .ilike('name', cleanName)
+      .limit(1)
+      .maybeSingle();
+
+    return retry ? (retry as any).id : null;
+  }
+
   async importToProducts(
     cacheIds: string[],
     marginPercent: number,
     rounding: 'round' | 'ceil' | 'floor' | 'none' = 'round',
-  ): Promise<{ imported: number; errors: number }> {
+    conflicts: Set<string> = new Set(),
+  ): Promise<{ imported: number; errors: number; skipped: number; conflictIds: string[] }> {
     const companyId = this.auth.companyId();
     if (!companyId) throw new Error('No company_id available');
 
@@ -347,64 +434,92 @@ export class SupplierImportService {
 
     let imported = 0;
     let errors = 0;
+    let skipped = 0;
+    const conflictIds: string[] = [];
 
     for (const row of cacheRows) {
-      const finalPrice = this.applyMargin(row.supplier_price || 0, marginPercent, rounding);
+      if (conflicts.has(row.id)) {
+        conflictIds.push(row.id);
+        skipped++;
+        continue;
+      }
 
-      const { data: existing } = await client
-        .from('products')
-        .select('id')
-        .eq('company_id', companyId)
-        .or(`model.eq.${row.model || ''}`)
-        .limit(1)
-        .maybeSingle();
+      try {
+        const finalPrice = this.applyMargin(Number(row.supplier_price) || 0, marginPercent, rounding);
 
-      if (existing) {
-        const { error: updateError } = await client
+        const brandId = row.brand
+          ? await this.findOrCreateGlobal('product_brands', String(row.brand))
+          : null;
+
+        const categoryId = row.category
+          ? await this.findOrCreateGlobal('product_categories', String(row.category))
+          : null;
+
+        const productFields = {
+          name: row.name,
+          description: row.description ?? null,
+          price: finalPrice,
+          stock_quantity: Number(row.stock_quantity) || 0,
+          model: row.model ?? null,
+          brand: row.brand ?? null,
+          category: row.category ?? null,
+          barcode: row.external_id ?? null,
+          brand_id: brandId,
+          category_id: categoryId,
+        };
+
+        const { data: existing } = await client
           .from('products')
-          .update({
-            name: row.name,
-            description: row.description,
-            price: finalPrice,
-            stock_quantity: row.stock_quantity,
-            model: row.model,
-          })
-          .eq('id', existing.id);
-
-        if (updateError) { errors++; continue; }
-
-        await client
-          .from('supplier_products_cache')
-          .update({ imported_at: new Date().toISOString(), imported_product_id: existing.id })
-          .eq('id', row.id);
-
-        imported++;
-      } else {
-        const { data: newProduct, error: insertError } = await client
-          .from('products')
-          .insert({
-            company_id: companyId,
-            name: row.name,
-            description: row.description,
-            price: finalPrice,
-            stock_quantity: row.stock_quantity,
-            model: row.model,
-          })
           .select('id')
-          .single();
+          .eq('company_id', companyId)
+          .ilike('name', row.name || '')
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
 
-        if (insertError || !newProduct) { errors++; continue; }
+        if (existing) {
+          const { error: updateError } = await client
+            .from('products')
+            .update(productFields)
+            .eq('id', (existing as any).id);
 
-        await client
-          .from('supplier_products_cache')
-          .update({ imported_at: new Date().toISOString(), imported_product_id: newProduct.id })
-          .eq('id', row.id);
+          if (updateError) throw updateError;
 
-        imported++;
+          await client
+            .from('supplier_products_cache')
+            .update({
+              imported_at: new Date().toISOString(),
+              imported_product_id: (existing as any).id,
+            })
+            .eq('id', row.id);
+
+          imported++;
+        } else {
+          const { data: newProduct, error: insertError } = await client
+            .from('products')
+            .insert({ company_id: companyId, ...productFields })
+            .select('id')
+            .single();
+
+          if (insertError || !newProduct) throw insertError || new Error('No product returned');
+
+          await client
+            .from('supplier_products_cache')
+            .update({
+              imported_at: new Date().toISOString(),
+              imported_product_id: (newProduct as any).id,
+            })
+            .eq('id', row.id);
+
+          imported++;
+        }
+      } catch (err) {
+        console.error('importToProducts failed for row', row.id, err);
+        errors++;
       }
     }
 
-    return { imported, errors };
+    return { imported, errors, skipped, conflictIds };
   }
 
   getSuppliers(): Observable<any[]> {

@@ -83,6 +83,9 @@ import { ViewChild } from '@angular/core';
             <span>Total: <strong class="text-gray-900 dark:text-slate-50">{{ cacheProducts().length }}</strong></span>
             <span>Seleccionados: <strong class="text-blue-600 dark:text-blue-400">{{ selectedIds().size }}</strong></span>
             <span>Ya importados: <strong class="text-green-600 dark:text-green-400">{{ importedCount() }}</strong></span>
+            @if (conflictCount() > 0) {
+              <span class="text-amber-600 dark:text-amber-400">Conflictos: <strong>{{ conflictCount() }}</strong></span>
+            }
             <span>Precio total final: <strong class="text-gray-900 dark:text-slate-50">{{ formatPrice(totalFinalPrice()) }}</strong></span>
           </div>
         </div>
@@ -130,7 +133,9 @@ import { ViewChild } from '@angular/core';
                       [class.opacity-50]="product.imported_at">
                       <td class="px-3 py-3">
                         <input type="checkbox" [checked]="selectedIds().has(product.id)" (change)="toggleRow(product.id)"
-                          [disabled]="!!product.imported_at" class="rounded" />
+                          [disabled]="!!product.imported_at || hasConflict(product.id)"
+                          [title]="hasConflict(product.id) ? 'Conflicto: ya existe un producto con este nombre en tu catálogo' : ''"
+                          class="rounded" />
                       </td>
                       <td class="px-3 py-3 max-w-xs">
                         <div class="font-medium truncate">{{ product.name || '(sin nombre)' }}</div>
@@ -150,6 +155,11 @@ import { ViewChild } from '@angular/core';
                         @if (product.imported_at) {
                           <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                             <i class="fas fa-check-circle"></i> Importado
+                          </span>
+                        } @else if (hasConflict(product.id)) {
+                          <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                            title="Ya existe un producto con este nombre en tu catálogo. Resuélvelo manualmente.">
+                            <i class="fas fa-exclamation-triangle"></i> Conflicto
                           </span>
                         } @else {
                           <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400">
@@ -182,6 +192,7 @@ export class SupplierCachePreviewComponent {
   supplier = signal<any | null>(null);
   cacheProducts = signal<any[]>([]);
   selectedIds = signal<Set<string>>(new Set());
+  conflicts = signal<Set<string>>(new Set());
   isLoading = signal(true);
   isImporting = signal(false);
 
@@ -206,6 +217,12 @@ export class SupplierCachePreviewComponent {
 
   importedCount = computed(() => this.cacheProducts().filter((p) => p.imported_at).length);
 
+  conflictCount = computed(() => this.conflicts().size);
+
+  hasConflict(id: string): boolean {
+    return this.conflicts().has(id);
+  }
+
   totalFinalPrice = computed(() => {
     return this.filteredProducts()
       .filter((p) => this.selectedIds().has(p.id))
@@ -229,13 +246,22 @@ export class SupplierCachePreviewComponent {
       const found = (suppliers || []).find((s: any) => s.id === supplierId);
       this.supplier.set(found || null);
 
+      // Detect conflicts against existing products (by name match)
+      let conflictIds = new Set<string>();
+      try {
+        conflictIds = await this.importService.detectConflicts(supplierId);
+      } catch {
+        // non-fatal: continue without conflict detection
+      }
+      this.conflicts.set(conflictIds);
+
       // Load cache
       const cache = await this.importService.getCacheProducts(supplierId).toPromise();
       this.cacheProducts.set(cache || []);
 
-      // Auto-select all non-imported
+      // Auto-select all non-imported AND non-conflict rows
       const toSelect = (cache || [])
-        .filter((p: any) => !p.imported_at)
+        .filter((p: any) => !p.imported_at && !conflictIds.has(p.id))
         .map((p: any) => p.id);
       this.selectedIds.set(new Set(toSelect));
     } catch (error: any) {
@@ -246,6 +272,13 @@ export class SupplierCachePreviewComponent {
   }
 
   toggleRow(id: string): void {
+    if (this.conflicts().has(id)) {
+      this.toastService.warning(
+        'Conflicto detectado',
+        'Ya existe un producto con este nombre en tu catálogo. Resuélvelo antes de importar.',
+      );
+      return;
+    }
     this.selectedIds.update((set) => {
       const next = new Set(set);
       if (next.has(id)) next.delete(id);
@@ -273,8 +306,11 @@ export class SupplierCachePreviewComponent {
   }
 
   selectAll(): void {
-    const available = this.filteredProducts().filter((p) => !p.imported_at);
-    const allSelected = available.every((p) => this.selectedIds().has(p.id));
+    const conflictSet = this.conflicts();
+    const available = this.filteredProducts().filter(
+      (p) => !p.imported_at && !conflictSet.has(p.id),
+    );
+    const allSelected = available.length > 0 && available.every((p) => this.selectedIds().has(p.id));
     if (allSelected) {
       this.selectedIds.set(new Set());
     } else {
@@ -292,7 +328,7 @@ export class SupplierCachePreviewComponent {
 
     const confirmed = await this.confirmModal.open({
       title: `¿Importar ${ids.length} productos?`,
-      message: `Se importarán a tu catálogo con el margen del ${this.marginPercent}% aplicado. Los productos duplicados (mismo modelo) se actualizarán en vez de duplicarse.`,
+      message: `Se importarán a tu catálogo con el margen del ${this.marginPercent}% aplicado. Los conflictos por nombre se omitirán automáticamente.`,
       confirmText: 'Importar',
       icon: 'fa-download',
       iconColor: 'blue',
@@ -301,12 +337,33 @@ export class SupplierCachePreviewComponent {
 
     this.isImporting.set(true);
     try {
-      const result = await this.importService.importToProducts(ids, this.marginPercent, this.rounding);
-      this.toastService.success(
-        'Importación completa',
-        `${result.imported} productos importados${result.errors > 0 ? `, ${result.errors} con errores` : ''}`,
+      const result = await this.importService.importToProducts(
+        ids,
+        this.marginPercent,
+        this.rounding,
+        this.conflicts(),
       );
-      // Reload to update imported_at
+
+      const parts: string[] = [];
+      if (result.imported > 0) parts.push(`${result.imported} importados`);
+      if (result.skipped > 0) parts.push(`${result.skipped} omitidos (conflicto)`);
+      if (result.errors > 0) parts.push(`${result.errors} con error`);
+      const summary = parts.length > 0 ? parts.join(', ') : 'Sin cambios';
+
+      if (result.errors === 0 && result.imported > 0) {
+        this.toastService.success('Importación completa', summary);
+      } else if (result.imported > 0) {
+        this.toastService.warning('Importación parcial', summary);
+      } else if (result.skipped > 0) {
+        this.toastService.warning(
+          'Sin importación',
+          `Los ${result.skipped} productos seleccionados tienen conflicto con tu catálogo.`,
+        );
+      } else {
+        this.toastService.error('Sin importación', summary);
+      }
+
+      // Reload to update imported_at + conflict map
       const supplierId = this.route.snapshot.queryParamMap.get('supplier');
       if (supplierId) await this.loadSupplierAndCache(supplierId);
     } catch (error: any) {
