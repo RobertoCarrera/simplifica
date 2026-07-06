@@ -1,0 +1,17 @@
+/* SidebarUserProfileComponent — collapsed-state overrides.
+   These rules originally lived in the parent's SCSS file (which targeted
+   .user-profile-row / .logout-btn elements that have now moved into this
+   child component). Encapsulation means parent styles no longer reach here,
+   so they live here and depend on the host class binding set by the child
+   (`:host(.collapsed) ...`). */
+
+/* User profile row in footer — handle collapsed state */
+:host(.collapsed) .user-profile-row {
+  justify-content: center !important;
+}
+
+/* Logout button — always visible even when collapsed */
+:host(.collapsed) .logout-btn {
+  display: flex !important;
+  justify-content: center !important;
+}

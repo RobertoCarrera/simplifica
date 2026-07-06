@@ -4,7 +4,6 @@ import {
   Input,
   Signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { MenuItem } from '../../data/sidebar-menu.items';
 
@@ -23,7 +22,7 @@ import { MenuItem } from '../../data/sidebar-menu.items';
 @Component({
   selector: 'app-sidebar-floating-tooltip',
   standalone: true,
-  imports: [CommonModule, TranslocoPipe],
+  imports: [TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isCollapsed() && hoveredItem(); as item) {
