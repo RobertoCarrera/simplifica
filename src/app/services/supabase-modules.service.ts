@@ -605,4 +605,44 @@ export class SupabaseModulesService {
       })()
     );
   }
+
+  // ── Plan-driven access: resync grants against the CURRENT plan ─────────
+  /**
+   * Re-align a company's `company_module_grants` with whatever plan they are
+   * currently on (the plan is NOT changed by this RPC — see `changeCompanyPlan`
+   * for that). Super-admin only.
+   *
+   * - `removeOrphans = false` (default, "safe / sticky"):
+   *     Adds any plan-module the company doesn't yet have a grant for, as
+   *     `'active'`. Existing `'active'` and `'revoked'` grants are left alone
+   *     (manual revocations are preserved). Use this to top up a company that
+   *     moved plans before `change_company_plan` existed, or whose grants
+   *     drifted out of sync.
+   *
+   * - `removeOrphans = true` (destructive, "prune to plan"):
+   *     Same as above, PLUS deletes any grant whose module is no longer in
+   *     the current plan. CAVEAT: `company_module_grants` does NOT track
+   *     plan-vs-manual source, so manually-granted modules outside the
+   *     current plan are also removed. Use deliberately.
+   *
+   * Returns the number of rows added + removed.
+   */
+  adminResyncCompanyToPlan(
+    companyId: string,
+    removeOrphans: boolean = false,
+  ): Observable<number> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabaseClient.instance.rpc(
+          'admin_resync_company_to_plan',
+          {
+            p_company_id: companyId,
+            p_remove_orphan_grants: removeOrphans,
+          },
+        );
+        if (error) throw new Error(error.message);
+        return (data as number) ?? 0;
+      })()
+    );
+  }
 }
