@@ -255,6 +255,39 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
+  // ── Subscription tier change ──────────────────────────────────────────────
+  /** ID of the company whose tier is currently being updated (for inline spinner). */
+  changingTierCompanyId = signal<string | null>(null);
+
+  /**
+   * Move a company to a new plan. Super-admin only. After the RPC succeeds
+   * we reload the company list (so `subscription_tier` reflects the new plan)
+   * AND the per-company grants cache (so gift chips and the module list
+   * reflect the freshly-granted modules from plan_module_access).
+   */
+  async changeCompanyTier(company: any, newTier: string) {
+    const c = company;
+    if (!c?.id || !newTier) return;
+    if (newTier === c.subscription_tier) return; // no-op
+    this.changingTierCompanyId.set(c.id);
+    const oldTier = c.subscription_tier;
+    try {
+      await firstValueFrom(this.modulesService.changeCompanyPlan(c.id, newTier));
+      await this.loadCompanies();
+      // loadCompanies() re-fires loadCompanyGrants() for every company, so
+      // the gift chips and module list will reflect the new tier.
+      this.toast.success(
+        'Plan actualizado',
+        `${c.name} ahora está en plan ${newTier}.`,
+      );
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo cambiar el plan.');
+      console.error('changeCompanyTier failed', { companyId: c.id, oldTier, newTier, e });
+    } finally {
+      this.changingTierCompanyId.set(null);
+    }
+  }
+
   // Filtered companies for search box
   get filteredCompanies() {
     const q = (this.companyQuery || '').toLowerCase().trim();

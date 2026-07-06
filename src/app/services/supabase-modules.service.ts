@@ -587,4 +587,22 @@ export class SupabaseModulesService {
       })()
     );
   }
+
+  // ── Plan-driven access: change a company's subscription_tier ────────────
+  /**
+   * Move a company to a new plan. Super-admin only. The RPC handles the
+   * plan_module_access → company_module_grants sync (new plan modules are
+   * granted; manual revocations are preserved).
+   */
+  changeCompanyPlan(companyId: string, newTier: string): Observable<void> {
+    return from(
+      (async () => {
+        const { error } = await this.supabaseClient.instance.rpc('change_company_plan', {
+          p_company_id: companyId,
+          p_new_tier: newTier,
+        });
+        if (error) throw new Error(error.message);
+      })()
+    );
+  }
 }
