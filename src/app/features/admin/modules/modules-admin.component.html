@@ -489,7 +489,7 @@
                         <!-- Inline icon picker: a search box + the same 10-col
                              grid. The card grows vertically. No pop-up, no
                              stacking-context risk, no portal needed. -->
-                        <div class="col-span-full mt-2 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                        <div class="col-span-full mt-2 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded" (click)="$event.stopPropagation()">
                           <div class="relative mb-2">
                             <i class="fas fa-search absolute left-2 top-2 text-gray-400 dark:text-gray-500 text-[10px]"></i>
                             <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" />
