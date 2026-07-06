@@ -123,8 +123,15 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   // ── Per-company grants cache (signal-backed) ────────────────────────────
-  companyModuleGrants = signal<Map<string, Array<{ module_key: string; status: string; reason: string | null; created_at: string }>>>(new Map());
-  companyAddonGrants  = signal<Map<string, Array<{ id: string; addon_id: string; status: string; price_override: number | null; reason: string | null; starts_at: string; ends_at: string | null; created_at: string }>>>(new Map());
+  companyModuleGrants = signal<Map<string, Array<{
+    module_key: string; status: string; reason: string | null; created_at: string;
+    granted_by_name: string | null;
+  }>>>(new Map());
+  companyAddonGrants  = signal<Map<string, Array<{
+    id: string; addon_id: string; status: string; price_override: number | null;
+    reason: string | null; starts_at: string; ends_at: string | null;
+    created_at: string; granted_by_name: string | null;
+  }>>>(new Map());
 
   async loadCompanyGrants(companyId: string) {
     try {
@@ -144,15 +151,86 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   /** Active (non-revoked) module grants for a company. */
-  giftedModules(company: any): Array<{ module_key: string; status: string }> {
+  giftedModules(company: any): Array<{
+    module_key: string; status: string; reason: string | null;
+    created_at: string; granted_by_name: string | null;
+  }> {
     return (this.companyModuleGrants().get(company.id) || [])
       .filter((g) => g.status === 'active');
   }
 
+  /** All module grants (active + revoked) — used by the chip list so revoked gifts stay visible. */
+  allModuleGrants(company: any): Array<{
+    module_key: string; status: string; reason: string | null;
+    created_at: string; granted_by_name: string | null;
+  }> {
+    return this.companyModuleGrants().get(company.id) || [];
+  }
+
   /** Active add-on grants for a company. */
-  giftedAddons(company: any): Array<{ id: string; addon_id: string; price_override: number | null; ends_at: string | null }> {
+  giftedAddons(company: any): Array<{
+    id: string; addon_id: string; status: string;
+    price_override: number | null; reason: string | null;
+    starts_at: string; ends_at: string | null;
+    created_at: string; granted_by_name: string | null;
+  }> {
     return (this.companyAddonGrants().get(company.id) || [])
       .filter((a) => a.status === 'active');
+  }
+
+  /** All add-on grants (active + revoked). */
+  allAddonGrants(company: any): Array<{
+    id: string; addon_id: string; status: string;
+    price_override: number | null; reason: string | null;
+    starts_at: string; ends_at: string | null;
+    created_at: string; granted_by_name: string | null;
+  }> {
+    return this.companyAddonGrants().get(company.id) || [];
+  }
+
+  /** Module keys already granted (any status) to this company — used to exclude them from the gift dropdown. */
+  alreadyGrantedModuleKeys(company: any): Set<string> {
+    return new Set((this.companyModuleGrants().get(company?.id) || []).map((g) => g.module_key));
+  }
+
+  /** Add-on ids already granted (any status) to this company — used to exclude them from the gift dropdown. */
+  alreadyGrantedAddonIds(company: any): Set<string> {
+    return new Set((this.companyAddonGrants().get(company?.id) || []).map((a) => a.addon_id));
+  }
+
+  /** Catalog modules that the superadmin can still gift to this company (excludes dev/core + already granted). */
+  giftableModules(company: any): Array<{ key: string; label: string; scope?: string; is_dev_mode?: boolean }> {
+    const taken = this.alreadyGrantedModuleKeys(company);
+    return (this.modulesCatalog() || [])
+      .filter((m) => m.scope !== 'dev' && m.scope !== 'core')
+      .filter((m) => !taken.has(m.key));
+  }
+
+  giftableModuleCount(company: any): number {
+    return this.giftableModules(company).length;
+  }
+
+  /** Add-ons that the superadmin can still gift to this company (active catalog entries minus already granted). */
+  giftableAddons(company: any): PlanAddon[] {
+    const taken = this.alreadyGrantedAddonIds(company);
+    return (this.addons() || []).filter((a) => a.is_active && !taken.has(a.id));
+  }
+
+  giftableAddonCount(company: any): number {
+    return this.giftableAddons(company).length;
+  }
+
+  /**
+   * Tooltip text for the gift history chip:
+   *   "Regalado el 2026-07-05 por Roberto — \"Beta tester\""
+   * Falls back gracefully when granted_by_name or reason is null (older grants).
+   */
+  giftHistoryTooltip(grant: { status: string; created_at: string; granted_by_name: string | null; reason: string | null }): string {
+    const verb = grant.status === 'revoked' ? 'Revocado' : 'Regalado';
+    const date = grant.created_at ? new Date(grant.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'fecha desconocida';
+    const by = grant.granted_by_name ? ` por ${grant.granted_by_name}` : '';
+    const reason = grant.reason ? ` — "${grant.reason}"` : '';
+    return `${verb} el ${date}${by}${reason}`;
   }
 
   // ── Gift modal state + handlers ─────────────────────────────────────────
@@ -329,7 +407,7 @@ export class ModulesAdminComponent implements OnInit {
   visibleModules = signal<PlanVisibleModule[]>([]);
 
   // Modules catalog (editable display labels + per-module DEV toggle)
-  modulesCatalog = signal<{ key: string; label: string; is_dev_mode: boolean }[]>([]);
+  modulesCatalog = signal<{ key: string; label: string; is_dev_mode: boolean; scope?: 'core' | 'production' | 'dev' }[]>([]);
   showVisibleModulePicker = signal(false);
   showAddCatalogModal = signal(false);
   /** Pending icon selection in the "Añadir nuevo módulo" modal: module_key → icon class. */

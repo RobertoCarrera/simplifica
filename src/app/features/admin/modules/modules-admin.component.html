@@ -123,34 +123,48 @@
                   </span>
                   <button (click)="openGiftModal(c)" class="text-[11px] text-amber-700 dark:text-amber-400 hover:underline">+ Añadir</button>
                 </div>
-                @if (giftedModules(c).length > 0) {
+                @if (allModuleGrants(c).length > 0) {
                   <div class="flex flex-wrap gap-1 mb-1.5">
-                    @for (g of giftedModules(c); track g.module_key) {
+                    @for (g of allModuleGrants(c); track g.module_key) {
                       <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
-                        [ngClass]="g.status === 'active' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800 line-through'">
+                        [ngClass]="g.status === 'active' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800 line-through'"
+                        [title]="giftHistoryTooltip(g)">
                         <i [class]="'fas ' + moduleIcon(g.module_key) + ' text-[9px]'"></i>
-                        {{ getModuleLabel(g.module_key) }}
-                        <button (click)="removeGift(c, g)" class="ml-0.5 text-amber-600 hover:text-red-600" title="Quitar regalo">
-                          <i class="fas fa-times text-[9px]"></i>
-                        </button>
+                        {{ moduleLabel(g.module_key) }}
+                        @if (g.status === 'revoked') {
+                          <span class="text-[8px] font-bold uppercase tracking-wider">REVOCADO</span>
+                        }
+                        @if (g.status === 'active') {
+                          <button (click)="removeGift(c, g)" class="ml-0.5 text-amber-600 hover:text-red-600" title="Quitar regalo">
+                            <i class="fas fa-times text-[9px]"></i>
+                          </button>
+                        }
                       </span>
                     }
                   </div>
                 }
-                @if (giftedAddons(c).length > 0) {
+                @if (allAddonGrants(c).length > 0) {
                   <div class="flex flex-wrap gap-1">
-                    @for (a of giftedAddons(c); track a.id) {
-                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800"
-                        [title]="(a.price_override != null ? 'Precio custom: ' + (a.price_override / 100) + ' €' : 'Precio del plan') + (a.ends_at ? ' · Hasta: ' + (a.ends_at | date:'short') : '')">
+                    @for (a of allAddonGrants(c); track a.id) {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        [ngClass]="a.status === 'active' ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800 line-through'"
+                        [title]="giftHistoryTooltip(a) + (a.status === 'active' && a.price_override != null ? ' · Precio custom: ' + (a.price_override / 100) + ' €' : '') + (a.status === 'active' && a.ends_at ? ' · Hasta: ' + (a.ends_at | date:'short') : '')">
                         <i class="fas fa-puzzle-piece text-[9px]"></i> {{ a.addon_id }}
-                        @if (a.price_override === 0) {
-                          <span class="text-[9px] font-bold">GRATIS</span>
-                        } @else if (a.price_override != null) {
-                          <span class="text-[9px]">{{ (a.price_override / 100) | currency:'EUR':'symbol':'1.0-0' }}</span>
+                        @if (a.status === 'active') {
+                          @if (a.price_override === 0) {
+                            <span class="text-[9px] font-bold">GRATIS</span>
+                          } @else if (a.price_override != null) {
+                            <span class="text-[9px]">{{ (a.price_override / 100) | currency:'EUR':'symbol':'1.0-0' }}</span>
+                          }
                         }
-                        <button (click)="removeAddonGift(c, a)" class="ml-0.5 text-purple-600 hover:text-red-600" title="Quitar add-on">
-                          <i class="fas fa-times text-[9px]"></i>
-                        </button>
+                        @if (a.status === 'revoked') {
+                          <span class="text-[8px] font-bold uppercase tracking-wider">REVOCADO</span>
+                        }
+                        @if (a.status === 'active') {
+                          <button (click)="removeAddonGift(c, a)" class="ml-0.5 text-purple-600 hover:text-red-600" title="Quitar add-on">
+                            <i class="fas fa-times text-[9px]"></i>
+                          </button>
+                        }
                       </span>
                     }
                   </div>
@@ -1048,12 +1062,11 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">Activa un módulo concreto para esta empresa. Sobrevive a cambios de plan.</p>
           <div class="flex gap-2">
             <select [ngModel]="giftModuleKey()" (ngModelChange)="giftModuleKey.set($event)"
-              class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+              [disabled]="giftableModuleCount(giftCo) === 0"
+              class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50">
               <option value="">— Selecciona módulo —</option>
-              @for (m of modulesCatalog(); track m.key) {
-                @if (m.scope !== 'dev' && m.scope !== 'core') {
-                  <option [value]="m.key">{{ m.label }} ({{ m.key }})</option>
-                }
+              @for (m of giftableModules(giftCo); track m.key) {
+                <option [value]="m.key">{{ m.label }} ({{ m.key }})</option>
               }
             </select>
             <button (click)="grantModuleGift()" [disabled]="!giftModuleKey() || giftSaving()"
@@ -1061,6 +1074,9 @@
               <i class="fas fa-gift mr-1"></i> Regalar
             </button>
           </div>
+          @if (giftableModuleCount(giftCo) === 0) {
+            <p class="text-[11px] text-amber-700 dark:text-amber-400">Esta empresa ya tiene regalados todos los módulos giftables disponibles.</p>
+          }
         </div>
 
         <!-- ── Add-on gift ────────────────────────────────────────────── -->
@@ -1071,9 +1087,10 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">Activa un add-on para esta empresa. Puedes fijar un precio custom (0 = gratis) o dejarlo al precio del add-on.</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
             <select [ngModel]="giftAddonId()" (ngModelChange)="giftAddonId.set($event)"
-              class="md:col-span-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+              [disabled]="giftableAddonCount(giftCo) === 0"
+              class="md:col-span-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50">
               <option value="">— Selecciona add-on —</option>
-              @for (a of addons(); track a.id) {
+              @for (a of giftableAddons(giftCo); track a.id) {
                 <option [value]="a.id">{{ a.name }} ({{ a.id }})</option>
               }
             </select>
@@ -1084,6 +1101,9 @@
             class="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-lg transition-colors">
             <i class="fas fa-puzzle-piece mr-1"></i> Regalar add-on
           </button>
+          @if (giftableAddonCount(giftCo) === 0) {
+            <p class="text-[11px] text-amber-700 dark:text-amber-400">Esta empresa ya tiene regalados todos los add-ons disponibles.</p>
+          }
         </div>
 
         <!-- ── Reason (optional) ───────────────────────────────────────── -->

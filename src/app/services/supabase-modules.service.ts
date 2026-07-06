@@ -493,6 +493,7 @@ export class SupabaseModulesService {
   // ── Plan-driven access: company_module_grants ───────────────────────────
   adminGetCompanyModuleGrants(companyId: string): Observable<Array<{
     module_key: string; status: string; reason: string | null; created_at: string;
+    granted_by_name: string | null;
   }>> {
     return from(
       (async () => {
@@ -541,6 +542,7 @@ export class SupabaseModulesService {
     id: string; addon_id: string; status: string;
     price_override: number | null; reason: string | null;
     starts_at: string; ends_at: string | null; created_at: string;
+    granted_by_name: string | null;
   }>> {
     return from(
       (async () => {
