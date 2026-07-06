@@ -19,14 +19,13 @@ import {
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { AuthService, AppUser } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
-import { TranslocoPipe } from '@jsverse/transloco';
 
 type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | CompanyOnboardingFieldKey;
 
 @Component({
     selector: 'app-onboarding-settings',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe],
+    imports: [CommonModule, FormsModule, RouterModule],
     templateUrl: './onboarding-settings.component.html',
     styleUrls: ['./onboarding-settings.component.scss']
 })
