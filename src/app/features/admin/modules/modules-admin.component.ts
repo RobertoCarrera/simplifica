@@ -110,11 +110,148 @@ export class ModulesAdminComponent implements OnInit {
     try {
       const res = await firstValueFrom(this.modulesService.adminListCompanies());
       this.companies = (res?.companies || []);
+      // Fire-and-forget: pull every company's grants so the gift chips render
+      for (const c of this.companies) {
+        if (c?.id) this.loadCompanyGrants(c.id);
+      }
     } catch (e) {
       console.warn('Error loading companies', e);
       this.toast.error('Error', 'No se pudieron cargar las empresas.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  // ── Per-company grants cache (signal-backed) ────────────────────────────
+  companyModuleGrants = signal<Map<string, Array<{ module_key: string; status: string; reason: string | null; created_at: string }>>>(new Map());
+  companyAddonGrants  = signal<Map<string, Array<{ id: string; addon_id: string; status: string; price_override: number | null; reason: string | null; starts_at: string; ends_at: string | null; created_at: string }>>>(new Map());
+
+  async loadCompanyGrants(companyId: string) {
+    try {
+      const [mods, addons] = await Promise.all([
+        firstValueFrom(this.modulesService.adminGetCompanyModuleGrants(companyId)),
+        firstValueFrom(this.modulesService.adminGetCompanyAddonGrants(companyId)),
+      ]);
+      const m = new Map(this.companyModuleGrants());
+      m.set(companyId, mods);
+      this.companyModuleGrants.set(m);
+      const a = new Map(this.companyAddonGrants());
+      a.set(companyId, addons);
+      this.companyAddonGrants.set(a);
+    } catch (e: any) {
+      console.warn('loadCompanyGrants failed for', companyId, e);
+    }
+  }
+
+  /** Active (non-revoked) module grants for a company. */
+  giftedModules(company: any): Array<{ module_key: string; status: string }> {
+    return (this.companyModuleGrants().get(company.id) || [])
+      .filter((g) => g.status === 'active');
+  }
+
+  /** Active add-on grants for a company. */
+  giftedAddons(company: any): Array<{ id: string; addon_id: string; price_override: number | null; ends_at: string | null }> {
+    return (this.companyAddonGrants().get(company.id) || [])
+      .filter((a) => a.status === 'active');
+  }
+
+  // ── Gift modal state + handlers ─────────────────────────────────────────
+  giftModalCompany = signal<any | null>(null);
+  giftModuleKey = signal<string>('');
+  giftAddonId = signal<string>('');
+  giftPriceOverrideEuros = signal<number | null>(null);
+  giftReason = signal<string>('');
+  giftSaving = signal<boolean>(false);
+
+  openGiftModal(company: any) {
+    this.giftModalCompany.set(company);
+    this.giftModuleKey.set('');
+    this.giftAddonId.set('');
+    this.giftPriceOverrideEuros.set(null);
+    this.giftReason.set('');
+  }
+
+  closeGiftModal() {
+    this.giftModalCompany.set(null);
+  }
+
+  async grantModuleGift() {
+    const c = this.giftModalCompany();
+    const key = this.giftModuleKey();
+    if (!c || !key) return;
+    this.giftSaving.set(true);
+    try {
+      await firstValueFrom(
+        this.modulesService.adminSetCompanyModuleGrant(
+          c.id, key, 'active', this.giftReason() || null
+        ),
+      );
+      await this.loadCompanyGrants(c.id);
+      this.toast.success('Módulo regalado', `${this.moduleLabel(key)} ahora está activo en ${c.name}.`);
+      this.giftModuleKey.set('');
+      this.giftReason.set('');
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo regalar el módulo.');
+    } finally {
+      this.giftSaving.set(false);
+    }
+  }
+
+  async grantAddonGift() {
+    const c = this.giftModalCompany();
+    const addonId = this.giftAddonId();
+    if (!c || !addonId) return;
+    this.giftSaving.set(true);
+    try {
+      const priceCents =
+        this.giftPriceOverrideEuros() == null
+          ? null
+          : Math.round(this.giftPriceOverrideEuros()! * 100);
+      await firstValueFrom(
+        this.modulesService.adminSetCompanyAddonGrant(
+          c.id, addonId, 'active', priceCents, this.giftReason() || null, null,
+        ),
+      );
+      await this.loadCompanyGrants(c.id);
+      this.toast.success(
+        'Add-on regalado',
+        priceCents === 0
+          ? `${addonId} ahora es GRATIS para ${c.name}.`
+          : priceCents != null
+          ? `${addonId} regalado a ${c.name} por ${(priceCents / 100).toFixed(2)} €.`
+          : `${addonId} regalado a ${c.name}.`,
+      );
+      this.giftAddonId.set('');
+      this.giftPriceOverrideEuros.set(null);
+      this.giftReason.set('');
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo regalar el add-on.');
+    } finally {
+      this.giftSaving.set(false);
+    }
+  }
+
+  async removeGift(company: any, grant: { module_key: string }) {
+    if (!confirm(`¿Quitar el regalo de "${this.moduleLabel(grant.module_key)}" para ${company.name}?`)) return;
+    try {
+      await firstValueFrom(
+        this.modulesService.adminDeleteCompanyModuleGrant(company.id, grant.module_key),
+      );
+      await this.loadCompanyGrants(company.id);
+      this.toast.success('Regalo retirado', `${this.moduleLabel(grant.module_key)} vuelve a depender del plan.`);
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo retirar el regalo.');
+    }
+  }
+
+  async removeAddonGift(company: any, grant: { id: string; addon_id: string }) {
+    if (!confirm(`¿Quitar el regalo de "${grant.addon_id}" para ${company.name}?`)) return;
+    try {
+      await firstValueFrom(this.modulesService.adminDeleteCompanyAddonGrant(grant.id));
+      await this.loadCompanyGrants(company.id);
+      this.toast.success('Add-on retirado', `${grant.addon_id} ya no es regalado.`);
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo retirar el add-on.');
     }
   }
 

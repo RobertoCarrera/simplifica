@@ -92,6 +92,56 @@
                 <span class="text-xs font-medium" [ngClass]="c.is_active ? 'text-green-700' : 'text-red-700'">{{ c.is_active ? 'Empresa Activa' : 'Empresa Inactiva' }}</span>
               </div>
             </div>
+            <!-- Gifted modules / add-ons (superadmin-only section) -->
+            @if (isEditorEnabled() && (giftedModules(c).length > 0 || giftedAddons(c).length > 0)) {
+              <div class="px-5 pt-4 pb-1 border-t border-amber-200/40">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                    <i class="fas fa-gift text-[10px]"></i> Regalos activos
+                  </span>
+                  <button (click)="openGiftModal(c)" class="text-[11px] text-amber-700 dark:text-amber-400 hover:underline">+ Añadir</button>
+                </div>
+                @if (giftedModules(c).length > 0) {
+                  <div class="flex flex-wrap gap-1 mb-1.5">
+                    @for (g of giftedModules(c); track g.module_key) {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        [ngClass]="g.status === 'active' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800 line-through'">
+                        <i [class]="'fas ' + moduleIcon(g.module_key) + ' text-[9px]'"></i>
+                        {{ getModuleLabel(g.module_key) }}
+                        <button (click)="removeGift(c, g)" class="ml-0.5 text-amber-600 hover:text-red-600" title="Quitar regalo">
+                          <i class="fas fa-times text-[9px]"></i>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
+                @if (giftedAddons(c).length > 0) {
+                  <div class="flex flex-wrap gap-1">
+                    @for (a of giftedAddons(c); track a.id) {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800"
+                        [title]="(a.price_override != null ? 'Precio custom: ' + (a.price_override / 100) + ' €' : 'Precio del plan') + (a.ends_at ? ' · Hasta: ' + (a.ends_at | date:'short') : '')">
+                        <i class="fas fa-puzzle-piece text-[9px]"></i> {{ a.addon_id }}
+                        @if (a.price_override === 0) {
+                          <span class="text-[9px] font-bold">GRATIS</span>
+                        } @else if (a.price_override != null) {
+                          <span class="text-[9px]">{{ (a.price_override / 100) | currency:'EUR':'symbol':'1.0-0' }}</span>
+                        }
+                        <button (click)="removeAddonGift(c, a)" class="ml-0.5 text-purple-600 hover:text-red-600" title="Quitar add-on">
+                          <i class="fas fa-times text-[9px]"></i>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+            } @else if (isEditorEnabled()) {
+              <div class="px-5 pt-4 pb-1 border-t border-gray-100/50">
+                <button (click)="openGiftModal(c)" class="text-[11px] text-gray-500 dark:text-gray-400 hover:text-amber-600 flex items-center gap-1">
+                  <i class="fas fa-gift text-[10px]"></i> Regalar módulo o add-on
+                </button>
+              </div>
+            }
+
             <!-- Modules List -->
             <div class="p-5 flex-1 flex flex-col gap-4">
               @for (m of visibleCompanyModules(c); track m.key) {
@@ -946,6 +996,80 @@
             </div>
           }
         }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Gift modal: regalar módulo o add-on a una empresa -->
+@if (giftModalCompany()) {
+  @let giftCo = giftModalCompany()!;
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="closeGiftModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <header class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-gift text-amber-500"></i> Regalar a {{ giftCo.name }}
+          </h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Los regalos se mantienen aunque la empresa cambie de plan. Puedes retirarlos en cualquier momento.</p>
+        </div>
+        <button (click)="closeGiftModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <i class="fas fa-times text-lg"></i>
+        </button>
+      </header>
+      <div class="p-6 space-y-5">
+        <!-- ── Module gift ─────────────────────────────────────────────── -->
+        <div class="space-y-2">
+          <h4 class="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+            <i class="fas fa-cubes text-blue-500"></i> Regalar un módulo
+          </h4>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Activa un módulo concreto para esta empresa. Sobrevive a cambios de plan.</p>
+          <div class="flex gap-2">
+            <select [ngModel]="giftModuleKey()" (ngModelChange)="giftModuleKey.set($event)"
+              class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+              <option value="">— Selecciona módulo —</option>
+              @for (m of modulesCatalog(); track m.key) {
+                @if (m.scope !== 'dev' && m.scope !== 'core') {
+                  <option [value]="m.key">{{ m.label }} ({{ m.key }})</option>
+                }
+              }
+            </select>
+            <button (click)="grantModuleGift()" [disabled]="!giftModuleKey() || giftSaving()"
+              class="px-3 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white text-sm font-medium rounded-lg transition-colors">
+              <i class="fas fa-gift mr-1"></i> Regalar
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Add-on gift ────────────────────────────────────────────── -->
+        <div class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <h4 class="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+            <i class="fas fa-puzzle-piece text-purple-500"></i> Regalar un add-on
+          </h4>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Activa un add-on para esta empresa. Puedes fijar un precio custom (0 = gratis) o dejarlo al precio del add-on.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <select [ngModel]="giftAddonId()" (ngModelChange)="giftAddonId.set($event)"
+              class="md:col-span-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+              <option value="">— Selecciona add-on —</option>
+              @for (a of addons(); track a.id) {
+                <option [value]="a.id">{{ a.name }} ({{ a.id }})</option>
+              }
+            </select>
+            <input type="number" min="0" step="0.01" [ngModel]="giftPriceOverrideEuros()" (ngModelChange)="giftPriceOverrideEuros.set($event == null ? null : +$event)" placeholder="Precio custom € (vacío = precio del add-on, 0 = gratis)"
+              class="md:col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+          </div>
+          <button (click)="grantAddonGift()" [disabled]="!giftAddonId() || giftSaving()"
+            class="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="fas fa-puzzle-piece mr-1"></i> Regalar add-on
+          </button>
+        </div>
+
+        <!-- ── Reason (optional) ───────────────────────────────────────── -->
+        <div class="space-y-1 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Motivo (opcional, para auditoría)</label>
+          <input type="text" [ngModel]="giftReason()" (ngModelChange)="giftReason.set($event)" placeholder="Ej: Beta tester, cliente VIP, campaña promo…"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+        </div>
       </div>
     </div>
   </div>

@@ -509,7 +509,7 @@ export class SupabaseModulesService {
     companyId: string,
     moduleKey: string,
     status: 'active' | 'revoked',
-    reason?: string,
+    reason?: string | null,
   ): Observable<void> {
     return from(
       (async () => {
@@ -558,7 +558,7 @@ export class SupabaseModulesService {
     addonId: string,
     status: 'active' | 'revoked' = 'active',
     priceOverrideCents: number | null = null,
-    reason?: string,
+    reason?: string | null,
     endsAt: Date | null = null,
   ): Observable<string> {
     return from(
