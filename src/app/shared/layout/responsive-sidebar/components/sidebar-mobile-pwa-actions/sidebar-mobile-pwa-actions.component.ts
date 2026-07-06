@@ -7,7 +7,6 @@ import {
   Signal,
   inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { LucideAngularModule } from 'lucide-angular';
@@ -31,7 +30,7 @@ import { PWAService } from '../../../../../services/pwa.service';
 @Component({
   selector: 'app-sidebar-mobile-pwa-actions',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe, LucideAngularModule],
+  imports: [RouterModule, TranslocoPipe, LucideAngularModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isMobile()) {
