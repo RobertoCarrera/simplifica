@@ -1,9 +1,10 @@
-import { Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SupplierImportService } from '../../../services/supplier-import.service';
 import { ToastService } from '../../../services/toast.service';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-suppliers-list',
@@ -15,12 +16,31 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
       <div class="mx-auto max-w-5xl">
         <!-- Header -->
         <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-slate-700">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-50">Proveedores Conectados</h1>
-              <p class="text-gray-600 dark:text-slate-400 mt-1">Gestiona tus APIs y catálogos CSV</p>
+              <p class="text-gray-600 dark:text-slate-400 mt-1">
+                @if (suppliers().length > 0) {
+                  <span>{{ suppliers().length }} proveedores · {{ totalCacheCount() }} productos en cache</span>
+                } @else {
+                  <span>Gestiona tus APIs y catálogos CSV</span>
+                }
+              </p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
+              @if (suppliers().length > 0 && hasApiSuppliers()) {
+                <button type="button" (click)="syncAll()"
+                  [disabled]="!!syncingAll() || !!syncingId()"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  @if (syncingAll()) {
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Sincronizando todos...
+                  } @else {
+                    <i class="fas fa-sync"></i>
+                    Sincronizar todos
+                  }
+                </button>
+              }
               <button type="button" (click)="goToImport()"
                 class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-lg text-sm font-medium flex items-center gap-2">
                 <i class="fas fa-file-import"></i> Importar CSV
@@ -148,6 +168,7 @@ export class SuppliersListComponent {
   cacheCountBySupplier = signal<Record<string, number>>({});
   isLoading = signal(true);
   syncingId = signal<string | null>(null);
+  syncingAll = signal(false);
 
   constructor() {
     this.loadSuppliers();
@@ -291,5 +312,63 @@ export class SuppliersListComponent {
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Compute total cache count across all suppliers
+  totalCacheCount = computed(() => {
+    const counts = this.cacheCountBySupplier();
+    return Object.values(counts).reduce((sum, n) => sum + (n || 0), 0);
+  });
+
+  // Check if at least one supplier is an API (eligible for sync)
+  hasApiSuppliers = computed(() => {
+    return this.suppliers().some((s) => s.adapter_type === 'rest_api');
+  });
+
+  // Sync all REST API suppliers sequentially
+  async syncAll(): Promise<void> {
+    if (this.syncingAll() || this.syncingId()) return;
+    const apiSuppliers = this.suppliers().filter((s) => s.adapter_type === 'rest_api');
+    if (apiSuppliers.length === 0) {
+      this.toastService.info('Sin suppliers', 'No hay proveedores API para sincronizar');
+      return;
+    }
+
+    this.syncingAll.set(true);
+    let totalFetched = 0;
+    let totalCached = 0;
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const supplier of apiSuppliers) {
+        try {
+          this.syncingId.set(supplier.id);
+          const result = await this.importService.syncFromApi(supplier.id);
+          totalFetched += result.fetched || 0;
+          totalCached += result.cached || 0;
+          successCount++;
+
+          // Update cache count for this supplier
+          const cache = await firstValueFrom(this.importService.getCacheProducts(supplier.id));
+          this.cacheCountBySupplier.update((counts) => ({
+            ...counts,
+            [supplier.id]: (cache || []).length,
+          }));
+        } catch (e: any) {
+          errorCount++;
+          console.error(`Sync failed for ${supplier.name}:`, e);
+        }
+      }
+
+      this.toastService.success(
+        'Sincronización completa',
+        `${successCount} proveedores sincronizados, ${totalFetched} productos, ${totalCached} cacheados` +
+          (errorCount > 0 ? `. ${errorCount} con errores.` : '.'),
+      );
+    } finally {
+      this.syncingAll.set(false);
+      this.syncingId.set(null);
+    }
   }
 }
