@@ -561,7 +561,15 @@ export class ModulesAdminComponent implements OnInit {
 
     try {
       const force = !this.isModuleInCompanyPlan(company, moduleKey);
-      await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus, force));
+      // Use the new admin_set_company_module_grant RPC which supersedes the
+      // legacy admin_set_company_module. force is informational; the grant
+      // row's status is the source of truth.
+      await firstValueFrom(
+        this.modulesService.adminSetCompanyModuleGrant(
+          company.id, moduleKey, newStatus === 'active' ? 'active' : 'revoked',
+          force ? 'manual override' : null,
+        ),
+      );
       this.toast.success('Módulo actualizado', force ? `Módulo forzado ${newStatus === 'active' ? 'activado' : 'desactivado'} (override).` : `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'}.`);
     } catch (e) {
       console.error('Error toggling module:', e);
