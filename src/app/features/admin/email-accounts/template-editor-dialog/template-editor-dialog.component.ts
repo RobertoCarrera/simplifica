@@ -202,6 +202,43 @@ export class TemplateEditorDialogComponent {
     // instead of a blank wall. Best-effort: errors are swallowed inside
     // and the preview pane already reflects the default via the pipeline.
     void this.seedFromDefaultIfEmpty();
+
+    // Fetch the initial preview explicitly. The form.valueChanges pipeline
+    // doesn't replay its current value to new subscribers, so without this
+    // the preview pane would stay empty until the user typed something.
+    // We fire one explicit previewTemplate call with the form's current
+    // values to guarantee the preview shows the rendered default HTML on
+    // dialog open, regardless of whether seedFromDefaultIfEmpty succeeds.
+    this.fetchInitialPreview();
+  }
+
+  /**
+   * Fires one explicit previewTemplate RPC at construction with the form's
+   * current values, so the preview pane is populated on dialog open even
+   * if the user hasn't typed yet and the seed async path is slow.
+   * Best-effort: errors are silently swallowed. Subsequent user edits
+   * flow through the debounce pipeline.
+   */
+  private fetchInitialPreview(): void {
+    firstValueFrom(
+      this.companyEmailService.previewTemplate(
+        this.data.companyId,
+        this.data.emailType,
+        this.data.sampleData,
+        {
+          custom_subject: this.form.controls.subject.value ?? '',
+          custom_header: this.form.controls.header.value ?? '',
+          custom_button_text: this.form.controls.buttonText.value ?? '',
+          custom_body: this.form.controls.body.value ?? '',
+        }
+      )
+    )
+      .then((result) => {
+        this.previewHtml.set(result.html ?? '');
+      })
+      .catch(() => {
+        // best-effort; the pipeline + seed will keep trying
+      });
   }
 
   /**
