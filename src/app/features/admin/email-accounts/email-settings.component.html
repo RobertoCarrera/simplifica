@@ -48,19 +48,29 @@
                 <th class="px-4 py-3 w-32">{{ 'emailSettings.table.actions' | transloco }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-              @for (type of emailTypes; track trackByEmailType($index, type)) {
-                <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <i class="fas fa-envelope text-gray-400"></i>
-                      <div>
-                        <span class="font-medium text-gray-900 dark:text-white block">
-                          {{ getEmailTypeLabel(type) }}
-                        </span>
-                        <span class="text-xs text-gray-400 dark:text-gray-500 leading-snug">
-                          {{ getEmailTypeDescription(type) }}
-                        </span>
+            @for (group of categorizedTypes(); track group.category) {
+              <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-gray-700">
+                <tr>
+                  <th
+                    colspan="4"
+                    class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-gray-700"
+                  >
+                    {{ 'emailSettings.categories.' + group.category | transloco }}
+                  </th>
+                </tr>
+                @for (type of group.types; track trackByEmailType($index, type)) {
+                  <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <i class="fas fa-envelope text-gray-400"></i>
+                        <div>
+                          <span class="font-medium text-gray-900 dark:text-white block">
+                            {{ getEmailTypeLabel(type) }}
+                          </span>
+                          <span class="text-xs text-gray-400 dark:text-gray-500 leading-snug">
+                            {{ getEmailTypeDescription(type) }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </td>
