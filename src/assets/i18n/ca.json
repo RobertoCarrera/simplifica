@@ -2247,6 +2247,7 @@
     },
     "templateEditor": {
       "title": "Editar plantilla",
+      "bodyPlaceholder": "Escriu aquí el contingut del correu...",
       "fields": {
         "subject": "Assumpte",
         "header": "Capçalera",

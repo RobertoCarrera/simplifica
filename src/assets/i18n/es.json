@@ -2255,6 +2255,7 @@
     },
     "templateEditor": {
       "title": "Editar plantilla",
+      "bodyPlaceholder": "Escribe aquí el contenido del correo...",
       "fields": {
         "subject": "Asunto",
         "header": "Cabecera",

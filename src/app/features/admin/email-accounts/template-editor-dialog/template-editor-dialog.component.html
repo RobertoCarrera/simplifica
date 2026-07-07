@@ -57,13 +57,12 @@
 
         <label class="ted-field">
           <span class="ted-label">Cuerpo (HTML)</span>
-          <textarea
-            formControlName="body"
-            class="ted-textarea ted-textarea--lg"
-            rows="12"
-            maxlength="50000"
-            data-testid="ted-input-body"
-          ></textarea>
+          <app-tiptap-editor
+            [content]="form.controls.body.value ?? ''"
+            (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
+            [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"
+            [companyId]="data.companyId"
+          ></app-tiptap-editor>
           <span class="ted-hint">
             Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
           </span>

@@ -2835,6 +2835,7 @@
     },
     "templateEditor": {
       "title": "Vorlage bearbeiten",
+      "bodyPlaceholder": "E-Mail-Inhalt hier eingeben...",
       "fields": {
         "subject": "Betreff",
         "header": "Kopfzeile",
