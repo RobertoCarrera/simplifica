@@ -415,24 +415,6 @@ export class CompanyEmailService {
     );
   }
 
-  getEmailTemplatePreview(
-    companyId: string,
-    emailType: string
-  ): Observable<string> {
-    return from(
-      this.supabase.rpc('get_email_template_preview', {
-        p_company_id: companyId,
-        p_email_type: emailType,
-      })
-    ).pipe(
-      map((res) => {
-        if (res.error) throw res.error;
-        return res.data as string;
-      }),
-      catchError((err) => throwError(() => err))
-    );
-  }
-
   // ==========================================
   // PR2a — preview + auto-upsert + sample data
   // (email-customization-faithful-preview/pr2-editor)

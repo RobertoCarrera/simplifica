@@ -1,9 +1,11 @@
 /**
- * Unit tests for EmailSettingsComponent — PR2b slice.
+ * Unit tests for EmailSettingsComponent — PR2b slice (PR3 trimmed: the
+ * eye-only `openPreview` flow is gone, replaced by the editor's preview
+ * pane).
  *
  * Covers (per design #1877 §9 "EmailSettingsComponent" row):
  *   - emailTypes array has 26 entries (PR1's 20 + 6 system types).
- *   - Eye + pen buttons are visible for every type, including un-seeded
+ *   - Pen button is visible for every type, including un-seeded
  *     ones (spec #1876 "All 26 controls present").
  *   - openTemplateEditor calls upsertTemplate when no row exists, then
  *     opens the dialog.
@@ -11,9 +13,8 @@
  *   - loadData refreshes accounts and settings.
  *   - trackByEmailType returns the type string (stable across re-renders).
  *
- * The dialog component (`TemplateEditorDialogComponent`) and the legacy
- * `EmailPreviewComponent` are mocked — PR2b only exercises the wiring
- * glue at the settings-component layer.
+ * The dialog component (`TemplateEditorDialogComponent`) is mocked —
+ * PR2b only exercises the wiring glue at the settings-component layer.
  *
  * Test runner: Karma + Jasmine (`npm run test`). Karma is broken
  * pre-existing on main (test-infra issue, NOT PR2b); PR2a apply-progress
@@ -21,10 +22,9 @@
  * `tsc --noEmit -p tsconfig.app.json`.
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { Dialog, DialogRef } from '@angular/cdk/dialog';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoService } from '@jsverse/transloco';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { EmailSettingsComponent } from './email-settings.component';
@@ -103,11 +103,6 @@ class FakeDialog {
   }
 }
 
-// Stub child component so the settings template can render without pulling
-// in `EmailPreviewComponent` (which has its own DI / signal deps).
-@Component({ selector: 'app-email-preview', standalone: true, template: '' })
-class StubEmailPreviewComponent {}
-
 // ---------- Helpers -------------------------------------------------------
 
 function makeSetting(type: EmailType, id = `id-${type}`): CompanyEmailSetting {
@@ -153,10 +148,6 @@ describe('EmailSettingsComponent (PR2b)', () => {
         { provide: Dialog, useValue: dialog as any },
       ],
     })
-      .overrideComponent(EmailSettingsComponent, {
-        remove: { imports: [TranslocoPipe] },
-        add: { imports: [StubEmailPreviewComponent] },
-      })
       .compileComponents();
 
     fixture = TestBed.createComponent(EmailSettingsComponent);
@@ -174,7 +165,7 @@ describe('EmailSettingsComponent (PR2b)', () => {
     }
   });
 
-  it('renders eye + pen buttons for every type even when no setting exists', async () => {
+  it('renders pen button for every type even when no setting exists', async () => {
     // accounts must be non-empty so the table renders (settings is empty).
     service.pushAccounts([{ id: 'a1', email: 'a@x', is_active: true, is_verified: true }]);
     service.pushSettings([]);
@@ -185,8 +176,9 @@ describe('EmailSettingsComponent (PR2b)', () => {
     fixture.detectChanges();
 
     const buttons = fixture.nativeElement.querySelectorAll('button[title*="buttons"]');
-    // 26 eye + 26 pen = 52 action buttons.
-    expect(buttons.length).toBe(52);
+    // 26 pen action buttons (PR3 removed the eye-only modal — preview is
+    // now embedded in the editor dialog).
+    expect(buttons.length).toBe(26);
   });
 
   it('calls upsertTemplate then opens dialog when no row exists', async () => {
@@ -282,24 +274,6 @@ describe('EmailSettingsComponent (PR2b)', () => {
     await flushMicrotasks();
     expect(toast.success).not.toHaveBeenCalled();
     expect(service.getSettings.calls.count()).toBe(initialSettingsCallCount);
-  });
-
-  it('openPreview sets preview state without touching the service', () => {
-    const upsertCallsBefore = service.upsertTemplate.calls.count();
-    const dialogOpensBefore = dialog.opens.length;
-    component.openPreview('consent');
-    expect(component.previewEmailType).toBe('consent');
-    expect(component.showPreviewModal()).toBe(true);
-    // openPreview must NOT auto-upsert or open the editor dialog.
-    expect(service.upsertTemplate.calls.count()).toBe(upsertCallsBefore);
-    expect(dialog.opens.length).toBe(dialogOpensBefore);
-  });
-
-  it('closePreview clears the preview state', () => {
-    component.openPreview('consent');
-    component.closePreview();
-    expect(component.previewEmailType).toBeNull();
-    expect(component.showPreviewModal()).toBe(false);
   });
 
   it('trackByEmailType returns the type for stable re-rendering', () => {
