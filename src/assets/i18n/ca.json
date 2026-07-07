@@ -2285,6 +2285,14 @@
     },
     "preview": {
       "noOverrides": "Mostrant la plantilla per defecte (sense personalitzacions)"
+    },
+    "categories": {
+      "reservas": "Reserves",
+      "facturacion": "Facturació",
+      "consentimiento": "Consentiment",
+      "invitaciones": "Invitacions",
+      "credenciales": "Credencials",
+      "notificaciones": "Notificacions"
     }
   },
   "emailBranding": {

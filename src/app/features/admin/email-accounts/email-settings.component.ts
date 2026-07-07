@@ -24,6 +24,69 @@ import { EmailPreviewComponent } from './email-preview.component';
  */
 type AllTypes = AllEmailType;
 
+/**
+ * Coarse-grained grouping for the settings list (PR2c polish). The 26
+ * transactional types are surfaced in a fixed order so admins can locate
+ * the template they need without scrolling a flat list of 26 rows.
+ *
+ * Labels live under `emailSettings.categories.<id>` in `src/assets/i18n/*`.
+ */
+type EmailCategory =
+  | 'reservas'
+  | 'facturacion'
+  | 'consentimiento'
+  | 'invitaciones'
+  | 'credenciales'
+  | 'notificaciones';
+
+interface EmailCategoryGroup {
+  readonly id: EmailCategory;
+  readonly order: number;
+}
+
+const EMAIL_CATEGORIES: readonly EmailCategoryGroup[] = [
+  { id: 'reservas',        order: 1 },
+  { id: 'facturacion',     order: 2 },
+  { id: 'consentimiento',  order: 3 },
+  { id: 'invitaciones',    order: 4 },
+  { id: 'credenciales',    order: 5 },
+  { id: 'notificaciones',  order: 6 },
+];
+
+/**
+ * Static, exhaustive map: every `AllEmailType` member maps to exactly one
+ * category. Adding a new `AllEmailType` without a category assignment is a
+ * compile-time error (TS `Record<AllTypes, EmailCategory>` exhaustiveness).
+ */
+const EMAIL_TYPE_CATEGORY: Record<AllTypes, EmailCategory> = {
+  booking_confirmation:    'reservas',
+  booking_reminder:        'reservas',
+  booking_cancellation:    'reservas',
+  booking_change:          'reservas',
+  waitlist:                'reservas',
+  invoice:                 'facturacion',
+  quote:                   'facturacion',
+  budget_created:          'facturacion',
+  budget_reminder:         'facturacion',
+  budget_overdue:          'facturacion',
+  consent:                 'consentimiento',
+  invite:                  'invitaciones',
+  invite_owner:            'invitaciones',
+  invite_admin:            'invitaciones',
+  invite_member:           'invitaciones',
+  invite_professional:     'invitaciones',
+  invite_agent:            'invitaciones',
+  invite_marketer:         'invitaciones',
+  invite_client:           'invitaciones',
+  password_reset:          'credenciales',
+  magic_link:              'credenciales',
+  welcome:                 'credenciales',
+  staff_credentials:       'credenciales',
+  inactive_notice:         'notificaciones',
+  generic:                 'notificaciones',
+  google_review:           'notificaciones',
+};
+
 @Component({
   selector: 'app-email-settings',
   standalone: true,
@@ -49,8 +112,11 @@ export class EmailSettingsComponent implements OnInit {
    * from `email-samples.json` / `AllEmailType`). Typed as `AllTypes` (alias
    * of `AllEmailType`) so the compiler enforces exhaustiveness against the
    * fixture matrix without modifying `company-email.models.ts`.
+   *
+   * Exposed as a signal so the categorized list (`categorizedTypes`) can be
+   * a `computed()` that recomputes whenever the source list changes.
    */
-  readonly emailTypes: readonly AllTypes[] = [
+  readonly emailTypes: Signal<readonly AllTypes[]> = signal<readonly AllTypes[]>([
     'booking_confirmation',
     'invoice',
     'quote',
@@ -77,7 +143,33 @@ export class EmailSettingsComponent implements OnInit {
     'budget_reminder',
     'budget_overdue',
     'booking_change',
-  ];
+  ]);
+
+  /**
+   * The 26 types, bucketed by `EmailCategory` and emitted in the order
+   * declared by `EMAIL_CATEGORIES` (Reservas → Notificaciones). Categories
+   * with zero entries are filtered out so the template never renders an
+   * empty header.
+   */
+  readonly categorizedTypes = computed(() => {
+    const grouped: Record<EmailCategory, AllTypes[]> = {
+      reservas: [],
+      facturacion: [],
+      consentimiento: [],
+      invitaciones: [],
+      credenciales: [],
+      notificaciones: [],
+    };
+    for (const type of this.emailTypes()) {
+      const cat = EMAIL_TYPE_CATEGORY[type];
+      if (cat) {
+        grouped[cat].push(type);
+      }
+    }
+    return EMAIL_CATEGORIES
+      .map((c) => ({ category: c.id, order: c.order, types: grouped[c.id] }))
+      .filter((g) => g.types.length > 0);
+  });
 
   // Preview modal (eye button — kept until PR3 deletes EmailPreviewComponent)
   showPreviewModal = signal(false);
