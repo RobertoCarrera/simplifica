@@ -440,7 +440,7 @@
             @for (m of modulesCatalog(); track m.key) {
               @let draft = editingCatalogDraft()[m.key];
               @let editing = !!draft;
-              <div class="flex flex-col gap-2 p-3 rounded-xl transition-colors"
+              <div class="flex flex-col gap-2 p-3 rounded-xl transition-colors overflow-hidden"
                 [class.ring-2]="editing"
                 [class.ring-blue-300]="editing"
                 [ngClass]="{
