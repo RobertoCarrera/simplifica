@@ -205,7 +205,7 @@ export class EmailSettingsComponent implements OnInit {
     }
   }
 
-  getSettingForType(emailType: EmailType): CompanyEmailSetting | undefined {
+  getSettingForType(emailType: AllTypes): CompanyEmailSetting | undefined {
     return this.settings.find((s) => s.email_type === emailType);
   }
 
@@ -213,15 +213,15 @@ export class EmailSettingsComponent implements OnInit {
     return this.accounts.find((a) => a.id === setting.email_account_id);
   }
 
-  getEmailTypeLabel(type: EmailType): string {
+  getEmailTypeLabel(type: AllTypes): string {
     return EMAIL_TYPE_LABELS[type] || type;
   }
 
-  getEmailTypeDescription(type: EmailType): string {
+  getEmailTypeDescription(type: AllTypes): string {
     return EMAIL_TYPE_DESCRIPTIONS[type] || '';
   }
 
-  async onAccountChange(emailType: EmailType, accountId: string) {
+  async onAccountChange(emailType: AllTypes, accountId: string) {
     if (!this.companyId) return;
 
     this.saving.set(true);

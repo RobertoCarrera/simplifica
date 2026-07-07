@@ -57,16 +57,22 @@ export type EmailType =
   | 'invite_member'
   | 'invite_professional'
   | 'invite_agent'
+  | 'invite_marketer'
   | 'invite_client'
   | 'waitlist'
   | 'inactive_notice'
   | 'generic'
   | 'booking_reminder'
   | 'booking_cancellation'
+  | 'booking_change'
   | 'password_reset'
   | 'magic_link'
   | 'welcome'
-  | 'staff_credentials';
+  | 'staff_credentials'
+  | 'budget_created'
+  | 'budget_reminder'
+  | 'budget_overdue'
+  | 'google_review';
 
 export const EMAIL_TYPE_LABELS: Record<EmailType, string> = {
   booking_confirmation: 'Confirmación de reserva',
@@ -79,16 +85,22 @@ export const EMAIL_TYPE_LABELS: Record<EmailType, string> = {
   invite_member: 'Invitación — Miembro',
   invite_professional: 'Invitación — Profesional',
   invite_agent: 'Invitación — Agente',
+  invite_marketer: 'Invitación — Marketing',
   invite_client: 'Invitación — Cliente',
   waitlist: 'Lista de espera',
   inactive_notice: 'Aviso de inactividad',
   generic: 'Genérico',
   booking_reminder: 'Recordatorio de reserva',
   booking_cancellation: 'Cancelación de reserva',
+  booking_change: 'Cambio de reserva',
   password_reset: 'Restablecer contraseña',
   magic_link: 'Enlace mágico',
   welcome: 'Bienvenida',
   staff_credentials: 'Credenciales de acceso',
+  budget_created: 'Presupuesto creado',
+  budget_reminder: 'Recordatorio de presupuesto',
+  budget_overdue: 'Presupuesto vencido',
+  google_review: 'Reseña de Google',
 };
 
 export const EMAIL_TYPE_DESCRIPTIONS: Record<EmailType, string> = {
@@ -102,16 +114,22 @@ export const EMAIL_TYPE_DESCRIPTIONS: Record<EmailType, string> = {
   invite_member: 'Se envía cuando se invita a alguien como miembro del equipo. Acceso al panel según sus permisos asignados.',
   invite_professional: 'Se envía cuando se invita a un profesional externo (peluquero, fisioterapeuta, etc.) a la plataforma.',
   invite_agent: 'Se envía cuando se invita a un agente comercial a la plataforma para gestionar clientes y reservas.',
+  invite_marketer: 'Se envía cuando se invita a un usuario de marketing a la plataforma para acceder a herramientas de difusión.',
   invite_client: 'Se envía cuando se invita a un cliente final al portal. Podrá acceder a sus reservas, facturas y documentos.',
   waitlist: 'Se envía cuando alguien se registra en la lista de espera de un servicio completo. Confirma que su plaza está reservada.',
   inactive_notice: 'Se envía periódicamente al propietario cuando hay clientes sin actividad reciente (sin reservas en los últimos 30 días).',
   generic: 'Se usa como plantilla base para cualquier email genérico que no corresponda a los tipos específicos anteriores.',
   booking_reminder: 'Se envía automáticamente 24h antes de una reserva confirmada como recordatorio para el cliente.',
   booking_cancellation: 'Se envía cuando se cancela una reserva, tanto al cliente como al profesional implicado.',
+  booking_change: 'Se envía cuando una reserva confirmada se modifica (cambio de fecha, hora, profesional o servicio).',
   password_reset: 'Se envía cuando un usuario solicita restablecer su contraseña. Contiene un enlace mágico de un solo uso.',
   magic_link: 'Se envía cuando un usuario inicia sesión con enlace mágico (sin contraseña). Enlace válido para un solo uso.',
   welcome: 'Se envía cuando un nuevo usuario accede por primera vez a la plataforma después de crear sus credenciales.',
   staff_credentials: 'Se envía cuando se crean nuevas credenciales de acceso para un miembro del equipo (antes de welcome).',
+  budget_created: 'Se envía cuando se crea un nuevo presupuesto para un cliente, con el importe y el enlace de pago.',
+  budget_reminder: 'Se envía como recordatorio antes de la fecha de vencimiento de un presupuesto pendiente.',
+  budget_overdue: 'Se envía cuando un presupuesto ha vencido y aún no se ha recibido el pago.',
+  google_review: 'Se envía tras una visita para pedir al cliente que deje una reseña en Google.',
 };
 
 export interface CompanyEmailLog {
