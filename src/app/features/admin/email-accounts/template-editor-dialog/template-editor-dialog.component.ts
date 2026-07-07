@@ -194,6 +194,81 @@ export class TemplateEditorDialogComponent {
           }
         },
       });
+
+    // Seed the body textarea with the rendered default HTML when no
+    // `custom_body` is saved, so the user edits from a real starting point
+    // instead of a blank wall. Best-effort: errors are swallowed inside
+    // and the preview pane already reflects the default via the pipeline.
+    void this.seedFromDefaultIfEmpty();
+  }
+
+  /**
+   * Best-effort seed: when the user opens the editor for an email type
+   * with no saved `custom_body`, the preview pane already shows the
+   * rendered default HTML but the four textareas are blank. We
+   * pre-populate the `body` textarea with the rendered default (minus
+   * the `<!DOCTYPE>/<head>` wrapper and the RGPD compliance footer) so
+   * the user edits from a real starting point.
+   *
+   * Uses `patchValue({ body }, { emitEvent: false })` so the existing
+   * `form.valueChanges` debounce pipeline does NOT fire a second RPC —
+   * the pipeline above already seeded the preview pane on construction,
+   * and re-firing it with the same value would be wasted work.
+   *
+   * Errors are swallowed: the preview pane still reflects the default
+   * via the existing pipeline, and a failed seed leaves the editor
+   * blank (the pre-fix behavior) instead of erroring out.
+   */
+  private async seedFromDefaultIfEmpty(): Promise<void> {
+    if (this.data.setting?.custom_body_template?.trim()) return;
+
+    try {
+      const result = await firstValueFrom(
+        this.companyEmailService.previewTemplate(
+          this.data.companyId,
+          this.data.emailType,
+          this.data.sampleData,
+          {
+            custom_subject: '',
+            custom_header: '',
+            custom_button_text: '',
+            custom_body: '',
+          }
+        )
+      );
+      const stripped = this.stripWrapperAndFooter(result.html ?? '');
+      const currentBody = this.form.controls.body.value;
+      if (stripped && !currentBody.trim()) {
+        this.form.patchValue({ body: stripped }, { emitEvent: false });
+      }
+    } catch {
+      // best-effort: preview pane still shows the default via the pipeline
+    }
+  }
+
+  /**
+   * Strip the document wrapper and the RGPD compliance footer from the
+   * rendered default HTML, leaving just the editable body content.
+   *
+   *   1. Pull whatever sits between `<body ...>` and `</body>` — the
+   *      `preview_email_template` RPC emits a full
+   *      `<!DOCTYPE><html>...<body>...</body></html>` document, and the
+   *      editor only needs the inner HTML.
+   *   2. Cut off everything from the compliance `<hr>` marker (emitted
+   *      by `append_compliance_footer(text, uuid, text)` in the Postgres
+   *      function) onwards — that block is rendered automatically and
+   *      should not be part of the editable body.
+   */
+  private stripWrapperAndFooter(html: string): string {
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    let inner = bodyMatch ? bodyMatch[1] : html;
+    const footerIdx = inner.indexOf(
+      '<hr style="border:none;border-top:1px solid #e5e7eb'
+    );
+    if (footerIdx !== -1) {
+      inner = inner.substring(0, footerIdx);
+    }
+    return inner.trim();
   }
 
   /**
