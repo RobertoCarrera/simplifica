@@ -3676,34 +3676,5 @@
     "thanksBody": "Gracias. {{companyName}} ha registrado tu decisión. Puedes cambiarla en cualquier momento contactando con la empresa.",
     "thanksHint": "Ya puedes cerrar esta ventana.",
     "privacyPolicyLink": "Ver política de privacidad"
-  },
-  "emailTemplates": {
-    "title": "Plantillas de email",
-    "subtitle": "Edita el asunto y el cuerpo de los emails que se envían en nombre de tu empresa. La plantilla usa variables {{link}}, {{consent_url}}, {{client_name}}, {{company_name}} que se rellenan automáticamente.",
-    "priority": "Prioridad",
-    "active": "Activo",
-    "inactive": "Inactivo",
-    "customized": "Personalizado",
-    "defaultTemplate": "Plantilla por defecto",
-    "notConfigured": "No configurado — el email usará la plantilla genérica hasta que crees una fila en company_email_settings",
-    "edit": "Editar",
-    "variablesHint": "Variables disponibles en el cuerpo:",
-    "editorTitle": "Editar plantilla",
-    "consentHint": "Este email se usa en la campaña de migración de consentimientos RGPD. Cambiarlo afecta a todos los clientes pendientes de responder.",
-    "subjectLabel": "Asunto",
-    "subjectPlaceholder": "Ej: Actualización de Privacidad y Consentimiento — {{company_name}}",
-    "bodyLabel": "Cuerpo del email (HTML permitido)",
-    "bodyHelp": "Puedes usar HTML y variables {{...}}. La función send-branded-email se encarga del escapado seguro.",
-    "bodyPlaceholder": "<p>Hola,</p><p>En {{company_name}} hemos actualizado...</p>",
-    "buttonTextLabel": "Texto del botón (opcional)",
-    "buttonTextPlaceholder": "Ej: Revisar y Validar Datos",
-    "cancel": "Cancelar",
-    "save": "Guardar",
-    "toast": {
-      "success": "Éxito",
-      "saved": "Plantilla guardada correctamente",
-      "error": "Error",
-      "saveError": "No se pudo guardar la plantilla"
-    }
   }
 }

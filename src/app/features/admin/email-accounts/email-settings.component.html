@@ -133,16 +133,8 @@
                       }
                     </td>
                     <td class="px-4 py-3 text-center">
-                      <!-- Eye + pen buttons are rendered for EVERY type (PR2 spec #1876 "All 26 controls present"). -->
+                      <!-- Pen button is rendered for EVERY type (PR2 spec #1876 "All 26 controls present"). PR3 removed the legacy eye-only modal in favor of the editor's built-in preview pane. -->
                       <div class="flex items-center justify-center gap-1">
-                        <button
-                          (click)="openPreview(type)"
-                          [attr.aria-label]="'emailSettings.buttons.preview' | transloco"
-                          title="{{ 'emailSettings.buttons.preview' | transloco }}"
-                          class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                        >
-                          <i class="fas fa-eye"></i>
-                        </button>
                         <button
                           (click)="openTemplateEditor(type)"
                           [attr.aria-label]="'emailSettings.buttons.editTemplate' | transloco"
@@ -163,20 +155,3 @@
     }
   }
 </div>
-
-<!-- Preview Modal -->
-@if (showPreviewModal() && previewEmailType) {
-  @if (!getSettingForType(previewEmailType)) {
-    <div class="fixed top-4 right-4 z-50 max-w-sm bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3 shadow-lg flex items-start gap-2">
-      <i class="fas fa-info-circle text-amber-500 mt-0.5 shrink-0"></i>
-      <p class="text-sm text-amber-700 dark:text-amber-300">
-        {{ 'emailSettings.preview.noOverrides' | transloco }}
-      </p>
-    </div>
-  }
-  <app-email-preview
-    [companyId]="companyId"
-    [emailType]="previewEmailType"
-    (close)="closePreview()"
-  ></app-email-preview>
-}

@@ -15,7 +15,6 @@ import {
 } from '../../../models/company-email.models';
 import { AllEmailType } from '../../../email-samples';
 import { TemplateEditorDialogComponent } from './template-editor-dialog/template-editor-dialog.component';
-import { EmailPreviewComponent } from './email-preview.component';
 
 /**
  * Editor entry point: every email type is reachable, regardless of whether
@@ -90,7 +89,7 @@ const EMAIL_TYPE_CATEGORY: Record<AllTypes, EmailCategory> = {
 @Component({
   selector: 'app-email-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, EmailPreviewComponent, TranslocoPipe],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   templateUrl: './email-settings.component.html',
   styleUrls: ['./email-settings.component.scss'],
 })
@@ -170,10 +169,6 @@ export class EmailSettingsComponent implements OnInit {
       .map((c) => ({ category: c.id, order: c.order, types: grouped[c.id] }))
       .filter((g) => g.types.length > 0);
   });
-
-  // Preview modal (eye button — kept until PR3 deletes EmailPreviewComponent)
-  showPreviewModal = signal(false);
-  previewEmailType: EmailType | null = null;
 
   async ngOnInit() {
     if (this.companyId) {
@@ -256,22 +251,6 @@ export class EmailSettingsComponent implements OnInit {
         this.translocoService.translate('emailSettings.toast.toggleError')
       );
     }
-  }
-
-  /**
-   * Eye-button handler. Opens the (kept-until-PR3) `EmailPreviewComponent`
-   * modal with the current `emailType`. The settings page renders a
-   * "Sin overrides" banner above the modal when no `company_email_settings`
-   * row exists, so the user knows they're seeing the per-type default.
-   */
-  openPreview(emailType: EmailType): void {
-    this.previewEmailType = emailType;
-    this.showPreviewModal.set(true);
-  }
-
-  closePreview(): void {
-    this.showPreviewModal.set(false);
-    this.previewEmailType = null;
   }
 
   /**
