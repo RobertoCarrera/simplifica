@@ -49,7 +49,7 @@ import { ProjectSubtask } from '../../../../../models/project';
         <!-- Pending Subtasks -->
         <div class="space-y-1.5">
           @for (subtask of pendingSubtasks; track subtask.id || $index) {
-            <div class="subtask-row flex items-center space-x-2 p-1.5 rounded-md text-xs"
+            <div class="subtask-row flex items-center space-x-2 p-1.5 rounded-md text-xs bg-white dark:bg-gray-800/40"
               [class.overdue-pulse]="isOverdue(subtask) && !subtask.is_completed"
             >
               <!-- Checkbox -->
@@ -69,7 +69,7 @@ import { ProjectSubtask } from '../../../../../models/project';
                 placeholder="Subtarea..."
                 [disabled]="!canEdit"
                 (keydown.enter)="$event.preventDefault()"
-                class="flex-1 bg-transparent border-none focus:ring-0 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-50 min-w-0"
+                class="flex-1 bg-transparent border-none focus:ring-0 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50 min-w-0"
               />
 
               <!-- Start Date -->
@@ -78,7 +78,7 @@ import { ProjectSubtask } from '../../../../../models/project';
                 [ngModel]="subtask.start_date"
                 (ngModelChange)="onStartDateChange(subtask, $event)"
                 [disabled]="!canEdit"
-                class="w-28 bg-transparent border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 text-[10px] text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 flex-shrink-0"
+                class="w-28 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 text-[10px] text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 flex-shrink-0"
                 title="Fecha inicio"
               />
 
@@ -89,7 +89,7 @@ import { ProjectSubtask } from '../../../../../models/project';
                   [ngModel]="subtask.due_date"
                   (ngModelChange)="onDueDateChange(subtask, $event)"
                   [disabled]="!canEdit"
-                  class="w-28 bg-transparent border rounded px-1.5 py-0.5 text-[10px] focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                  class="w-28 bg-white dark:bg-gray-700 border rounded px-1.5 py-0.5 text-[10px] text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                   [ngClass]="getDueDateInputClass(subtask)"
                   title="Fecha vencimiento"
                 />
@@ -103,7 +103,7 @@ import { ProjectSubtask } from '../../../../../models/project';
                 [ngModel]="subtask.assigned_to"
                 (ngModelChange)="onAssigneeChange(subtask, $event)"
                 [disabled]="!canAssign"
-                class="w-28 bg-transparent border border-gray-200 dark:border-gray-600 rounded px-1 py-0.5 text-[10px] text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 flex-shrink-0"
+                class="w-28 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-1 py-0.5 text-[10px] text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 flex-shrink-0"
               >
                 <option [ngValue]="null">Sin asignar</option>
                 @for (prof of professionals; track prof.id) {
@@ -126,7 +126,7 @@ import { ProjectSubtask } from '../../../../../models/project';
               @if (canDelete) {
                 <button
                   (click)="onRemove(subtask)"
-                  class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                  class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors flex-shrink-0"
                   title="Eliminar subtarea"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
