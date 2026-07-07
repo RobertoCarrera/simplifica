@@ -1,3 +1,22 @@
+// Cache-bust: 2026-07-07T18:25:00Z
+
+// Force-clear any old Service Worker / browser caches so the new
+// (renamed) index.html and all the new chunk hashes are picked up.
+(function cacheBust() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      });
+    }
+    if (typeof caches !== 'undefined') {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      });
+    }
+  } catch (e) { /* ignore */ }
+})();
+// Cache-bust: 2026-07-07T18:25:00Z
 // Early console proxy: suppress log/info/debug while preserving warn/error
 (function () {
   try {
