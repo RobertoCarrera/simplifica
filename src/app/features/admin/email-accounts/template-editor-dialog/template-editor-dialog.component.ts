@@ -28,6 +28,7 @@ import {
   EMAIL_TYPE_LABELS,
 } from '../../../../models/company-email.models';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
+import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
 
 /**
  * Inline JSON shape carried by the dialog. Mirrors design #1877 §2 — the
@@ -83,6 +84,7 @@ interface FormShape {
     DialogModule,
     TranslocoPipe,
     SafeHtmlPipe,
+    TiptapEditorComponent,
   ],
   templateUrl: './template-editor-dialog.component.html',
   styleUrls: ['./template-editor-dialog.component.scss'],
@@ -204,13 +206,19 @@ export class TemplateEditorDialogComponent {
 
   /**
    * Best-effort seed: when the user opens the editor for an email type
-   * with no saved `custom_body`, the preview pane already shows the
-   * rendered default HTML but the four textareas are blank. We
-   * pre-populate the `body` textarea with the rendered default (minus
-   * the `<!DOCTYPE>/<head>` wrapper and the RGPD compliance footer) so
-   * the user edits from a real starting point.
+   * with no saved `custom_*` values, the preview pane already shows
+   * the rendered default HTML but the four inputs are blank. We
+   * pre-populate `body`, `subject` and `buttonText` from the rendered
+   * default so the user edits from a real starting point instead of a
+   * blank wall.
    *
-   * Uses `patchValue({ body }, { emitEvent: false })` so the existing
+   *   - body: the inner `<body>...</body>` content with the RGPD
+   *     compliance footer stripped.
+   *   - subject: text content of the first `<h1>` in the default body.
+   *   - buttonText: text content of the first `<a>` whose inline
+   *     `style` contains a `background:` declaration (the CTA button).
+   *
+   * Uses `patchValue({ ... }, { emitEvent: false })` so the existing
    * `form.valueChanges` debounce pipeline does NOT fire a second RPC —
    * the pipeline above already seeded the preview pane on construction,
    * and re-firing it with the same value would be wasted work.
@@ -220,7 +228,11 @@ export class TemplateEditorDialogComponent {
    * blank (the pre-fix behavior) instead of erroring out.
    */
   private async seedFromDefaultIfEmpty(): Promise<void> {
-    if (this.data.setting?.custom_body_template?.trim()) return;
+    const setting = this.data.setting;
+    const hasSavedBody = !!(setting?.custom_body_template ?? '').trim();
+    const hasSavedSubject = !!(setting?.custom_subject_template ?? '').trim();
+    const hasSavedButtonText = !!(setting?.custom_button_text ?? '').trim();
+    if (hasSavedBody && hasSavedSubject && hasSavedButtonText) return;
 
     try {
       const result = await firstValueFrom(
@@ -236,30 +248,41 @@ export class TemplateEditorDialogComponent {
           }
         )
       );
-      const stripped = this.stripWrapperAndFooter(result.html ?? '');
-      const currentBody = this.form.controls.body.value;
-      if (stripped && !currentBody.trim()) {
-        this.form.patchValue({ body: stripped }, { emitEvent: false });
+      const extracted = this.extractFromDefaultHtml(result.html ?? '');
+      const patch: Partial<FormShape> = {};
+      if (!hasSavedBody && extracted.body) patch.body = extracted.body;
+      if (!hasSavedSubject && extracted.subject) patch.subject = extracted.subject;
+      if (!hasSavedButtonText && extracted.buttonText) patch.buttonText = extracted.buttonText;
+      if (Object.keys(patch).length > 0) {
+        this.form.patchValue(patch, { emitEvent: false });
       }
+      // Reuse the same RPC response to populate the preview pane so the
+      // right side is not empty after the seed (the form pipeline uses
+      // emitEvent: false above to avoid a duplicate round-trip, so it
+      // won't fire on its own).
+      this.previewHtml.set(result.html ?? '');
     } catch {
       // best-effort: preview pane still shows the default via the pipeline
     }
   }
 
   /**
-   * Strip the document wrapper and the RGPD compliance footer from the
-   * rendered default HTML, leaving just the editable body content.
+   * Pull the editable pieces out of the rendered default HTML returned
+   * by `preview_email_template`:
    *
-   *   1. Pull whatever sits between `<body ...>` and `</body>` — the
-   *      `preview_email_template` RPC emits a full
-   *      `<!DOCTYPE><html>...<body>...</body></html>` document, and the
-   *      editor only needs the inner HTML.
+   *   1. Inner `<body>...</body>` — the RPC emits a full
+   *      `<!DOCTYPE><html>...<body>...</body></html>` document.
    *   2. Cut off everything from the compliance `<hr>` marker (emitted
    *      by `append_compliance_footer(text, uuid, text)` in the Postgres
    *      function) onwards — that block is rendered automatically and
    *      should not be part of the editable body.
+   *   3. First `<h1>` text → `subject` (per-type title rendered into
+   *      the email body, e.g. "Bienvenida a Simplifica").
+   *   4. First `<a>` whose `style` contains `background:` → the CTA
+   *      button text (the templates emit a single anchor with a
+   *      coloured background as the call-to-action button).
    */
-  private stripWrapperAndFooter(html: string): string {
+  private extractFromDefaultHtml(html: string): { body: string; subject: string; buttonText: string } {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     let inner = bodyMatch ? bodyMatch[1] : html;
     const footerIdx = inner.indexOf(
@@ -268,7 +291,18 @@ export class TemplateEditorDialogComponent {
     if (footerIdx !== -1) {
       inner = inner.substring(0, footerIdx);
     }
-    return inner.trim();
+
+    const subjectMatch = inner.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const subject = subjectMatch
+      ? subjectMatch[1].replace(/<[^>]+>/g, '').trim()
+      : '';
+
+    const buttonMatch = inner.match(
+      /<a[^>]+style="[^"]*background:[^"]*"[^>]*>([^<]+)<\/a>/i
+    );
+    const buttonText = buttonMatch ? buttonMatch[1].trim() : '';
+
+    return { body: inner.trim(), subject, buttonText };
   }
 
   /**
