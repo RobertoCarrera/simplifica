@@ -2873,14 +2873,6 @@
     },
     "preview": {
       "noOverrides": "Standardvorlage wird angezeigt (keine Anpassungen)"
-    },
-    "categories": {
-      "reservas": "Reservierungen",
-      "facturacion": "Abrechnung",
-      "consentimiento": "Einwilligung",
-      "invitaciones": "Einladungen",
-      "credenciales": "Anmeldedaten",
-      "notificaciones": "Benachrichtigungen"
     }
   },
   "emailBranding": {

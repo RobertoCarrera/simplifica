@@ -790,10 +790,14 @@ export class AuthService {
         this.userProfileSubject.next(appUser);
         this.userProfileSignal.set(appUser);
         this.userRole.set(appUser.role);
-        
+
         // CORRECCIÓN SEGURIDAD DOMINIOS:
-        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global)
-        this.isSuperAdmin.set(appUser.role === 'super_admin' || !!appUser.is_super_admin);
+        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global).
+        // The is_super_admin profile flag is informational only — using it
+        // here would let an owner with a stray flag bypass module-level
+        // gating in the sidebar. The flag remains for RPC-level audit, not
+        // for UI bypasses.
+        this.isSuperAdmin.set(appUser.role === 'super_admin');
         
         if (appUser.company_id) {
           this.companyId.set(appUser.company_id);
@@ -2655,12 +2659,20 @@ export class AuthService {
       const globalRoleName = appRole?.name;
       const companyRole = activeMembership.role;
 
-      // SECURITY: super-admin is granted solely by DB-backed app_role.name === 'super_admin'.
-      // No email-based bypass. The real super-admin (roberto@simplificacrm.es) has
+      // SECURITY: super-admin (global, DB-backed) wins over any per-company
+      // role. The real super-admin (roberto@simplificacrm.es) has
       // app_role_id pointing to the super_admin role in public.app_roles.
-      const effectiveRole = (companyRole && companyRole !== 'super_admin')
-        ? companyRole
-        : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
+      // Without this precedence, an owner with company_members.role='owner'
+      // would shadow the global super_admin and the sidebar would treat
+      // them as a plain owner.
+      let effectiveRole: string;
+      if (globalRoleName === 'super_admin') {
+        effectiveRole = 'super_admin';
+      } else if (companyRole) {
+        effectiveRole = companyRole;
+      } else {
+        effectiveRole = 'member';
+      }
 
       const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
 
@@ -2672,7 +2684,7 @@ export class AuthService {
         surname: internalUser.surname,
         permissions: internalUser.permissions,
         active: internalUser.active,
-        role: effectiveRole,
+        role: effectiveRole as any,
         company_id: activeMembership.company_id || null,
         company: activeMembership.company || null,
         full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,

@@ -337,7 +337,7 @@ export class MenuVisibilityService {
       if (item.module === 'production') {
         if (!allowed) return false; // Still loading — omit, don't block
 
-        if (!allowed.has(item.moduleKey || '')) return false;
+        if (!allowed.has(item.moduleKey || item.sidebarKey || '')) return false;
 
         if (item.requiredPermission) {
           const perms = Array.isArray(item.requiredPermission)

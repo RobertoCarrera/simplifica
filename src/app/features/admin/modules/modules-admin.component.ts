@@ -150,21 +150,22 @@ export class ModulesAdminComponent implements OnInit {
     }
   }
 
-  /** Active (non-revoked) module grants for a company. */
+  /** Active MANUAL grants for a company (excludes plan-synced rows). */
   giftedModules(company: any): Array<{
     module_key: string; status: string; reason: string | null;
     created_at: string; granted_by_name: string | null;
   }> {
     return (this.companyModuleGrants().get(company.id) || [])
-      .filter((g) => g.status === 'active');
+      .filter((g) => g.status === 'active' && g.reason !== 'plan sync');
   }
 
-  /** All module grants (active + revoked) — used by the chip list so revoked gifts stay visible. */
+  /** All MANUAL module grants (active + revoked) for the chip list. */
   allModuleGrants(company: any): Array<{
     module_key: string; status: string; reason: string | null;
     created_at: string; granted_by_name: string | null;
   }> {
-    return this.companyModuleGrants().get(company.id) || [];
+    return (this.companyModuleGrants().get(company.id) || [])
+      .filter((g) => g.reason !== 'plan sync');
   }
 
   /** Active add-on grants for a company. */
@@ -407,22 +408,6 @@ export class ModulesAdminComponent implements OnInit {
   // ── Subscription tier change ──────────────────────────────────────────────
   /** ID of the company whose tier is currently being updated (for inline spinner). */
   changingTierCompanyId = signal<string | null>(null);
-  /** Last debug payload from a plan-change attempt. The template renders
-   *  it inside the Empresas tab so the user can copy-paste into a bug
-   *  report. Includes the auth context, the company we tried to mutate,
-   *  the desired tier, the RPC result, and the timestamp. */
-  lastPlanChangeDebug = signal<{
-    at: string;
-    authRole: string | null;
-    isSuperAdmin: boolean;
-    companyId: string;
-    oldTier: string;
-    newTier: string;
-    rpcName: string;
-    rpcOk: boolean;
-    rpcError: string | null;
-    reloadedTier: string | null;
-  } | null>(null);
 
   /**
    * Move a company to a new plan. Super-admin only — the `change_company_plan`
@@ -434,9 +419,9 @@ export class ModulesAdminComponent implements OnInit {
    * the raw 42501 Supabase error.
    * After the RPC succeeds we reload the company list (so `subscription_tier`
    * reflects the new plan) AND the per-company grants cache (so gift chips and
-    * the module list reflect the freshly-granted modules from
-    * plan_module_access).
-    */
+   * the module list reflect the freshly-granted modules from
+   * plan_module_access).
+   */
 
   /**
    * Read the new tier from the <select> DOM directly and forward to
@@ -455,48 +440,12 @@ export class ModulesAdminComponent implements OnInit {
   async changeCompanyTier(company: any, newTier: string) {
     const c = company;
     if (!c?.id || !newTier) {
-      this.lastPlanChangeDebug.set({
-        at: new Date().toISOString(),
-        authRole: this.auth.userRole(),
-        isSuperAdmin: this.isSuperAdmin(),
-        companyId: c?.id ?? '<missing>',
-        oldTier: c?.subscription_tier ?? '<missing>',
-        newTier: newTier ?? '<missing>',
-        rpcName: 'change_company_plan',
-        rpcOk: false,
-        rpcError: 'invalid arguments',
-        reloadedTier: null,
-      });
       return;
     }
     if (newTier === c.subscription_tier) {
-      this.lastPlanChangeDebug.set({
-        at: new Date().toISOString(),
-        authRole: this.auth.userRole(),
-        isSuperAdmin: this.isSuperAdmin(),
-        companyId: c.id,
-        oldTier: c.subscription_tier,
-        newTier,
-        rpcName: 'change_company_plan',
-        rpcOk: true,
-        rpcError: 'no-op (same tier)',
-        reloadedTier: c.subscription_tier,
-      });
       return;
     }
     if (!this.isSuperAdmin()) {
-      this.lastPlanChangeDebug.set({
-        at: new Date().toISOString(),
-        authRole: this.auth.userRole(),
-        isSuperAdmin: false,
-        companyId: c.id,
-        oldTier: c.subscription_tier,
-        newTier,
-        rpcName: 'change_company_plan',
-        rpcOk: false,
-        rpcError: 'client guard: isSuperAdmin() returned false',
-        reloadedTier: null,
-      });
       this.toast.error(
         'Sin permisos',
         'Solo los superadministradores pueden cambiar el plan de una empresa.',
@@ -520,19 +469,6 @@ export class ModulesAdminComponent implements OnInit {
       this.toast.error('Error', rpcError ?? 'No se pudo cambiar el plan.');
       console.error('changeCompanyTier failed', { companyId: c.id, oldTier, newTier, e });
     } finally {
-      const reloaded = this.companies.find((x: any) => x.id === c.id);
-      this.lastPlanChangeDebug.set({
-        at: new Date().toISOString(),
-        authRole: this.auth.userRole(),
-        isSuperAdmin: this.isSuperAdmin(),
-        companyId: c.id,
-        oldTier,
-        newTier,
-        rpcName: 'change_company_plan',
-        rpcOk,
-        rpcError,
-        reloadedTier: reloaded?.subscription_tier ?? '<company-not-found-after-reload>',
-      });
       this.changingTierCompanyId.set(null);
     }
   }
@@ -561,7 +497,15 @@ export class ModulesAdminComponent implements OnInit {
 
     try {
       const force = !this.isModuleInCompanyPlan(company, moduleKey);
-      await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus, force));
+      // Use the new admin_set_company_module_grant RPC which supersedes the
+      // legacy admin_set_company_module. force is informational; the grant
+      // row's status is the source of truth.
+      await firstValueFrom(
+        this.modulesService.adminSetCompanyModuleGrant(
+          company.id, moduleKey, newStatus === 'active' ? 'active' : 'revoked',
+          force ? 'manual override' : null,
+        ),
+      );
       this.toast.success('Módulo actualizado', force ? `Módulo forzado ${newStatus === 'active' ? 'activado' : 'desactivado'} (override).` : `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'}.`);
     } catch (e) {
       console.error('Error toggling module:', e);
@@ -807,7 +751,11 @@ export class ModulesAdminComponent implements OnInit {
     );
     const sidebarIcons = new Map(SIDEBAR_CATALOG.map((c) => [c.key, c.icon]));
     return Object.entries(this.moduleLabelMap)
-      .filter(([k]) => !devKeys.has(k) && !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k))
+      .filter(([k]) =>
+        !devKeys.has(k) &&
+        !ModulesAdminComponent.SUPERADMIN_MODULE_KEYS.includes(k) &&
+        this.moduleScope(k) !== 'core'  // CORE modules are always included via the plan; can't be gifted as add-ons.
+      )
       .map(([k, v]) => ({ key: k, label: v, icon: curatedIcons.get(k) || sidebarIcons.get(k) || 'fa-cube' }));
   }
 
@@ -952,7 +900,26 @@ export class ModulesAdminComponent implements OnInit {
     const btn = (event?.currentTarget as HTMLElement) ?? null;
     if (btn) {
       const rect = btn.getBoundingClientRect();
-      this.iconPickerAnchor.set({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      // Pop-up is 420px wide and ~280px tall. Compute a position that
+      // never overflows the viewport on either axis.
+      const POPUP_W = 420;
+      const POPUP_H = 280;
+      const MARGIN = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Vertical: open downward if there's room, otherwise upward.
+      const spaceBelow = vh - rect.bottom - MARGIN;
+      const spaceAbove = rect.top - MARGIN;
+      const top =
+        spaceBelow >= POPUP_H
+          ? rect.bottom + 4
+          : spaceAbove >= POPUP_H
+          ? rect.top - POPUP_H - 4
+          : Math.max(MARGIN, rect.bottom + 4);  // fallback: still try down
+      // Horizontal: anchor the pop-up's right edge to the button's right
+      // edge, but clamp so it never overflows the left edge either.
+      const right = Math.max(MARGIN, vw - rect.right);
+      this.iconPickerAnchor.set({ top, right });
     }
   }
 
@@ -1312,31 +1279,6 @@ export class ModulesAdminComponent implements OnInit {
   isSuperAdmin(): boolean {
     const role = this.auth.userRole();
     return role === 'super_admin' || !!this.auth.userProfile?.is_super_admin;
-  }
-
-  /** Pretty-print the last plan-change debug payload as JSON for the copy
-   *  button. The textarea in the template binds to this. */
-  formatDebugForCopy(): string {
-    const dbg = this.lastPlanChangeDebug();
-    if (!dbg) return '';
-    return JSON.stringify(dbg, null, 2);
-  }
-
-  /** Copy the debug payload to the clipboard. Falls back to selecting
-   *  the textarea content if the Clipboard API is unavailable. */
-  async copyDebugToClipboard(): Promise<void> {
-    const text = this.formatDebugForCopy();
-    if (!text) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        this.toast.success('Copiado', 'JSON copiado al portapapeles.');
-      } else {
-        this.toast.error('Sin portapapeles', 'Copia manualmente del textarea.');
-      }
-    } catch (e: any) {
-      this.toast.error('Error al copiar', e?.message || 'Copia manualmente del textarea.');
-    }
   }
 
   switchTab(tab: 'companies' | 'sidebar' | 'modules' | 'addons' | 'pricing') {
