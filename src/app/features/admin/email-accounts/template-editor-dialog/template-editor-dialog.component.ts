@@ -256,6 +256,11 @@ export class TemplateEditorDialogComponent {
       if (Object.keys(patch).length > 0) {
         this.form.patchValue(patch, { emitEvent: false });
       }
+      // Reuse the same RPC response to populate the preview pane so the
+      // right side is not empty after the seed (the form pipeline uses
+      // emitEvent: false above to avoid a duplicate round-trip, so it
+      // won't fire on its own).
+      this.previewHtml.set(result.html ?? '');
     } catch {
       // best-effort: preview pane still shows the default via the pipeline
     }
