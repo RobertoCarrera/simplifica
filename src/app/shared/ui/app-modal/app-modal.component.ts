@@ -6,7 +6,9 @@ import {
   OnChanges,
   OnDestroy,
   SimpleChanges,
+  inject,
 } from '@angular/core';
+import { ThemeService } from '../../../services/theme.service';
 
 @Component({
   selector: 'app-modal',
@@ -20,6 +22,8 @@ export class AppModalComponent implements OnChanges, OnDestroy {
   @Input() dismissible: boolean = true;
   @Input() maxWidth: string = '640px';
   @Output() close = new EventEmitter<void>();
+
+  themeService = inject(ThemeService);
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['visible']) {
