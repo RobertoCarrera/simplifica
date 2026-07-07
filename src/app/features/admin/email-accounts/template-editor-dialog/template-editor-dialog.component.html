@@ -58,6 +58,7 @@
         <label class="ted-field">
           <span class="ted-label">Cuerpo (HTML)</span>
           <app-tiptap-editor
+            data-testid="ted-input-body"
             [content]="form.controls.body.value ?? ''"
             (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
             [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"

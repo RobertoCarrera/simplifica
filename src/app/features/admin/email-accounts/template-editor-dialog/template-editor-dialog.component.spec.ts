@@ -184,12 +184,37 @@ function setupDialog(
   };
 }
 
-function typeInto(fixture: ComponentFixture<TemplateEditorDialogComponent>, testid: string, value: string) {
-  const el = fixture.nativeElement.querySelector(`[data-testid="${testid}"]`) as HTMLInputElement | HTMLTextAreaElement;
-  expect(el).withContext(`element not found: ${testid}`).toBeTruthy();
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  // valueChanges fires on `input`; sync signal/DOM updates.
+function typeInto(
+  fixture: ComponentFixture<TemplateEditorDialogComponent>,
+  testid: string,
+  value: string,
+  component?: TemplateEditorDialogComponent
+) {
+  const el = fixture.nativeElement.querySelector(
+    `[data-testid="${testid}"]`
+  ) as HTMLInputElement | HTMLTextAreaElement | null;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    // valueChanges fires on `input`; sync signal/DOM updates.
+    fixture.detectChanges();
+    return;
+  }
+  // tiptap wrapper — write to the form control directly and run CD.
+  if (!component) {
+    throw new Error(`typeInto: component required for non-DOM field "${testid}"`);
+  }
+  const map: Record<string, 'subject' | 'header' | 'buttonText' | 'body'> = {
+    'ted-input-subject': 'subject',
+    'ted-input-header': 'header',
+    'ted-input-buttonText': 'buttonText',
+    'ted-input-body': 'body',
+  };
+  const control = map[testid];
+  if (!control) {
+    throw new Error(`typeInto: unknown testid "${testid}"`);
+  }
+  component.form.controls[control].setValue(value);
   fixture.detectChanges();
 }
 
@@ -208,15 +233,14 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
     });
 
     it('pre-fills inputs from data.setting values', () => {
-      const { fixture } = setupDialog();
+      const { fixture, component } = setupDialog();
       const subject = fixture.nativeElement.querySelector(
         '[data-testid="ted-input-subject"]'
       ) as HTMLInputElement;
-      const body = fixture.nativeElement.querySelector(
-        '[data-testid="ted-input-body"]'
-      ) as HTMLTextAreaElement;
       expect(subject.value).toBe('Existing subject');
-      expect(body.value).toBe('<p>Hola {{invited_name}}</p>');
+      // Body is rendered by <app-tiptap-editor>, which doesn't expose `.value`
+      // on a DOM node. Read directly from the form control.
+      expect(component.form.controls.body.value).toBe('<p>Hola {{invited_name}}</p>');
     });
 
     it('emits `false` on Cancel (dialog.close(false))', () => {
@@ -238,12 +262,12 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
 
   describe('debounce pipeline', () => {
     it('emits exactly one previewTemplate call after 3 keystrokes within 250 ms', fakeAsync(() => {
-      const { fixture, previewCalls } = setupDialog();
-      typeInto(fixture, 'ted-input-body', 'H');
+      const { fixture, component, previewCalls } = setupDialog();
+      typeInto(fixture, 'ted-input-body', 'H', component);
       tick(50);
-      typeInto(fixture, 'ted-input-body', 'Ho');
+      typeInto(fixture, 'ted-input-body', 'Ho', component);
       tick(50);
-      typeInto(fixture, 'ted-input-body', 'Hol');
+      typeInto(fixture, 'ted-input-body', 'Hol', component);
       tick(250);
       // valueChanges fires synchronously on input + 250 ms debounce → 1 RPC.
       expect(previewCalls.length).toBeGreaterThanOrEqual(1);
@@ -252,14 +276,14 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
     }));
 
     it('distinctUntilChanged skips identical emissions (no duplicate RPC)', fakeAsync(() => {
-      const { fixture, previewCalls } = setupDialog();
-      typeInto(fixture, 'ted-input-body', 'Hola');
+      const { fixture, component, previewCalls } = setupDialog();
+      typeInto(fixture, 'ted-input-body', 'Hola', component);
       tick(250);
       const afterFirst = previewCalls.length;
       // Type again with the SAME value — FormControl<string> should emit
       // the value `Hola` again (Angular's defaultValue handling), and
       // distinctUntilChanged with the JSON.stringify comparator must drop it.
-      typeInto(fixture, 'ted-input-body', 'Hola');
+      typeInto(fixture, 'ted-input-body', 'Hola', component);
       tick(250);
       expect(previewCalls.length).toBe(afterFirst);
     }));
@@ -268,7 +292,7 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
       const { fixture, component } = setupDialog(undefined, undefined, {
         previewResults$: of({ html: '<div>updated preview</div>', sampleData }),
       });
-      typeInto(fixture, 'ted-input-body', 'something new');
+      typeInto(fixture, 'ted-input-body', 'something new', component);
       tick(250);
       expect(component.previewHtml()).toBe('<div>updated preview</div>');
     }));
@@ -282,7 +306,7 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
       const { fixture, component } = setupDialog(undefined, undefined, {
         previewErrors$: throwError(() => fakeForbidden),
       });
-      typeInto(fixture, 'ted-input-body', '<script>alert(1)</script>');
+      typeInto(fixture, 'ted-input-body', '<script>alert(1)</script>', component);
       tick(250);
       expect(component.previewForbidden()).toBe(true);
       expect(component.previewError()).toBe(false);
@@ -292,7 +316,7 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
       const { fixture, component } = setupDialog(undefined, undefined, {
         previewErrors$: throwError(() => ({ code: '22023', message: 'invalid' })),
       });
-      typeInto(fixture, 'ted-input-body', 'whatever');
+      typeInto(fixture, 'ted-input-body', 'whatever', component);
       tick(250);
       expect(component.previewError()).toBe(true);
       expect(component.previewForbidden()).toBe(false);
@@ -311,7 +335,7 @@ describe('TemplateEditorDialogComponent (PR2a)', () => {
       const { fixture, component } = setupDialog(undefined, undefined, {
         previewResults$: of({ html: malicious, sampleData }),
       });
-      typeInto(fixture, 'ted-input-body', 'trigger preview');
+      typeInto(fixture, 'ted-input-body', 'trigger preview', component);
       tick(250);
       const html = component.previewHtml();
       // The pipe ran at template time; here we just confirm the raw content
