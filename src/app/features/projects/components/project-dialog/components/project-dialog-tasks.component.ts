@@ -41,9 +41,12 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
       border-radius: 0.5rem;
       transition: background-color 0.2s ease;
     }
-    .task-row-wrapper.expanded-bg {
-      background-color: rgb(249 250 251);
-    }
+    /* The expanded-bg wrapper has NO background-color by default. In dark
+       mode it picks up the dark gray so the expanded area is visually
+       distinct from the rest of the dialog. In light mode it inherits
+       the modal's white background, which is the correct look (the
+       previous rgb(249 250 251) was almost-white and broke the
+       contrast — too close to the modal's bg-white). */
     .dark .task-row-wrapper.expanded-bg {
       background-color: rgb(31 41 55);
     }
