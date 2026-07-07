@@ -33,7 +33,7 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
       opacity: 0;
     }
     .task-detail-panel.expanded {
-      max-height: 250px;
+      max-height: none;
       opacity: 1;
       padding: 0.75rem 0;
     }
