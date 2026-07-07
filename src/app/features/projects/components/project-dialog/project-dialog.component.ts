@@ -2382,20 +2382,54 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   }
 
   onSubtaskChanged(event: { task: Partial<ProjectTask>; subtask: Partial<ProjectSubtask> }): void {
-    // Changes are tracked in-place via ngModel; no action needed here
-    // but we validate overdue status
-    const { subtask } = event;
-    if (subtask.due_date && !subtask.is_completed) {
-      const dueDate = new Date(subtask.due_date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDate.setHours(0, 0, 0, 0);
-      if (dueDate < today) {
-        // Mark as needing justification
-        (subtask as any)._justified = false;
+    // Changes are tracked in-place via ngModel. We re-validate the
+    // parent task dates so the user gets immediate feedback on
+    // conflicts between subtask dates and the parent task's window.
+    const { task, subtask } = event;
+    this.recomputeParentDatesFromSubtasks(task);
+    this.validateSubtaskDateConflicts(task);
+  }
+
+  /**
+   * If the parent task has no end_date, derive it from the latest
+   * due_date of its pending subtasks. The parent task's window
+   * reflects the work its children imply.
+   */
+  private recomputeParentDatesFromSubtasks(task: Partial<ProjectTask>): void {
+    if (!task.subtasks || !task.subtasks.length) return;
+    if (task.due_date) return; // user already set an explicit end date
+    let max: string | undefined;
+    for (const s of task.subtasks) {
+      if (!s.due_date || s.is_completed) continue;
+      if (!max || s.due_date > max) max = s.due_date;
+    }
+    if (max) task.due_date = max;
+  }
+
+  /**
+   * Flag subtasks whose date window falls outside the parent task's
+   * window. The flag (task.date_conflict) is read by the tasks
+   * component to render a red warning on the task row.
+   */
+  validateSubtaskDateConflicts(task: Partial<ProjectTask>): void {
+    (task as any).date_conflict = false;
+    if (!task.subtasks?.length) return;
+    const parentStart = task.start_date;
+    const parentEnd = task.due_date;
+    if (!parentEnd && !parentStart) return;
+    for (const s of task.subtasks) {
+      if (s.is_completed) continue;
+      if (parentStart && s.start_date && s.start_date < parentStart) {
+        (task as any).date_conflict = true;
+        return;
+      }
+      if (parentEnd && s.due_date && s.due_date > parentEnd) {
+        (task as any).date_conflict = true;
+        return;
       }
     }
   }
+
 
   onJustifyOverdue(subtask: Partial<ProjectSubtask>): void {
     // The tasks component handles the modal internally via its own state

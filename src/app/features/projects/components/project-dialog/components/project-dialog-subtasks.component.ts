@@ -15,14 +15,12 @@ import { ProjectSubtask } from '../../../../../models/project';
   imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
+    /* Hover background is applied via Tailwind classes on the element
+       (hover:bg-gray-50 dark:hover:bg-gray-700/40) because the .dark
+       class is on a parent in a different Angular encapsulation scope
+       (the app-modal). */
     .subtask-row {
       transition: background-color 0.15s ease;
-    }
-    .subtask-row:hover {
-      background-color: rgb(249 250 251);
-    }
-    .dark .subtask-row:hover {
-      background-color: rgb(31 41 55);
     }
     .overdue-pulse {
       animation: pulse-border 2s infinite;
@@ -49,7 +47,7 @@ import { ProjectSubtask } from '../../../../../models/project';
         <!-- Pending Subtasks -->
         <div class="space-y-1.5">
           @for (subtask of pendingSubtasks; track subtask.id || $index) {
-            <div class="subtask-row flex items-center space-x-2 p-1.5 rounded-md text-xs bg-white dark:bg-gray-800/40"
+            <div class="subtask-row flex items-center space-x-2 p-1.5 rounded-md text-xs bg-white hover:bg-gray-50 dark:bg-gray-800/40 dark:hover:bg-gray-700/40 transition-colors"
               [class.overdue-pulse]="isOverdue(subtask) && !subtask.is_completed"
             >
               <!-- Checkbox -->

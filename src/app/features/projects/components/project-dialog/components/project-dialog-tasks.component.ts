@@ -262,11 +262,16 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
                   </div>
                 }
 
-                <!-- Assigned To -->
-                <div class="flex items-center space-x-2">
-                  <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider w-24 flex-shrink-0">Asignado a</span>
-                  <span class="text-gray-700 dark:text-gray-200">{{ getAssigneeName(task) }}</span>
-                </div>
+                                <!-- Date conflict warning: subtask dates fall outside the parent window -->
+                @if (task?.date_conflict) {
+                  <div class="flex items-start space-x-2 p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <span class="text-amber-600 dark:text-amber-400 text-sm">⚠</span>
+                    <div class="text-xs text-amber-700 dark:text-amber-300">
+                      <strong>Fechas fuera de rango.</strong> Alguna subtarea se sale de las fechas de esta tarea
+                      @if (task.start_date) { ({{ formatDate(task.start_date) }} — } @if (task.due_date) { {{ formatDate(task.due_date) }}) } @else { . }
+                    </div>
+                  </div>
+                }
 
                 <!-- Created At -->
                 @if (task.created_at) {
