@@ -1,0 +1,118 @@
+<div data-testid="template-editor-dialog" class="ted-root">
+  <header class="ted-header">
+    <h2 class="ted-title" data-testid="template-editor-title">
+      {{ title() }}
+    </h2>
+    <button
+      type="button"
+      class="ted-close"
+      data-testid="template-editor-close"
+      (click)="close(false)"
+      [attr.aria-label]="'Cerrar'"
+    >
+      ×
+    </button>
+  </header>
+
+  <div class="ted-grid">
+    <!-- 40% — form column -->
+    <section class="ted-form" data-testid="template-editor-form">
+      <form
+        [formGroup]="form"
+        (ngSubmit)="saveTemplate()"
+        novalidate
+      >
+        <label class="ted-field">
+          <span class="ted-label">Asunto</span>
+          <input
+            type="text"
+            formControlName="subject"
+            class="ted-input"
+            maxlength="200"
+            data-testid="ted-input-subject"
+          />
+        </label>
+
+        <label class="ted-field">
+          <span class="ted-label">Cabecera</span>
+          <textarea
+            formControlName="header"
+            class="ted-textarea ted-textarea--sm"
+            rows="3"
+            maxlength="2000"
+            data-testid="ted-input-header"
+          ></textarea>
+        </label>
+
+        <label class="ted-field">
+          <span class="ted-label">Texto del botón</span>
+          <input
+            type="text"
+            formControlName="buttonText"
+            class="ted-input"
+            maxlength="100"
+            data-testid="ted-input-buttonText"
+          />
+        </label>
+
+        <label class="ted-field">
+          <span class="ted-label">Cuerpo (HTML)</span>
+          <textarea
+            formControlName="body"
+            class="ted-textarea ted-textarea--lg"
+            rows="12"
+            maxlength="50000"
+            data-testid="ted-input-body"
+          ></textarea>
+          <span class="ted-hint">
+            Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
+          </span>
+        </label>
+      </form>
+    </section>
+
+    <!-- 60% — preview pane -->
+    <section class="ted-preview-wrap" data-testid="template-editor-preview-wrap">
+      <div class="ted-preview-pane" data-testid="template-editor-preview">
+        @if (previewForbidden()) {
+          <p class="ted-banner ted-banner--warn" data-testid="ted-preview-forbidden">
+            No tienes permiso para previsualizar esta plantilla
+          </p>
+        } @else if (previewError()) {
+          <p class="ted-banner ted-banner--error" data-testid="ted-preview-error">
+            No se pudo cargar la previsualización
+          </p>
+        } @else if (previewLoading() && !previewHtml()) {
+          <p class="ted-loading" data-testid="ted-preview-loading">
+            Actualizando previsualización…
+          </p>
+        }
+        <div
+          class="ted-preview-html"
+          [innerHTML]="previewHtml() | safeHtml"
+          data-testid="ted-preview-content"
+        ></div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="ted-footer">
+    <button
+      type="button"
+      class="ted-btn ted-btn--ghost"
+      (click)="close(false)"
+      data-testid="ted-cancel"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="ted-btn ted-btn--primary"
+      (click)="saveTemplate()"
+      [disabled]="saving() || form.invalid"
+      data-testid="ted-save"
+    >
+      {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </footer>
+</div>

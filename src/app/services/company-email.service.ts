@@ -3,6 +3,7 @@ import { Observable, from, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
+import { EMAIL_SAMPLES, EmailSampleEntry } from '../email-samples';
 import {
   CompanyEmailAccount,
   CompanyEmailSetting,
@@ -13,6 +14,30 @@ import {
   UpdateEmailAccountDto,
   EmailType,
 } from '../models/company-email.models';
+
+/**
+ * Typed error surfaced by `previewTemplate` when the underlying RPC rejects
+ * with Postgres `42501 insufficient_privilege`. The dialog's error handler
+ * matches on `code === '42501'` (raw) before re-throwing as this class so
+ * callers can branch on `err instanceof ForbiddenPreviewError`.
+ */
+export class ForbiddenPreviewError extends Error {
+  override readonly name = 'ForbiddenPreviewError';
+  constructor(public readonly original: unknown) {
+    super('Forbidden to preview this template');
+  }
+}
+
+/**
+ * Optional per-type defaults passed to `upsertTemplate`. `email_account_id`
+ * is nullable so the dialog can pre-seed an un-bound row when no account
+ * has been assigned yet (the row becomes visible in the settings list
+ * immediately and can be wired to an account later).
+ */
+export interface UpsertTemplateDefaults {
+  is_active?: boolean;
+  email_account_id?: string | null;
+}
 
 @Injectable({ providedIn: 'root' })
 export class CompanyEmailService {
@@ -406,6 +431,111 @@ export class CompanyEmailService {
       }),
       catchError((err) => throwError(() => err))
     );
+  }
+
+  // ==========================================
+  // PR2a — preview + auto-upsert + sample data
+  // (email-customization-faithful-preview/pr2-editor)
+  // ==========================================
+
+  /**
+   * Live-preview RPC consumer. Calls the SECURITY DEFINER RPC
+   * `preview_email_template(...)` and unwraps the `table(html, sample_data)`
+   * response into a single emission. Re-throws errors so the dialog can
+   * branch on `err.code === '42501'` (typed `ForbiddenPreviewError`).
+   */
+  previewTemplate(
+    companyId: string,
+    emailType: EmailType,
+    sampleData: Record<string, unknown>,
+    customFields: {
+      custom_subject?: string;
+      custom_body?: string;
+      custom_header?: string;
+      custom_button_text?: string;
+    }
+  ): Observable<{ html: string; sampleData: Record<string, unknown> }> {
+    return from(
+      this.supabase.rpc('preview_email_template', {
+        p_company_id: companyId,
+        p_email_type: emailType,
+        p_sample_data: sampleData,
+        p_custom_subject: customFields.custom_subject ?? null,
+        p_custom_body: customFields.custom_body ?? null,
+        p_custom_header: customFields.custom_header ?? null,
+        p_custom_button_text: customFields.custom_button_text ?? null,
+      })
+    ).pipe(
+      map((res) => {
+        if (res.error) throw res.error;
+        const rows = (res.data ?? []) as Array<{
+          html: string;
+          sample_data: Record<string, unknown>;
+        }>;
+        const first = rows[0];
+        return {
+          html: first?.html ?? '',
+          sampleData: first?.sample_data ?? sampleData,
+        };
+      }),
+      catchError((err) => {
+        const code = (err as { code?: string } | null)?.code;
+        if (code === '42501') {
+          return throwError(() => new ForbiddenPreviewError(err));
+        }
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
+   * UPSERT wrapper for `(company_id, email_type)` rows. Defaults
+   * `is_active = true` and `email_account_id = null` so the dialog can
+   * pre-seed an un-bound row when the admin clicks the pen for a type
+   * without an existing setting.
+   *
+   * Single-row select so consumers always receive a `CompanyEmailSetting`
+   * (not an array).
+   */
+  upsertTemplate(
+    companyId: string,
+    emailType: EmailType,
+    defaults: UpsertTemplateDefaults = {}
+  ): Observable<CompanyEmailSetting> {
+    const payload: Record<string, unknown> = {
+      company_id: companyId,
+      email_type: emailType,
+      is_active: defaults.is_active ?? true,
+      email_account_id: defaults.email_account_id ?? null,
+    };
+
+    return from(
+      this.supabase
+        .from('company_email_settings')
+        .upsert(payload, { onConflict: 'company_id,email_type' })
+        .select()
+        .single()
+    ).pipe(
+      map((res) => {
+        if (res.error) throw res.error;
+        return res.data as CompanyEmailSetting;
+      }),
+      catchError((err) => throwError(() => err))
+    );
+  }
+
+  /**
+   * Static re-export of the 26-entry sample-data matrix. The mirror lives
+   * in `src/app/email-samples.ts` (TS port of `supabase/email-samples.json`).
+   * `getSampleFor` returns the `sample_data` payload for a given type, or
+   * `{}` when the type is unknown (defensive default — never throws).
+   */
+  readonly emailSamples: Readonly<Record<EmailType, EmailSampleEntry>> =
+    EMAIL_SAMPLES as Readonly<Record<EmailType, EmailSampleEntry>>;
+
+  getSampleFor(type: EmailType): Record<string, unknown> {
+    const entry = EMAIL_SAMPLES[type];
+    return (entry?.sample_data ?? {}) as Record<string, unknown>;
   }
 
   // ==========================================

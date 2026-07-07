@@ -1,0 +1,247 @@
+// ==========================================================================
+// TemplateEditorDialog — 40/60 split-view, paper-background preview pane
+// ==========================================================================
+// Layout invariants (per design #1877 §2):
+//   - >=md (≥768px): display: grid; grid-template-columns: 40% 60%; gap: 16px
+//   - <md         : stacked single column, form on top, preview below
+//   - preview pane: paper-like background (#F9FAFB / slate-50) + rounded
+//                   + shadow-inner so it visually reads as an iframe without
+//                   being one (sandboxing goes through SafeHtmlPipe).
+// ==========================================================================
+
+:host {
+  display: block;
+  font-family: inherit;
+  color: #0f172a;
+}
+
+.ted-root {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 95vw);
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+}
+
+.ted-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ted-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #0f172a;
+}
+
+.ted-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #475569;
+  transition: background 120ms ease;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+}
+
+.ted-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 40% 60%;
+    gap: 16px;
+  }
+}
+
+.ted-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  > form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+.ted-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ted-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ted-input,
+.ted-textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  }
+}
+
+.ted-textarea {
+  resize: vertical;
+  font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ted-textarea--sm {
+  min-height: 64px;
+}
+
+.ted-textarea--lg {
+  min-height: 260px;
+}
+
+.ted-hint {
+  font-size: 11px;
+  color: #64748b;
+
+  code {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+}
+
+.ted-preview-wrap {
+  min-height: 0;
+  display: flex;
+}
+
+.ted-preview-pane {
+  background: #f8fafc; // bg-slate-50 (paper)
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.06);
+  padding: 24px;
+  width: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ted-preview-html {
+  flex: 1 1 auto;
+  min-height: 280px;
+  word-break: break-word;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+}
+
+.ted-loading,
+.ted-banner {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.ted-loading {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.ted-banner--warn {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.ted-banner--error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.ted-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.ted-btn {
+  font: inherit;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.ted-btn--ghost {
+  background: transparent;
+  color: #334155;
+  border-color: #cbd5e1;
+
+  &:hover:not(:disabled) {
+    background: #f1f5f9;
+  }
+}
+
+.ted-btn--primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+  }
+}
