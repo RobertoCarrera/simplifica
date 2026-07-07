@@ -254,33 +254,6 @@
        so the user can copy-paste it into a bug report. The textarea is
        read-only so accidental editing doesn't matter; the copy button uses
        the standard Clipboard API. -->
-  @if (activeTab() === 'companies' && lastPlanChangeDebug()) {
-    @let dbg = lastPlanChangeDebug()!;
-    <div class="mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
-          <i class="fas fa-bug"></i> Debug · Último intento de cambio de plan
-        </h3>
-        <button
-          type="button"
-          (click)="copyDebugToClipboard()"
-          class="text-xs px-2 py-1 rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-        >
-          <i class="fas fa-copy mr-1"></i> Copiar
-        </button>
-      </div>
-      <p class="text-xs text-amber-700 dark:text-amber-400 mb-2">
-        Comparte este JSON cuando el cambio de plan falle. Incluye rol, IDs,
-        tier solicitado, resultado del RPC y el tier re-leído tras el refresh.
-      </p>
-      <textarea
-        readonly
-        rows="14"
-        class="w-full font-mono text-[11px] leading-tight text-amber-900 dark:text-amber-200 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded p-2"
-        [value]="formatDebugForCopy()"
-      ></textarea>
-    </div>
-  }
 
   <!-- ═══════════════════════════════════════════════════════ SIDEBAR ORDER TAB -->
   @if (activeTab() === 'sidebar') {
@@ -467,7 +440,7 @@
             @for (m of modulesCatalog(); track m.key) {
               @let draft = editingCatalogDraft()[m.key];
               @let editing = !!draft;
-              <div class="flex flex-col gap-2 p-3 rounded-xl transition-colors"
+              <div class="flex flex-col gap-2 p-3 rounded-xl transition-colors overflow-hidden"
                 [class.ring-2]="editing"
                 [class.ring-blue-300]="editing"
                 [ngClass]="{
@@ -513,15 +486,18 @@
                         <i [class]="'fas ' + (draft!.icon || $any(m).icon || 'fa-cube') + ' text-base text-blue-600'"></i>
                       </button>
                       @if (catalogIconPickerOpen() === m.key) {
-                        <div class="fixed z-[9999] w-[420px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2" [style.top.px]="pickerPosition().top" [style.right.px]="pickerPosition().right" (click)="$event.stopPropagation()">
+                        <!-- Inline icon picker: a search box + the same 10-col
+                             grid. The card grows vertically. No pop-up, no
+                             stacking-context risk, no portal needed. -->
+                        <div class="col-span-full mt-2 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded" (click)="$event.stopPropagation()">
                           <div class="relative mb-2">
                             <i class="fas fa-search absolute left-2 top-2 text-gray-400 dark:text-gray-500 text-[10px]"></i>
-                            <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" (click)="$event.stopPropagation()" />
+                            <input type="text" [ngModel]="iconSearchQuery()" (ngModelChange)="iconSearchQuery.set($event)" placeholder="Buscar icono..." class="w-full pl-7 pr-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500" />
                           </div>
                           <div class="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto p-1">
                             @for (entry of filteredIcons(); track entry.class) {
                               <button type="button"
-                                (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null)"
+                                (click)="setCatalogIcon(m.key, entry.class); catalogIconPickerOpen.set(null);"
                                 [class]="'w-7 h-7 flex items-center justify-center rounded text-xs transition-colors ' + (draft!.icon === entry.class ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50')"
                                 [title]="entry.class">
                                 <i [class]="'fas ' + entry.class"></i>
