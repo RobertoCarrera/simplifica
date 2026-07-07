@@ -2357,8 +2357,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     const maxPos = task.subtasks.length > 0
       ? Math.max(...task.subtasks.map(s => s.position || 0))
       : 0;
+    // No `id` here: leave it undefined so the INSERT lets the database
+    // generate the UUID via the column DEFAULT. Sending an empty
+    // string for a UUID column fails with 22P02 "invalid input syntax
+    // for type uuid".
     task.subtasks.push({
-      id: '',
       title: '',
       is_completed: false,
       position: maxPos + 1,

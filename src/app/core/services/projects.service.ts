@@ -646,9 +646,16 @@ export class ProjectsService {
             );
         }
 
-        // Upserts (Insert or Update)
-        const toInsert = tasksToUpsert.filter(t => !t.id).map(t => ({ ...t, project_id: projectId }));
-        const toUpdate = tasksToUpsert.filter(t => t.id);
+        // Upserts (Insert or Update). Strip the id field and any
+        // empty-string UUIDs so the database can DEFAULT them. Old
+        // bundles sent id: '' which fails with 22P02.
+        const toInsert = tasksToUpsert
+            .filter(t => !t.id)
+            .map(t => {
+                const { id, ...rest } = t as any;
+                return { ...rest, project_id: projectId };
+            });
+        const toUpdate = tasksToUpsert.filter(t => !!t.id);
 
         if (toInsert.length > 0) {
             operations.push(
@@ -748,9 +755,18 @@ export class ProjectsService {
             );
         }
 
-        // Insertions
-        const toInsert = subtasksToUpsert.filter(s => !s.id).map(s => ({ ...s, task_id: taskId }));
-        const toUpdate = subtasksToUpsert.filter(s => s.id);
+        // Insertions. Strip empty-string UUIDs and any other fields that
+        // would fail the UUID type check (e.g. id='', task_id=''). The
+        // database will DEFAULT the id on insert.
+        const toInsert = subtasksToUpsert
+            .filter(s => !s.id)
+            .map(s => {
+                const { id, ...rest } = s as any;
+                // Don't send a null/empty task_id: if it's missing, the
+                // INSERT will fail with 22P02. We always pass taskId.
+                return { ...rest, task_id: taskId };
+            });
+        const toUpdate = subtasksToUpsert.filter(s => !!s.id);
 
         if (toInsert.length > 0) {
             operations.push(
