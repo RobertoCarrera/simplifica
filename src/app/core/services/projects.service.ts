@@ -652,9 +652,12 @@ export class ProjectsService {
         const toInsert = tasksToUpsert
             .filter(t => !t.id)
             .map(t => {
-                const { id, ...rest } = t as any;
+                // Strip id and transient UI flags (date_conflict,
+                // _justified) that are not real DB columns. The id
+                // must be omitted so the DB DEFAULT generates it.
+                const { id, date_conflict, _justified, ...rest } = t as any;
                 return { ...rest, project_id: projectId };
-            });
+            });;
         const toUpdate = tasksToUpsert.filter(t => !!t.id);
 
         if (toInsert.length > 0) {

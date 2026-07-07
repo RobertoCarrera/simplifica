@@ -220,6 +220,7 @@ export class TemplateEditorDialogComponent {
    * flow through the debounce pipeline.
    */
   private fetchInitialPreview(): void {
+    console.log('[TEMPLATE-EDITOR] fetchInitialPreview() called for type:', this.data.emailType, 'companyId:', this.data.companyId, 'sampleData:', this.data.sampleData);
     firstValueFrom(
       this.companyEmailService.previewTemplate(
         this.data.companyId,
@@ -234,10 +235,11 @@ export class TemplateEditorDialogComponent {
       )
     )
       .then((result) => {
+        console.log('[TEMPLATE-EDITOR] fetchInitialPreview() success, html length:', result.html?.length, 'first 100 chars:', result.html?.substring(0, 100));
         this.previewHtml.set(result.html ?? '');
       })
-      .catch(() => {
-        // best-effort; the pipeline + seed will keep trying
+      .catch((err) => {
+        console.error('[TEMPLATE-EDITOR] fetchInitialPreview() ERROR:', err);
       });
   }
 
@@ -272,6 +274,7 @@ export class TemplateEditorDialogComponent {
     if (hasSavedBody && hasSavedSubject && hasSavedButtonText) return;
 
     try {
+      console.log('[TEMPLATE-EDITOR] seed() called for type:', this.data.emailType, 'hasSavedBody:', hasSavedBody, 'hasSavedSubject:', hasSavedSubject, 'hasSavedButtonText:', hasSavedButtonText);
       const result = await firstValueFrom(
         this.companyEmailService.previewTemplate(
           this.data.companyId,
@@ -285,20 +288,26 @@ export class TemplateEditorDialogComponent {
           }
         )
       );
+      console.log('[TEMPLATE-EDITOR] seed() result.html length:', result.html?.length, 'first 80 chars:', result.html?.substring(0, 80));
       const extracted = this.extractFromDefaultHtml(result.html ?? '');
+      console.log('[TEMPLATE-EDITOR] extracted subject:', extracted.subject, 'buttonText:', extracted.buttonText, 'body length:', extracted.body.length);
       const patch: Partial<FormShape> = {};
       if (!hasSavedBody && extracted.body) patch.body = extracted.body;
       if (!hasSavedSubject && extracted.subject) patch.subject = extracted.subject;
       if (!hasSavedButtonText && extracted.buttonText) patch.buttonText = extracted.buttonText;
       if (Object.keys(patch).length > 0) {
         this.form.patchValue(patch, { emitEvent: false });
+        console.log('[TEMPLATE-EDITOR] patched form keys:', Object.keys(patch));
       }
       // Reuse the same RPC response to populate the preview pane so the
       // right side is not empty after the seed (the form pipeline uses
       // emitEvent: false above to avoid a duplicate round-trip, so it
       // won't fire on its own).
+      console.log('[TEMPLATE-EDITOR] setting previewHtml to result.html (length:', result.html?.length, ')');
       this.previewHtml.set(result.html ?? '');
-    } catch {
+      console.log('[TEMPLATE-EDITOR] previewHtml set. Current value length:', this.previewHtml().length);
+    } catch (err) {
+      console.error('[TEMPLATE-EDITOR] seed() ERROR:', err);
       // best-effort: preview pane still shows the default via the pipeline
     }
   }
