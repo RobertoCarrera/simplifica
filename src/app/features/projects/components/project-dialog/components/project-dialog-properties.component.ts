@@ -80,7 +80,7 @@ export interface TeamMember {
               (ngModelChange)="fieldChange.emit({ field: 'client_id', value: $event })"
               class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
             >
-              <option [value]="null">Seleccionar Cliente</option>
+              <option [ngValue]="null">Seleccionar Cliente</option>
               @for (client of clients; track client.id) {
                 <option [value]="client.id">
                   {{ getClientDisplayName(client, '') }}
@@ -116,7 +116,7 @@ export interface TeamMember {
               (ngModelChange)="fieldChange.emit({ field: 'assigned_to', value: $event })"
               class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
             >
-              <option [value]="null">Seleccionar Miembro</option>
+              <option [ngValue]="null">Seleccionar Miembro</option>
               @for (member of teamMembers; track member.id) {
                 <option [value]="member.id">{{ member.displayName }}</option>
               }
