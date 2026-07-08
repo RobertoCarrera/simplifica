@@ -44,6 +44,13 @@ export interface CompanyEmailSetting {
   custom_body_template: string;
   custom_header_template: string | null;
   custom_button_text: string | null;
+  // PR2a (email-block-editor): the typed block array (logo/heading/
+  // paragraph/button) takes precedence over custom_body_template when
+  // non-null. See design id 1946 §2 and PR1 migration. Untyped at the
+  // model layer because the 4 *Props interfaces are heterogeneous —
+  // the serialized Block type lives in
+  // features/admin/.../template-editor-dialog/blocks/block-types.ts.
+  custom_blocks?: unknown[] | null;
 }
 
 export type EmailType =
