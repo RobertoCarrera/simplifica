@@ -580,10 +580,11 @@ export class ProjectsService {
     }
 
     createTask(task: Partial<ProjectTask>): Observable<ProjectTask> {
+        const { id, date_conflict, _justified, ...cleanTask } = task as any;
         return from(
             this.supabase
                 .from('project_tasks')
-                .insert(task)
+                .insert(cleanTask)
                 .select()
                 .single()
         ).pipe(map(({ data, error }) => {
@@ -597,10 +598,11 @@ export class ProjectsService {
     }
 
     updateTask(taskId: string, updates: Partial<ProjectTask>): Observable<ProjectTask> {
+        const { id, date_conflict, _justified, ...cleanUpdates } = updates as any;
         return from(
             this.supabase
                 .from('project_tasks')
-                .update(updates)
+                .update(cleanUpdates)
                 .eq('id', taskId)
                 .select()
                 .single()
@@ -672,8 +674,9 @@ export class ProjectsService {
 
         // Updates
         toUpdate.forEach(t => {
+            const { id, date_conflict, _justified, ...cleanT } = t as any;
             operations.push(
-                this.supabase.from('project_tasks').update(t).eq('id', t.id!)
+                this.supabase.from('project_tasks').update(cleanT).eq('id', t.id!)
             );
             // Log completion or reopening if toggled
             if (t.is_completed === true) {
@@ -764,7 +767,7 @@ export class ProjectsService {
         const toInsert = subtasksToUpsert
             .filter(s => !s.id)
             .map(s => {
-                const { id, ...rest } = s as any;
+                const { id, date_conflict, _justified, ...rest } = s as any;
                 // Don't send a null/empty task_id: if it's missing, the
                 // INSERT will fail with 22P02. We always pass taskId.
                 return { ...rest, task_id: taskId };
@@ -779,8 +782,9 @@ export class ProjectsService {
 
         // Updates
         toUpdate.forEach(s => {
+            const { id, date_conflict, _justified, ...cleanS } = s as any;
             operations.push(
-                this.supabase.from('project_subtasks').update(s).eq('id', s.id!)
+                this.supabase.from('project_subtasks').update(cleanS).eq('id', s.id!)
             );
         });
 

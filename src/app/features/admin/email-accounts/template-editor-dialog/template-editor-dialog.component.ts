@@ -209,7 +209,7 @@ export class TemplateEditorDialogComponent {
     // We fire one explicit previewTemplate call with the form's current
     // values to guarantee the preview shows the rendered default HTML on
     // dialog open, regardless of whether seedFromDefaultIfEmpty succeeds.
-    this.fetchInitialPreview();
+    queueMicrotask(() => this.form.patchValue(this.form.getRawValue(), { emitEvent: true }));
   }
 
   /**
