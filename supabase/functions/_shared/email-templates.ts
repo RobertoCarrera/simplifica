@@ -1114,7 +1114,15 @@ const RENDERERS: Record<EmailType, Renderer> = {
   inactive_notice: renderInactiveNotice,
   generic: renderGeneric,
   google_review: renderGoogleReview,
-  booking_reminder: renderGeneric, // falls through to default per existing EF behavior
+  // 6 simple types — TS mirror parity with SQL `email_render_template` after
+  // PR1-6type-fix. These all funnel through `renderGeneric`, which honors
+  // `customBody` (line 831: `if (customBody) { return { subject, html:
+  // _interpolateSafe(customBody, ...) } }`). Before PR1-6type-fix the SQL
+  // branches ignored `p_custom_body` while TS honored it — the silent-drop
+  // bug was SQL-only. Migration `20260710000001_email_block_6type_hotfix.sql`
+  // adds the matching IF wrapper to the SQL side, so SQL ≡ TS now and both
+  // paths interpolate `{{var}}` tokens from `customBody`.
+  booking_reminder: renderGeneric,
   booking_cancellation: renderGeneric,
   password_reset: renderGeneric,
   magic_link: renderGeneric,
