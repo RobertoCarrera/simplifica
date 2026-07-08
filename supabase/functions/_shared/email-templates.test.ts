@@ -25,7 +25,14 @@
  *   - Branding font/bg injected into <body> style → 1 case
  *   - Unknown type falls through to default (generic) → 1 case
  *   - Pure renderer: same input twice → byte-identical output → 1 case
- *   Total: ~80 assertions across 26 EMAIL_TYPES.
+ *   - PR1 (email-block-editor): 9 block-renderer tests
+ *       4 per-type renderers (logo/heading/paragraph/button) with valid props
+ *       1 mixed-array test (all 4 types in one array)
+ *       1 invalid-prop test (block with malformed color/size)
+ *       1 unknown-type test (forward-compat: unknown type → '')
+ *       1 javascript: post-interp case (Fix 4) — button url='{{x}}' + x='javascript:...' → <span>
+ *       1 defaultEmailBody mirror test (returns non-empty HTML for each of 26 types)
+ *   Total: ~80 assertions across 26 EMAIL_TYPES plus 9 PR1 block tests.
  */
 
 // We import the JSON fixture directly to drive the tests; the SQL snapshot
@@ -34,9 +41,20 @@ import emailSamplesJson from '../../email-samples.json' with { type: 'json' };
 import {
   renderTemplate,
   EMAIL_TYPES,
+  renderBlockLogo,
+  renderBlockHeading,
+  renderBlockParagraph,
+  renderBlockButton,
+  renderBlocksToHtml,
+  defaultEmailBody,
   type EmailType,
   type CompanyInfo,
   type TemplateData,
+  type Block,
+  type LogoBlock,
+  type HeadingBlock,
+  type ParagraphBlock,
+  type ButtonBlock,
 } from './email-templates.ts';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -254,4 +272,167 @@ Deno.test('purity:deterministic — same input → byte-identical output', () =>
   console.assert(a.subject === b.subject, 'subjects must match');
   console.assert(a.html === b.html, 'html must be byte-identical');
   console.assert(a.html.length > 0, 'html non-empty');
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// PR1 (email-block-editor): block-renderer tests
+// ────────────────────────────────────────────────────────────────────────────
+
+// ── Test: renderBlockLogo with valid http(s) src ────────────────────────────
+
+Deno.test('blocks:renderBlockLogo — http src → <img> wrapped in <table>', () => {
+  const html = renderBlockLogo({
+    src: 'https://app.simplificacrm.es/logo.png',
+    alt: 'Acme Logo',
+    max_height: 80,
+    max_width: 240,
+  });
+  console.assert(html.includes('<img'), 'logo: missing <img> tag');
+  console.assert(html.includes('src="https://app.simplificacrm.es/logo.png"'), 'logo: src not escaped');
+  console.assert(html.includes('alt="Acme Logo"'), 'logo: alt not escaped');
+  console.assert(html.includes('max-height:80px'), 'logo: max_height not applied');
+  console.assert(html.includes('max-width:240px'), 'logo: max_width not applied');
+  console.assert(html.includes('<table'), 'logo: <img> should be wrapped in <table>');
+});
+
+// ── Test: renderBlockHeading with level + color ──────────────────────────────
+
+Deno.test('blocks:renderBlockHeading — level=2, color #FF6B35, align center', () => {
+  const html = renderBlockHeading({
+    text: 'Bienvenido a Simplifica',
+    level: 2,
+    color: '#FF6B35',
+    align: 'center',
+    font_size: 28,
+  });
+  console.assert(html.includes('<h2'), 'heading: missing <h2> tag');
+  console.assert(html.includes('Bienvenido a Simplifica'), 'heading: text not present');
+  console.assert(html.includes('color:#FF6B35'), 'heading: color not applied');
+  console.assert(html.includes('font-size:28px'), 'heading: font_size not applied');
+  console.assert(html.includes('text-align:center'), 'heading: align not applied');
+});
+
+// ── Test: renderBlockParagraph with italic + color ──────────────────────────
+
+Deno.test('blocks:renderBlockParagraph — italic + color + justify align', () => {
+  const html = renderBlockParagraph({
+    text: 'Texto del párrafo',
+    align: 'justify',
+    color: '#374151',
+    font_size: 18,
+    italic: true,
+  });
+  console.assert(html.includes('<p'), 'paragraph: missing <p> tag');
+  console.assert(html.includes('Texto del párrafo'), 'paragraph: text not present');
+  console.assert(html.includes('font-style:italic'), 'paragraph: italic not applied');
+  console.assert(html.includes('font-size:18px'), 'paragraph: font_size not applied');
+  console.assert(html.includes('text-align:justify'), 'paragraph: justify align not applied');
+});
+
+// ── Test: renderBlockButton with valid http url ──────────────────────────────
+
+Deno.test('blocks:renderBlockButton — http url → <a> styled button', () => {
+  const html = renderBlockButton({
+    text: 'Ver factura',
+    url: 'https://app.simplificacrm.es/invoices/123',
+    background_color: '#FF6B35',
+    text_color: '#FFFFFF',
+    padding: 14,
+    border_radius: 8,
+    align: 'center',
+  });
+  console.assert(html.includes('<a '), 'button: missing <a> tag');
+  console.assert(html.includes('href="https://app.simplificacrm.es/invoices/123"'), 'button: href not set');
+  console.assert(html.includes('Ver factura'), 'button: text not present');
+  console.assert(html.includes('background:#FF6B35'), 'button: background_color not applied');
+  console.assert(html.includes('border-radius:8px'), 'button: border_radius not applied');
+});
+
+// ── Test: renderBlocksToHtml — mixed array of all 4 types ────────────────────
+
+Deno.test('blocks:renderBlocksToHtml — mixed array dispatches to all 4 renderers', () => {
+  const blocks: Block[] = [
+    { id: 'a', type: 'logo', version: 1, props: { src: 'https://x.test/logo.png' } } as LogoBlock,
+    { id: 'b', type: 'heading', version: 1, props: { text: 'Hola', level: 1 } } as HeadingBlock,
+    { id: 'c', type: 'paragraph', version: 1, props: { text: 'Mundo' } } as ParagraphBlock,
+    { id: 'd', type: 'button', version: 1, props: { text: 'Click', url: 'https://x.test/cta' } } as ButtonBlock,
+  ];
+  const html = renderBlocksToHtml(blocks);
+  console.assert(html.includes('<img'), 'mixed: logo not rendered');
+  console.assert(html.includes('<h1'), 'mixed: heading not rendered');
+  console.assert(html.includes('<p'), 'mixed: paragraph not rendered');
+  console.assert(html.includes('<a '), 'mixed: button not rendered');
+});
+
+// ── Test: renderBlockLogo — invalid src → empty (forward-compat degrade) ─────
+
+Deno.test('blocks:renderBlockLogo — javascript: src → empty string', () => {
+  const html = renderBlockLogo({ src: 'javascript:alert(1)' });
+  console.assert(html === '', 'logo: javascript: src must be rejected (empty output)');
+});
+
+// ── Test: renderBlocksToHtml — unknown type → empty (forward-compat) ─────────
+
+Deno.test('blocks:renderBlocksToHtml — unknown type → empty (forward-compat)', () => {
+  const html = renderBlocksToHtml([
+    { id: 'x', type: 'spacer' as 'logo', version: 1, props: {} },
+  ]);
+  console.assert(html === '', 'unknown type must produce empty string');
+});
+
+// ── Test: renderBlockButton — javascript: post-interp (Fix 4) → <span> ──────
+//
+// SECURITY FIX 4: button url = '{{invoice_url}}' with sample_data.invoice_url
+// = 'javascript:alert(1)' must produce a <span>, NOT an <a href="javascript:...">.
+// The literal "javascript:" substring must NOT appear anywhere in the output.
+
+Deno.test('blocks:renderBlockButton — javascript: post-interp → <span> (Fix 4)', () => {
+  const html = renderBlockButton(
+    { text: 'Pagar', url: '{{invoice_url}}', background_color: '#4f46e5', text_color: '#FFFFFF' },
+    { invoice_url: 'javascript:alert(1)' },
+  );
+  console.assert(html.includes('<span'), 'button: javascript: post-interp must degrade to <span>');
+  console.assert(!html.includes('<a '), 'button: javascript: post-interp must NOT produce <a>');
+  console.assert(!html.includes('javascript:'), 'button: javascript: literal must NOT appear in output');
+  console.assert(html.includes('Pagar'), 'button: text should still be present');
+});
+
+// ── Test: defaultEmailBody — returns non-empty HTML for each of 26 types ─────
+
+Deno.test('blocks:defaultEmailBody — every EMAIL_TYPE returns non-empty HTML', () => {
+  for (const t of EMAIL_TYPES) {
+    const html = defaultEmailBody(t);
+    console.assert(typeof html === 'string', `${t}: defaultEmailBody must return string`);
+    console.assert(html.length > 0, `${t}: defaultEmailBody must return non-empty HTML`);
+  }
+});
+
+Deno.test('blocks:defaultEmailBody — unknown type throws', () => {
+  let threw = false;
+  try {
+    defaultEmailBody('unknown_type_xyz');
+  } catch (_e) {
+    threw = true;
+  }
+  console.assert(threw, 'unknown email_type must throw');
+});
+
+// ── Test: renderTemplate — customBlocks wins over customBody (precedence) ────
+
+Deno.test('blocks:renderTemplate — customBlocks wins over customBody', () => {
+  const blocks: Block[] = [
+    { id: 'a', type: 'heading', version: 1, props: { text: 'BLOCK_HEADING', level: 1 } } as HeadingBlock,
+  ];
+  const { html } = renderTemplate(
+    'booking_confirmation',
+    buildBrandingCompany(),
+    getFixture('booking_confirmation').sample_data,
+    null,
+    '<p>CUSTOM_BODY</p>',
+    null,
+    null,
+    blocks,
+  );
+  console.assert(html.includes('BLOCK_HEADING'), 'customBlocks must win over customBody');
+  console.assert(!html.includes('CUSTOM_BODY'), 'customBody must NOT be used when customBlocks is set');
 });
