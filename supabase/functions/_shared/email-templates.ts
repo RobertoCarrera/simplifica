@@ -159,6 +159,249 @@ export interface RenderResult {
 
 type Renderer = (args: RenderArgs) => RenderResult;
 
+// ── Block editor (PR1 of email-block-editor) ────────────────────────────────
+//
+// Mirrors the SQL helpers in supabase/migrations/20260709000001_email_block_editor_foundation.sql:
+//   renderBlocksToHtml  ↔  public.render_blocks_to_html(jsonb)
+//   renderBlockLogo     ↔  public.render_block_logo(jsonb)
+//   renderBlockHeading  ↔  public.render_block_heading(jsonb)
+//   renderBlockParagraph ↔ public.render_block_paragraph(jsonb)
+//   renderBlockButton   ↔  public.render_block_button(jsonb)
+//   defaultEmailBody    ↔  public.default_email_body(text)
+//
+// Drift closed by supabase/tests/snapshot_email_render.sql — any style-string
+// change here MUST be mirrored in the SQL migration and vice-versa.
+
+export type BlockType = 'logo' | 'heading' | 'paragraph' | 'button';
+
+export interface LogoProps {
+  src: string;
+  alt?: string;
+  max_height?: number;
+  max_width?: number;
+}
+
+export interface HeadingProps {
+  text: string;
+  level?: 1 | 2 | 3;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+  font_size?: number;
+}
+
+export interface ParagraphProps {
+  text: string;
+  align?: 'left' | 'center' | 'right' | 'justify';
+  color?: string;
+  font_size?: number;
+  italic?: boolean;
+}
+
+export interface ButtonProps {
+  text?: string;
+  url: string;
+  background_color?: string;
+  text_color?: string;
+  padding?: number;
+  border_radius?: number;
+  align?: 'left' | 'center' | 'right';
+}
+
+export interface BaseBlock<TType extends BlockType, TProps> {
+  id: string;
+  type: TType;
+  version: 1;
+  props: TProps;
+}
+
+export type LogoBlock = BaseBlock<'logo', LogoProps>;
+export type HeadingBlock = BaseBlock<'heading', HeadingProps>;
+export type ParagraphBlock = BaseBlock<'paragraph', ParagraphProps>;
+export type ButtonBlock = BaseBlock<'button', ButtonProps>;
+export type Block = LogoBlock | HeadingBlock | ParagraphBlock | ButtonBlock;
+
+/** Strict post-interpolation URL regex (Fix 4 — same as SQL). */
+const SAFE_URL_RE = /^(https?:\/\/|mailto:|#|\/)[^\s]*$/;
+/** Pre-interpolation URL regex — allows {{var}} as a placeholder. */
+const RAW_URL_RE = /^(https?:\/\/|mailto:|\{\{).*$/;
+
+/** Defensive color sanitizer. Returns null if not a valid 6-digit hex. */
+function sanitizeColor(value: string | undefined, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  if (/^#[0-9A-Fa-f]{6}$/.test(value)) return value;
+  return fallback;
+}
+
+/** Defensive integer clamp. */
+function clampInt(value: number | undefined, lo: number, hi: number, fallback: number): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.min(hi, Math.max(lo, Math.floor(value)));
+}
+
+/** MIRROR: public.render_block_logo(jsonb). */
+export function renderBlockLogo(p: LogoProps): string {
+  if (typeof p?.src !== 'string' || !/^https?:\/\//.test(p.src)) return '';
+  const safeSrc = escapeHtml(p.src);
+  const alt = escapeHtml(String(p.alt ?? '').slice(0, 200));
+  const maxH = clampInt(p.max_height, 20, 200, 60);
+  const maxW = clampInt(p.max_width, 50, 600, 200);
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto;"><tr><td style="text-align:center;">`
+    + `<img src="${safeSrc}" alt="${alt}" style="display:block;max-height:${maxH}px;max-width:${maxW}px;height:auto;width:auto;border:0;">`
+    + `</td></tr></table>`;
+}
+
+/** MIRROR: public.render_block_heading(jsonb). */
+export function renderBlockHeading(p: HeadingProps): string {
+  const text = String(p?.text ?? '').slice(0, 200);
+  const level = p?.level === 2 ? 2 : p?.level === 3 ? 3 : 1;
+  const color = sanitizeColor(p?.color, '#111827');
+  const align = p?.align === 'left' ? 'left' : p?.align === 'right' ? 'right' : 'center';
+  const fontSize = clampInt(p?.font_size, 12, 72, 24);
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:16px 0;"><tr><td style="text-align:${align};">`
+    + `<h${level} style="margin:0;color:${color};font-size:${fontSize}px;line-height:1.3;font-weight:700;">`
+    + text
+    + `</h${level}>`
+    + `</td></tr></table>`;
+}
+
+/** MIRROR: public.render_block_paragraph(jsonb). */
+export function renderBlockParagraph(p: ParagraphProps): string {
+  const text = String(p?.text ?? '').slice(0, 5000);
+  const align = p?.align === 'right' ? 'right' : p?.align === 'justify' ? 'justify' : 'left';
+  const color = sanitizeColor(p?.color, '#374151');
+  const fontSize = clampInt(p?.font_size, 12, 32, 16);
+  const italic = p?.italic === true;
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:12px 0;"><tr><td style="text-align:${align};">`
+    + `<p style="margin:0;color:${color};font-size:${fontSize}px;line-height:1.5;${italic ? 'font-style:italic;' : ''}">`
+    + text
+    + `</p>`
+    + `</td></tr></table>`;
+}
+
+/**
+ * MIRROR: public.render_block_button(jsonb). FIX 4: post-interpolation URL
+ * re-validation. If `url` is `{{x}}` and `sampleData.x = 'javascript:alert(1)'`,
+ * the substituted string must be re-validated against SAFE_URL_RE; a failure
+ * degrades to a `<span>` styled like the button (not a clickable `<a>`).
+ */
+export function renderBlockButton(p: ButtonProps, sampleData?: Record<string, unknown>): string {
+  const rawUrl = String(p?.url ?? '');
+  const text = escapeHtml(String(p?.text ?? 'Click aquí').slice(0, 100));
+  const bg = sanitizeColor(p?.background_color, '#4f46e5');
+  const fg = sanitizeColor(p?.text_color, '#FFFFFF');
+  const padding = clampInt(p?.padding, 4, 32, 12);
+  const radius = clampInt(p?.border_radius, 0, 24, 6);
+  const align = p?.align === 'left' ? 'left' : p?.align === 'right' ? 'right' : 'center';
+  const btnStyle = `display:inline-block;background:${bg};color:${fg};padding:${padding}px 24px;text-decoration:none;border-radius:${radius}px;font-weight:bold;font-size:16px;`;
+
+  let safeUrl = '';
+  if (RAW_URL_RE.test(rawUrl)) {
+    safeUrl = _interpolateSafe(rawUrl, sampleData ?? {});
+  }
+
+  let openTag: string;
+  let closeTag: string;
+  if (SAFE_URL_RE.test(safeUrl)) {
+    openTag = `<a href="${escapeHtml(safeUrl)}" style="${btnStyle}">`;
+    closeTag = `</a>`;
+  } else {
+    openTag = `<span style="${btnStyle}cursor:default;">`;
+    closeTag = `</span>`;
+  }
+
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:${align};">`
+    + openTag + text + closeTag
+    + `</td></tr></table>`;
+}
+
+/** MIRROR: public.render_blocks_to_html(jsonb). */
+export function renderBlocksToHtml(blocks: Block[] | null | undefined, sampleData?: Record<string, unknown>): string {
+  if (!Array.isArray(blocks)) return '';
+  let html = '';
+  for (const block of blocks) {
+    if (!block || typeof block !== 'object') continue;
+    switch (block.type) {
+      case 'logo':
+        html += renderBlockLogo((block as LogoBlock).props);
+        break;
+      case 'heading':
+        html += renderBlockHeading((block as HeadingBlock).props);
+        break;
+      case 'paragraph':
+        html += renderBlockParagraph((block as ParagraphBlock).props);
+        break;
+      case 'button':
+        html += renderBlockButton((block as ButtonBlock).props, sampleData);
+        break;
+      default:
+        // Unknown type → empty (graceful forward-compat, matches SQL).
+        html += '';
+    }
+  }
+  return html;
+}
+
+/**
+ * MIRROR: public.default_email_body(text). Returns the per-type default HTML
+ * (single-arg, no companyId — Fix 6). Used by the Angular auto-seed flow:
+ * client parses this HTML into Block[]. Placeholder branding (#4f46e5 primary,
+ * no logo); the client parser recognizes structure via regex and replaces
+ * with real branding when re-rendering.
+ */
+export function defaultEmailBody(emailType: string): string {
+  switch (emailType) {
+    case 'booking_confirmation':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Reserva confirmada</h1></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;"><tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Servicio</td><td style="padding:8px 0;border-bottom:1px solid #eee;">{{servicio}}</td></tr><tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #eee;">{{fecha}}</td></tr><tr><td style="padding:8px 0;font-weight:bold;">Hora</td><td style="padding:8px 0;">{{hora}}</td></tr></table>`;
+    case 'invoice':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Factura {{numero_factura}}</h1></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invoice_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Ver factura PDF</a></td></tr></table>`;
+    case 'quote':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Presupuesto {{numero_presupuesto}}</h1></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{quote_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Ver presupuesto</a></td></tr></table>`;
+    case 'consent':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Solicitud de consentimiento RGPD</h1><p>Solicitamos su consentimiento para el tratamiento de sus datos personales.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{consent_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Revisar y validar datos</a></td></tr></table>`;
+    case 'invite':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Has recibido una invitación para unirte.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_owner':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Invitación para crear tu empresa</h1><p>Has recibido una invitación para crear tu empresa.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar e introducir datos de empresa</a></td></tr></table>`;
+    case 'invite_admin':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Tu rol: <strong>Administrador</strong></p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_member':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Tu rol: <strong>Miembro</strong></p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_professional':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Tu rol: <strong>Profesional</strong></p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_agent':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Tu rol: <strong>Agente</strong></p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_marketer':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Tu rol: <strong>Marketing</strong></p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'invite_client':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Te han invitado</h1><p>Después de aceptar, podrás acceder al portal de clientes.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{invite_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Aceptar invitación</a></td></tr></table>`;
+    case 'waitlist':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">¡Estás en la lista!</h1><p>Te avisaremos cuando puedas reservar.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{waitlist_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">Reservar ahora</a></td></tr></table>`;
+    case 'inactive_notice':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td><h1 style="color:#4f46e5;margin:0 0 16px 0;">Clientes inactivos</h1><p>Los siguientes clientes no han tenido actividad reciente:</p><ul style="list-style:none;padding:0;"></ul></td></tr></table>`;
+    case 'generic':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td><p style="font-size:16px;color:#333;">{{message}}</p></td></tr></table>`;
+    case 'google_review':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">¡Gracias por tu visita!</h1><p>Tu opinión nos ayuda a seguir mejorando.</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{review_url}}" style="display:inline-block;background:#4285f4;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">★★★★★ Dejar Google Review</a></td></tr></table>`;
+    case 'booking_reminder':
+    case 'booking_cancellation':
+    case 'password_reset':
+    case 'magic_link':
+    case 'welcome':
+    case 'staff_credentials':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td><p style="font-size:16px;color:#333;">{{message}}</p></td></tr></table>`;
+    case 'budget_created':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Nuevo presupuesto disponible</h1><p>{{intro}}</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{payment_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;">Ver presupuesto</a></td></tr></table>`;
+    case 'budget_reminder':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Tu presupuesto vence pronto</h1><p>{{intro}}</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{payment_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;">Ver presupuesto</a></td></tr></table>`;
+    case 'budget_overdue':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#dc2626;margin:0 0 16px 0;">Presupuesto vencido</h1><p>{{intro}}</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{payment_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;">Ver presupuesto</a></td></tr></table>`;
+    case 'booking_change':
+      return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0;"><tr><td style="text-align:center;"><h1 style="color:#4f46e5;margin:0 0 16px 0;">Tu reserva se ha modificado</h1><p>{{service_name}}</p><p><strong>Fecha y hora:</strong> {{starts_at}}</p></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td style="text-align:center;"><a href="{{booking_url}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;">Ver detalles</a></td></tr></table>`;
+    default:
+      throw new Error(`Unsupported email_type: ${emailType}`);
+  }
+}
+
 // ── Branding helpers (extracted verbatim from send-branded-email) ────────────
 
 /** Resolve the company address from `companies.settings.address`. */
@@ -891,10 +1134,17 @@ const RENDERERS: Record<EmailType, Renderer> = {
  * canonical preview that the live editor shows — byte-identical (modulo
  * `{{var}}` substitution) to what `send-branded-email` actually sends.
  *
+ * NEW in PR1 (email-block-editor): accepts `customBlocks?: Block[] | null`
+ * which takes precedence over `customBody` and the per-type default. Mirrors
+ * the SQL `email_render_template` top-level dispatch (blocks → body → default).
+ *
  * Flow:
- *   1. Look up the per-type renderer in `RENDERERS`.
- *   2. Each renderer computes `subject` (honoring customSubject) and `html`
- *      (honoring customBody / customHeader / customButtonText).
+ *   1. Top-level dispatch: if customBlocks is non-empty, render via
+ *      renderBlocksToHtml. Else if customBody is set, use it. Else look up
+ *      the per-type renderer in `RENDERERS` for the default branch.
+ *   2. The per-type renderer computes `subject` (honoring customSubject) and
+ *      `html` (honoring customBody / customHeader / customButtonText inside
+ *      the per-type branch — verbatim TS mirror of the SQL behavior).
  *   3. Inject email_branding font-family + background-color into the `<body>`
  *      style (only for templates that use Arial as the baseline — leaves
  *      other templates untouched).
@@ -908,15 +1158,28 @@ export function renderTemplate(
   customBody?: string | null,
   customHeader?: string | null,
   customButtonText?: string | null,
+  customBlocks?: Block[] | null,
 ): RenderResult {
   const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
   const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
   const fontFamily = sanitizeFontFamily(company.settings?.email_branding?.font_family || 'Arial');
 
-  const renderer = RENDERERS[emailType];
-  let { subject, html } = renderer
-    ? renderer({ company, data, customSubject, customBody, customHeader, customButtonText })
-    : renderGeneric({ company, data, customSubject, customBody, customHeader, customButtonText });
+  // Top-level dispatch (NEW in PR1). Mirrors SQL email_render_template.
+  let subject: string;
+  let html: string;
+  if (Array.isArray(customBlocks) && customBlocks.length > 0) {
+    // Blocks path wins over body and per-type default.
+    // subject is taken from customSubject (no per-type renderer called).
+    subject = customSubject || `Mensaje de ${company.name}`;
+    html = renderBlocksToHtml(customBlocks, data as Record<string, unknown>);
+  } else {
+    const renderer = RENDERERS[emailType];
+    const rendered = renderer
+      ? renderer({ company, data, customSubject, customBody, customHeader, customButtonText })
+      : renderGeneric({ company, data, customSubject, customBody, customHeader, customButtonText });
+    subject = rendered.subject;
+    html = rendered.html;
+  }
 
   // Apply email_branding: inject font-family and background-color into <body> style
   if (html) {
@@ -926,7 +1189,7 @@ export function renderTemplate(
     );
   }
 
-  // Append compliance footer to every template, including customBody — no opt-out.
+  // Append compliance footer to every template, including blocks / customBody — no opt-out.
   if (html) {
     html = appendComplianceFooter(html, company, company.id);
   }
