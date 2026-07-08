@@ -419,6 +419,49 @@ Deno.test('blocks:defaultEmailBody — unknown type throws', () => {
 
 // ── Test: renderTemplate — customBlocks wins over customBody (precedence) ────
 
+// ── PR1-6type-fix regression tests ─────────────────────────────────────────
+//
+// Spec AC3: 6 simple types accept `custom_body_template` edits and preview
+// reflects the change. Before PR1-6type-fix, the SQL `email_render_template`
+// dropped `p_custom_body` for these 6 types while the TS mirror (which funnels
+// them through `renderGeneric`) already honored `customBody`. Migration
+// `20260710000001_email_block_6type_hotfix.sql` closes the SQL gap; these
+// tests assert the TS side honors `customBody` for each of the 6 simple
+// types so SQL ≡ TS parity is locked.
+
+const SIMPLE_TYPES_HONORING_CUSTOM_BODY: EmailType[] = [
+  'booking_reminder',
+  'booking_cancellation',
+  'password_reset',
+  'magic_link',
+  'welcome',
+  'staff_credentials',
+];
+
+for (const t of SIMPLE_TYPES_HONORING_CUSTOM_BODY) {
+  Deno.test(`6type:${t} — honors customBody (PR1-6type-fix)`, () => {
+    const customBody = `<p>Custom Hello ${t}</p>`;
+    const { html } = renderTemplate(
+      t,
+      buildBrandingCompany(),
+      { message: 'ignored' } as unknown as TemplateData,
+      null,
+      customBody,
+    );
+    console.assert(
+      html.includes(`Custom Hello ${t}`),
+      `${t}: customBody MUST be interpolated into the rendered html — got "${html.slice(0, 200)}…"`,
+    );
+    // The bare default rendering for these 6 types is `<p style="font-size:16px;">{{message}}</p>`,
+    // so the literal token `{{message}}` should NOT leak into the output when
+    // a custom body is provided.
+    console.assert(
+      !html.includes('{{message}}'),
+      `${t}: literal {{message}} token must NOT leak when customBody is set`,
+    );
+  });
+}
+
 Deno.test('blocks:renderTemplate — customBlocks wins over customBody', () => {
   const blocks: Block[] = [
     { id: 'a', type: 'heading', version: 1, props: { text: 'BLOCK_HEADING', level: 1 } } as HeadingBlock,
