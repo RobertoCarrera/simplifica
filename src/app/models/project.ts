@@ -56,9 +56,6 @@ export interface ProjectTask {
     is_completed: boolean;
     start_date?: string;
     due_date?: string;
-    /** Transient runtime flag set by parent component (validateSubtaskDateConflicts)
-     *  when a subtask's date window falls outside the parent's. Not a DB column. */
-    date_conflict?: boolean;
     assigned_to?: string;
     position?: number;
     created_at?: string;
@@ -118,7 +115,7 @@ export interface Project {
     // Relations (joined)
     client?: {
         id: string;
-        name: string;
+        name?: string;
         surname?: string; // For individuals
         business_name?: string; // For companies
         auth_user_id?: string;
