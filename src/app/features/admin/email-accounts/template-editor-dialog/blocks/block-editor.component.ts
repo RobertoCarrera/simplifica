@@ -69,6 +69,8 @@ import {
   PARAGRAPH_DEFAULTS,
   BUTTON_DEFAULTS,
 } from './block-types';
+import { defaultHtmlToBlocks, makeParagraphBlock } from './block-parser';
+import { autoMigrate, AutoMigrateResult } from './auto-migrate';
 import { CompanyEmailSetting, EmailType } from '../../../../../models/company-email.models';
 import {
   CompanyEmailService,
@@ -191,6 +193,14 @@ export class BlockEditorComponent {
 
   // Save output — parent dialog persists to custom_blocks.
   readonly saved = output<BlockEditorSavePayload>();
+
+  /**
+   * PR2b: surfaces a one-shot event when the auto-migrate flow produced
+   * a fallback (single ParagraphBlock with the first 5000 chars of the
+   * legacy body). The parent dialog listens to this and shows a yellow
+   * MatSnackBar / banner so the user knows their template was truncated.
+   */
+  readonly migrationFallback = output<{ reason: 'parse-error' | 'too-large' }>();
 
   // Signals for template state.
   readonly previewHtml = signal<string>('');
@@ -501,15 +511,22 @@ export class BlockEditorComponent {
   // ── Auto-seed (decision 3 of spec id 1945) ───────────────────────────
 
   /**
-   * If both `custom_blocks` and `custom_body_template` are NULL,
-   * fetch the per-type default HTML and parse it into a Block[].
-   * Best-effort: failures are swallowed; the preview pipeline already
-   * reflects the default HTML via the SQL renderer's per-type default
-   * branch.
+   * PR2b auto-seed + auto-migrate flow. Three branches:
    *
-   * Uses { emitEvent: false } so the FormArray mutation does NOT fire
-   * the preview pipeline (the parent's valueChanges is already wired
-   * to render the default via the RPC).
+   *  1. `custom_blocks != null` — already populated. Hydrate the
+   *     FormArray from the saved blocks and return.
+   *  2. `custom_blocks == null` AND `custom_body_template != null` —
+   *     LEGACY setting. Run the auto-migrate helper (parse the legacy
+   *     HTML → Block[] → persist to custom_blocks). Surface a
+   *     `migrationFallback` event when the helper had to fall back to
+   *     a single ParagraphBlock.
+   *  3. `custom_blocks == null` AND `custom_body_template == null` —
+   *     fresh / un-customized setting. Auto-seed: fetch the per-type
+   *     default HTML, parse it, populate the FormArray.
+   *
+   * All three branches use `{ emitEvent: false }` so the FormArray
+   * mutation does NOT fire the preview pipeline (the parent's
+   * valueChanges is already wired to render via the RPC).
    */
   private async runAutoSeed(): Promise<void> {
     const setting = this.setting();
@@ -520,10 +537,23 @@ export class BlockEditorComponent {
       this.populateBlocks(blocks ?? [], { emitEvent: false });
       return;
     }
-    if (setting.custom_body_template != null && setting.custom_body_template !== '') {
-      // Legacy setting — auto-migrate is PR2b. For PR2a we leave the
-      // FormArray empty; the parent's TipTap+body field still holds the
-      // legacy content (rendered via custom_body precedence).
+    if (
+      setting.custom_body_template != null &&
+      setting.custom_body_template !== ''
+    ) {
+      // Legacy setting — run the auto-migrate flow.
+      const result: AutoMigrateResult = await autoMigrate(
+        setting,
+        this.primaryColor(),
+        this.companyEmail,
+      );
+      this.populateBlocks(result.blocks, { emitEvent: false });
+      if (result.fallbackApplied) {
+        this.migrationFallback.emit({ reason: 'parse-error' });
+      }
+      if (result.blocks.length > 0) {
+        this.expandedIndex.set(0);
+      }
       return;
     }
     try {
@@ -541,121 +571,13 @@ export class BlockEditorComponent {
 }
 
 /**
- * Parse the per-type default HTML returned by `default_email_body(text)`
- * into a Block[] using regex heuristics. Single source of truth lives
- * in supabase/functions/_shared/email-templates.ts (the SQL default is
- * emitted with #4f46e5 primary, no logo).
- *
- * Failure modes (per spec id 1945 §5):
- *   - No recognized patterns → return [single ParagraphBlock with raw inner text]
- *   - Malformed HTML → catch and return single ParagraphBlock fallback
+ * PR2b note: the `defaultHtmlToBlocks` parser and `makeParagraphBlock`
+ * helper used to live here. They were extracted to `./block-parser.ts`
+ * so the auto-migrate flow in `./auto-migrate.ts` can use the SAME
+ * parser (spec id 1945 §9 explicitly requires this — duplicating the
+ * logic would be a maintenance hazard). The named exports above are
+ * re-exported from `./block-parser.ts` for backward compatibility with
+ * the existing tests (block-editor.component.spec.ts imports
+ * `defaultHtmlToBlocks` from this file).
  */
-export function defaultHtmlToBlocks(
-  html: string,
-  primaryColor: string | null,
-): Block[] {
-  if (!html) return [makeParagraphBlock('')];
-  const blocks: Block[] = [];
-
-  // First <h1> → HeadingBlock.
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  if (h1Match) {
-    blocks.push({
-      id: crypto.randomUUID(),
-      type: 'heading',
-      version: 1,
-      props: {
-        text: stripTags(h1Match[1]).trim(),
-        level: 1,
-        color: primaryColor ?? '#111827',
-        align: 'center',
-        font_size: 28,
-      },
-    });
-  }
-
-  // First <img> in <table> → LogoBlock (PR2b will render editable).
-  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-  if (imgMatch && /^https?:\/\//.test(imgMatch[1])) {
-    blocks.push({
-      id: crypto.randomUUID(),
-      type: 'logo',
-      version: 1,
-      props: {
-        src: imgMatch[1],
-        alt: '',
-        max_height: 80,
-        max_width: 200,
-      },
-    });
-  }
-
-  // First <a> with background: → ButtonBlock.
-  const btnMatch = html.match(
-    /<a[^>]+style=["'][^"']*background:[^"']*["'][^>]*>([^<]+)<\/a>/i,
-  );
-  if (btnMatch) {
-    const urlMatch = html.match(/<a[^>]+href=["']([^"']+)["'][^>]*>/i);
-    blocks.push({
-      id: crypto.randomUUID(),
-      type: 'button',
-      version: 1,
-      props: {
-        text: stripTags(btnMatch[1]).trim(),
-        url: urlMatch ? urlMatch[1] : '',
-        background_color: primaryColor ?? '#4f46e5',
-        text_color: '#ffffff',
-        padding: 12,
-        border_radius: 6,
-        align: 'center',
-      },
-    });
-  }
-
-  // Remaining → ParagraphBlock with the leftover inner text.
-  const remaining = stripTags(
-    html
-      .replace(/<h1[\s\S]*?<\/h1>/gi, '')
-      .replace(/<img[^>]+>/gi, '')
-      .replace(/<a[^>]+>[\s\S]*?<\/a>/gi, ''),
-  ).trim();
-  if (remaining) {
-    blocks.push({
-      id: crypto.randomUUID(),
-      type: 'paragraph',
-      version: 1,
-      props: {
-        text: remaining.slice(0, 5000),
-        align: 'left',
-        color: '#374151',
-        font_size: 16,
-        italic: false,
-      },
-    });
-  }
-
-  // Fallback: never leave the canvas blank (spec §5 parse failure).
-  if (blocks.length === 0) {
-    return [makeParagraphBlock(stripTags(html).slice(0, 5000))];
-  }
-  return blocks;
-}
-
-function makeParagraphBlock(text: string): Block {
-  return {
-    id: crypto.randomUUID(),
-    type: 'paragraph',
-    version: 1,
-    props: {
-      text,
-      align: 'left',
-      color: '#374151',
-      font_size: 16,
-      italic: false,
-    },
-  };
-}
-
-function stripTags(s: string): string {
-  return s.replace(/<[^>]+>/g, '');
-}
+export { defaultHtmlToBlocks, makeParagraphBlock } from './block-parser';
