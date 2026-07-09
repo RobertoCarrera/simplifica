@@ -2279,6 +2279,33 @@
       "toast": {
         "saved": "Plantilla guardada",
         "saveError": "Error al guardar la plantilla"
+      },
+      "blockEditor": {
+        "addBlock": "+ Añadir bloque",
+        "menu": {
+          "logo": "Logo",
+          "heading": "Encabezado",
+          "paragraph": "Párrafo",
+          "button": "Botón"
+        },
+        "logo": {
+          "tooltipMissing": "Configura el logo de tu empresa para añadir este bloque"
+        },
+        "actions": {
+          "edit": "Editar",
+          "duplicate": "Duplicar",
+          "delete": "Eliminar",
+          "deleteConfirm": "¿Eliminar este bloque?",
+          "dragHandle": "Mover bloque"
+        },
+        "heading": {
+          "levelLabel": "Nivel",
+          "textLabel": "Texto",
+          "colorLabel": "Color",
+          "alignLabel": "Alineación",
+          "fontSizeLabel": "Tamaño de fuente",
+          "emptyWarning": "El bloque está vacío"
+        }
       }
     },
     "toast": {

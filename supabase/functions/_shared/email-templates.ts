@@ -331,6 +331,7 @@ export function renderBlocksToHtml(blocks: Block[] | null | undefined, sampleDat
         html += renderBlockParagraph((block as ParagraphBlock).props);
         break;
       case 'button':
+        // Button block already interpolates its URL via sampleData.
         html += renderBlockButton((block as ButtonBlock).props, sampleData);
         break;
       default:
@@ -338,7 +339,15 @@ export function renderBlocksToHtml(blocks: Block[] | null | undefined, sampleDat
         html += '';
     }
   }
-  return html;
+  // W2 fix (PR2a verify recommendation): outer-interpolate the joined
+  // HTML so {{var}} tokens in heading/paragraph text (and any other
+  // block-level content that the SQL path substitutes via
+  // interpolate_safe(render_blocks_to_html(...), p_sample_data) at
+  // migration line 471) reach the Edge-delivered email body correctly.
+  // Button URL is already interpolated by renderBlockButton above (with
+  // post-interp URL re-validation per Fix 4), so the outer wrap is a
+  // no-op for `<a href>` and a fix for the rest of the block content.
+  return _interpolateSafe(html, sampleData ?? {});
 }
 
 /**

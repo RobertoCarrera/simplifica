@@ -14,6 +14,7 @@ import {
   UpdateEmailAccountDto,
   EmailType,
 } from '../models/company-email.models';
+import type { Block } from '../features/admin/email-accounts/template-editor-dialog/blocks/block-types';
 
 /**
  * Typed error surfaced by `previewTemplate` when the underlying RPC rejects
@@ -338,6 +339,40 @@ export class CompanyEmailService {
     );
   }
 
+  /**
+   * PR2a (email-block-editor): persist the typed block array as
+   * `custom_blocks` JSONB. Called by the BlockEditorComponent's
+   * auto-migrate flow (in PR2b) and by the `saved` event handler in
+   * TemplateEditorDialogComponent. Does NOT touch the legacy
+   * custom_body_template / custom_button_text columns — those stay
+   * untouched for rollback safety per spec id 1945 §9.
+   *
+   * `settingId` is the company_email_settings.id row identifier
+   * (caller supplies — typically from the dialog's `data.setting`).
+   */
+  updateCustomBlocks(
+    settingId: string,
+    blocks: Block[],
+  ): Observable<CompanyEmailSetting> {
+    return from(
+      this.supabase
+        .from('company_email_settings')
+        .update({
+          custom_blocks: blocks,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', settingId)
+        .select()
+        .single()
+    ).pipe(
+      map((res) => {
+        if (res.error) throw res.error;
+        return res.data as CompanyEmailSetting;
+      }),
+      catchError((err) => throwError(() => err))
+    );
+  }
+
   toggleSetting(
     settingId: string,
     isActive: boolean
@@ -431,10 +466,11 @@ export class CompanyEmailService {
     emailType: EmailType,
     sampleData: Record<string, unknown>,
     customFields: {
-      custom_subject?: string;
-      custom_body?: string;
-      custom_header?: string;
-      custom_button_text?: string;
+      custom_subject?: string | null;
+      custom_body?: string | null;
+      custom_header?: string | null;
+      custom_button_text?: string | null;
+      custom_blocks?: Block[] | null;
     }
   ): Observable<{ html: string; sampleData: Record<string, unknown> }> {
     return from(
@@ -446,6 +482,7 @@ export class CompanyEmailService {
         p_custom_body: customFields.custom_body ?? null,
         p_custom_header: customFields.custom_header ?? null,
         p_custom_button_text: customFields.custom_button_text ?? null,
+        p_custom_blocks: customFields.custom_blocks ?? null,
       })
     ).pipe(
       map((res) => {
@@ -465,8 +502,42 @@ export class CompanyEmailService {
         if (code === '42501') {
           return throwError(() => new ForbiddenPreviewError(err));
         }
+        // P0001 (Postgres raise_exception) — surface err.details so the
+        // dialog can localize block-level validation errors. The dialog's
+        // error handler parses err.details JSON for { block_index, block_type, prop }.
+        if (code === 'P0001') {
+          return throwError(() => err);
+        }
         return throwError(() => err);
       })
+    );
+  }
+
+  /**
+   * PR2a (email-block-editor): fetch the per-type default HTML so the
+   * BlockEditorComponent can auto-seed the canvas with parsed blocks on
+   * first open. Calls the SECURITY DEFINER RPC `default_email_body(text)`
+   * added in PR1 (migration lines 320-398).
+   *
+   * Single argument by design (Fix 6 in design id 1946): defaults are not
+   * company-scoped, they depend only on the email type. The Angular client
+   * parses the returned HTML into a Block[] via `defaultHtmlToBlocks()`.
+   *
+   * @param emailType one of the 26 EmailType values
+   * @returns Observable<string> raw HTML string (parsed upstream)
+   */
+  getDefaultBody(emailType: EmailType): Observable<string> {
+    return from(
+      this.supabase.rpc('default_email_body', {
+        p_email_type: emailType,
+      })
+    ).pipe(
+      map((res) => {
+        if (res.error) throw res.error;
+        // RPC returns text directly; fall back to '' when null/undefined.
+        return (res.data ?? '') as string;
+      }),
+      catchError((err) => throwError(() => err))
     );
   }
 

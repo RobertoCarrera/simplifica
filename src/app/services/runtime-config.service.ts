@@ -13,6 +13,10 @@ export interface RuntimeConfig {
   // Optional feature flags toggled at runtime without rebuild
   features?: {
     anychatConversationsEnabled?: boolean;
+    // PR2a (email-block-editor): when true, TemplateEditorDialogComponent
+    // swaps the legacy TipTap + 4-field UI for the Divi-style block editor.
+    // Default OFF in production; ON in dev/staging until PR2b ships.
+    emailBlockEditorEnabled?: boolean;
   };
 }
 
@@ -55,6 +59,8 @@ export class RuntimeConfigService {
         supportEmail: (environment as any)?.supportEmail ?? '',
         features: {
           anychatConversationsEnabled: true,
+          // emailBlockEditorEnabled: default OFF — flag-flip PR after PR2b merges.
+          emailBlockEditorEnabled: false,
         },
       };
 
@@ -75,6 +81,13 @@ export class RuntimeConfigService {
             cfg?.features?.anychatConversationsEnabled === false
               ? false
               : (defaults.features?.anychatConversationsEnabled ?? true),
+          // PR2a: emailBlockEditorEnabled — strict OFF unless explicitly true
+          // in runtime-config.json. Production keeps the legacy TipTap UI
+          // until PR2b (Logo/Paragraph/Button editors) ships.
+          emailBlockEditorEnabled:
+            cfg?.features?.emailBlockEditorEnabled === true
+              ? true
+              : (defaults.features?.emailBlockEditorEnabled ?? false),
         },
       };
 
@@ -91,6 +104,7 @@ export class RuntimeConfigService {
         supportEmail: (environment as any)?.supportEmail ?? '',
         features: {
           anychatConversationsEnabled: true,
+          emailBlockEditorEnabled: false,
         },
       };
     }
@@ -106,6 +120,10 @@ export class RuntimeConfigService {
         },
         edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
         supportEmail: (environment as any)?.supportEmail ?? '',
+        features: {
+          anychatConversationsEnabled: true,
+          emailBlockEditorEnabled: false,
+        },
       } as RuntimeConfig;
     }
     return this.config;
