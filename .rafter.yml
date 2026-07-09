@@ -39,3 +39,25 @@ ignores:
       (service id). Per RFC 9562, UUIDs are non-secret identifiers.
       Leaking a UUID allows row existence probing, not impersonation
       or privilege escalation.
+
+# Rule R-D6F0B: "Block commit marker found: your Twilio auth token to git"
+# Scope: supabase/config.toml lines 141 and 150
+# Reason: The flagged strings are NOT committed secrets. They use
+# Supabase's env() substitution syntax which the Rafter scanner does
+# not understand. The actual values are pulled from environment at
+# runtime, not from this file.
+ignores:
+  - id: "R-D6F0B-envsubst"
+    rule: "R-D6F0B"
+    paths:
+      - "supabase/config.toml"
+    reason: |
+      The flagged values are env() substitution placeholders
+      (env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN) and
+      env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)), not committed secrets.
+      The Supabase config.toml spec uses this syntax specifically to
+      avoid committing secrets. The Rafter scanner does not recognize
+      the env() syntax and flags the entire line as a committed secret,
+      which is a false positive. The comment on the same line even
+      says "Use environment variable substitution instead" which is
+      exactly what is being done.
