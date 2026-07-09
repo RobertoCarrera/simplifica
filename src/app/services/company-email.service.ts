@@ -466,10 +466,10 @@ export class CompanyEmailService {
     emailType: EmailType,
     sampleData: Record<string, unknown>,
     customFields: {
-      custom_subject?: string;
-      custom_body?: string;
-      custom_header?: string;
-      custom_button_text?: string;
+      custom_subject?: string | null;
+      custom_body?: string | null;
+      custom_header?: string | null;
+      custom_button_text?: string | null;
       custom_blocks?: Block[] | null;
     }
   ): Observable<{ html: string; sampleData: Record<string, unknown> }> {

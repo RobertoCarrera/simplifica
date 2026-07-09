@@ -24,11 +24,13 @@
  * Error handling (per design §2.1):
  *   - err.code === '42501' → previewForbidden.set(true) (orange banner)
  *   - err.code === 'P0001' → previewError.set(parsed from err.details)
- *   - else → previewError.set(true)
+ *   - else → previewError.set({blockIndex: -1, ...})
  *
  * Save payload (flag-aware per design §2.0):
  *   - emits { subject, header, blocks: blocksForm.value, button_text: '' }
  *     — parent dialog handles persistence via updateCustomBlocks.
+ *
+ * Plain HTML + custom CSS — no Angular Material dependency.
  */
 import {
   ChangeDetectionStrategy,
@@ -53,8 +55,6 @@ import {
 } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import {
   BlockFormGroup,
   BlockListComponent,
@@ -69,12 +69,11 @@ import {
   PARAGRAPH_DEFAULTS,
   BUTTON_DEFAULTS,
 } from './block-types';
-import { CompanyEmailSetting, EmailType } from '../../../../models/company-email.models';
+import { CompanyEmailSetting, EmailType } from '../../../../../models/company-email.models';
 import {
   CompanyEmailService,
   ForbiddenPreviewError,
-} from '../../../../services/company-email.service';
-import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
+} from '../../../../../services/company-email.service';
 import {
   TemplateEditorDialogData,
 } from '../template-editor-dialog.component';
@@ -101,9 +100,6 @@ export interface BlockValidationError {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatIconModule,
-    MatButtonModule,
-    SafeHtmlPipe,
     BlockListComponent,
     BlockEditorHeaderComponent,
     AddBlockDropdownComponent,
@@ -125,10 +121,10 @@ export interface BlockValidationError {
         (delete)="onDeleteBlock($event)"
       ></app-block-list>
 
-      @if (expandedIndex() !== null) {
+      @if (expandedIndex() !== null && expandedGroup(); as group) {
         <div class="be-expanded" data-testid="block-editor-expanded">
           <app-block-editor-header
-            [formGroup]="expandedGroup()!"
+            [formGroup]="group"
             [primaryColor]="primaryColor()"
           ></app-block-editor-header>
         </div>
@@ -140,8 +136,12 @@ export interface BlockValidationError {
         </p>
       } @else if (previewError() !== null) {
         <p class="be-banner be-banner--error" data-testid="block-preview-error">
-          Bloque {{ previewError()!.blockIndex + 1 }} ({{ previewError()!.blockType }}):
-          propiedad «{{ previewError()!.prop }}» inválida.
+          @if (previewError()!.blockIndex >= 0) {
+            Bloque {{ previewError()!.blockIndex + 1 }} ({{ previewError()!.blockType }}):
+            propiedad «{{ previewError()!.prop }}» inválida.
+          } @else {
+            No se pudo cargar la previsualización
+          }
         </p>
       } @else if (previewLoading() && !previewHtml()) {
         <p class="be-loading" data-testid="block-preview-loading">
@@ -249,32 +249,28 @@ export class BlockEditorComponent {
   // ── Per-type factories (§3 of design) ─────────────────────────────────
 
   private insertHeadingBlock(atIndex?: number): BlockFormGroup {
-    const id = crypto.randomUUID();
+    const id: string = crypto.randomUUID();
     const props = this.fb.group<Record<string, AbstractControl<unknown>>>({
-      level: this.fb.control<1 | 2 | 3>(HEADING_DEFAULTS.level, {
-        nonNullable: true,
-        validators: [Validators.required],
-      }),
-      text: this.fb.control(HEADING_DEFAULTS.text, {
-        nonNullable: true,
-        validators: [Validators.required, Validators.maxLength(200)],
-      }),
-      color: this.fb.control(HEADING_DEFAULTS.color, {
-        nonNullable: true,
-        validators: [Validators.pattern(/^#[0-9A-Fa-f]{6}$/)],
-      }),
-      align: this.fb.control<'left' | 'center' | 'right'>(HEADING_DEFAULTS.align, {
-        nonNullable: true,
-      }),
-      font_size: this.fb.control(HEADING_DEFAULTS.font_size, {
-        nonNullable: true,
-        validators: [Validators.min(12), Validators.max(72)],
-      }),
+      level: this.fb.control<1 | 2 | 3>(HEADING_DEFAULTS.level, [
+        Validators.required,
+      ]),
+      text: this.fb.control(HEADING_DEFAULTS.text, [
+        Validators.required,
+        Validators.maxLength(200),
+      ]),
+      color: this.fb.control(HEADING_DEFAULTS.color, [
+        Validators.pattern(/^#[0-9A-Fa-f]{6}$/),
+      ]),
+      align: this.fb.control<'left' | 'center' | 'right'>(HEADING_DEFAULTS.align),
+      font_size: this.fb.control(HEADING_DEFAULTS.font_size, [
+        Validators.min(12),
+        Validators.max(72),
+      ]),
     });
     const group = this.fb.group({
-      id: this.fb.control(id, { validators: [Validators.required] }),
-      type: this.fb.control<BlockType>('heading', { nonNullable: true }),
-      version: this.fb.control<1>(1, { nonNullable: true }),
+      id: this.fb.control<string>(id, [Validators.required]),
+      type: this.fb.control<BlockType>('heading'),
+      version: this.fb.control<1>(1),
       props,
     });
     if (atIndex == null) this.blocksForm.push(group);
@@ -283,30 +279,25 @@ export class BlockEditorComponent {
   }
 
   private insertParagraphBlock(atIndex?: number): BlockFormGroup {
-    const id = crypto.randomUUID();
+    const id: string = crypto.randomUUID();
     const props = this.fb.group<Record<string, AbstractControl<unknown>>>({
-      text: this.fb.control(PARAGRAPH_DEFAULTS.text, {
-        nonNullable: true,
-        validators: [Validators.maxLength(5000)],
-      }),
+      text: this.fb.control(PARAGRAPH_DEFAULTS.text, [Validators.maxLength(5000)]),
       align: this.fb.control<'left' | 'center' | 'right' | 'justify'>(
         PARAGRAPH_DEFAULTS.align,
-        { nonNullable: true },
       ),
-      color: this.fb.control(PARAGRAPH_DEFAULTS.color, {
-        nonNullable: true,
-        validators: [Validators.pattern(/^#[0-9A-Fa-f]{6}$/)],
-      }),
-      font_size: this.fb.control(PARAGRAPH_DEFAULTS.font_size, {
-        nonNullable: true,
-        validators: [Validators.min(12), Validators.max(32)],
-      }),
-      italic: this.fb.control(PARAGRAPH_DEFAULTS.italic, { nonNullable: true }),
+      color: this.fb.control(PARAGRAPH_DEFAULTS.color, [
+        Validators.pattern(/^#[0-9A-Fa-f]{6}$/),
+      ]),
+      font_size: this.fb.control(PARAGRAPH_DEFAULTS.font_size, [
+        Validators.min(12),
+        Validators.max(32),
+      ]),
+      italic: this.fb.control(PARAGRAPH_DEFAULTS.italic),
     });
     const group = this.fb.group({
-      id: this.fb.control(id, { validators: [Validators.required] }),
-      type: this.fb.control<BlockType>('paragraph', { nonNullable: true }),
-      version: this.fb.control<1>(1, { nonNullable: true }),
+      id: this.fb.control<string>(id, [Validators.required]),
+      type: this.fb.control<BlockType>('paragraph'),
+      version: this.fb.control<1>(1),
       props,
     });
     if (atIndex == null) this.blocksForm.push(group);
@@ -315,40 +306,30 @@ export class BlockEditorComponent {
   }
 
   private insertButtonBlock(atIndex?: number): BlockFormGroup {
-    const id = crypto.randomUUID();
+    const id: string = crypto.randomUUID();
     const props = this.fb.group<Record<string, AbstractControl<unknown>>>({
-      text: this.fb.control(BUTTON_DEFAULTS.text, {
-        nonNullable: true,
-        validators: [Validators.maxLength(100)],
-      }),
-      url: this.fb.control(BUTTON_DEFAULTS.url, {
-        nonNullable: true,
-        validators: [Validators.maxLength(2000)],
-      }),
-      background_color: this.fb.control(BUTTON_DEFAULTS.background_color, {
-        nonNullable: true,
-        validators: [Validators.pattern(/^#[0-9A-Fa-f]{6}$/)],
-      }),
-      text_color: this.fb.control(BUTTON_DEFAULTS.text_color, {
-        nonNullable: true,
-        validators: [Validators.pattern(/^#[0-9A-Fa-f]{6}$/)],
-      }),
-      padding: this.fb.control(BUTTON_DEFAULTS.padding, {
-        nonNullable: true,
-        validators: [Validators.min(4), Validators.max(32)],
-      }),
-      border_radius: this.fb.control(BUTTON_DEFAULTS.border_radius, {
-        nonNullable: true,
-        validators: [Validators.min(0), Validators.max(24)],
-      }),
-      align: this.fb.control<'left' | 'center' | 'right'>(BUTTON_DEFAULTS.align, {
-        nonNullable: true,
-      }),
+      text: this.fb.control(BUTTON_DEFAULTS.text, [Validators.maxLength(100)]),
+      url: this.fb.control(BUTTON_DEFAULTS.url, [Validators.maxLength(2000)]),
+      background_color: this.fb.control(BUTTON_DEFAULTS.background_color, [
+        Validators.pattern(/^#[0-9A-Fa-f]{6}$/),
+      ]),
+      text_color: this.fb.control(BUTTON_DEFAULTS.text_color, [
+        Validators.pattern(/^#[0-9A-Fa-f]{6}$/),
+      ]),
+      padding: this.fb.control(BUTTON_DEFAULTS.padding, [
+        Validators.min(4),
+        Validators.max(32),
+      ]),
+      border_radius: this.fb.control(BUTTON_DEFAULTS.border_radius, [
+        Validators.min(0),
+        Validators.max(24),
+      ]),
+      align: this.fb.control<'left' | 'center' | 'right'>(BUTTON_DEFAULTS.align),
     });
     const group = this.fb.group({
-      id: this.fb.control(id, { validators: [Validators.required] }),
-      type: this.fb.control<BlockType>('button', { nonNullable: true }),
-      version: this.fb.control<1>(1, { nonNullable: true }),
+      id: this.fb.control<string>(id, [Validators.required]),
+      type: this.fb.control<BlockType>('button'),
+      version: this.fb.control<1>(1),
       props,
     });
     if (atIndex == null) this.blocksForm.push(group);
@@ -357,28 +338,25 @@ export class BlockEditorComponent {
   }
 
   private insertLogoBlock(atIndex?: number, src = ''): BlockFormGroup {
-    const id = crypto.randomUUID();
+    const id: string = crypto.randomUUID();
     // src is derived from brand (companies.v_logo_url) — not a
     // user-editable FormControl per spec §3.
     const props = this.fb.group<Record<string, AbstractControl<unknown>>>({
-      src: this.fb.control(src, { nonNullable: true }),
-      alt: this.fb.control(LOGO_DEFAULTS.alt, {
-        nonNullable: true,
-        validators: [Validators.maxLength(200)],
-      }),
-      max_height: this.fb.control(LOGO_DEFAULTS.max_height, {
-        nonNullable: true,
-        validators: [Validators.min(20), Validators.max(200)],
-      }),
-      max_width: this.fb.control(LOGO_DEFAULTS.max_width, {
-        nonNullable: true,
-        validators: [Validators.min(50), Validators.max(600)],
-      }),
+      src: this.fb.control(src),
+      alt: this.fb.control(LOGO_DEFAULTS.alt, [Validators.maxLength(200)]),
+      max_height: this.fb.control(LOGO_DEFAULTS.max_height, [
+        Validators.min(20),
+        Validators.max(200),
+      ]),
+      max_width: this.fb.control(LOGO_DEFAULTS.max_width, [
+        Validators.min(50),
+        Validators.max(600),
+      ]),
     });
     const group = this.fb.group({
-      id: this.fb.control(id, { validators: [Validators.required] }),
-      type: this.fb.control<BlockType>('logo', { nonNullable: true }),
-      version: this.fb.control<1>(1, { nonNullable: true }),
+      id: this.fb.control<string>(id, [Validators.required]),
+      type: this.fb.control<BlockType>('logo'),
+      version: this.fb.control<1>(1),
       props,
     });
     if (atIndex == null) this.blocksForm.push(group);
@@ -410,15 +388,15 @@ export class BlockEditorComponent {
 
   duplicateBlock(index: number): void {
     if (index < 0 || index >= this.blocksForm.controls.length) return;
-    const src = this.blocksForm.at(index).value as Block;
-    const newId = crypto.randomUUID();
+    const src = this.blocksForm.at(index).value as unknown as Block;
+    const newId: string = crypto.randomUUID();
     // Build a copy via the per-type factory at the position right after src.
     const copy = this.insertBlock(src.type, index + 1);
     copy.patchValue({
       id: newId,
       type: src.type,
       version: 1,
-      props: structuredClone(src.props),
+      props: structuredClone(src.props) as unknown as Record<string, unknown>,
     });
   }
 
@@ -431,9 +409,15 @@ export class BlockEditorComponent {
     // Push each block via the matching factory to keep typing concrete.
     for (const b of blocks) {
       const group = this.insertBlock(b.type);
-      group.patchValue({ id: b.id, type: b.type, version: 1, props: b.props }, {
-        emitEvent: opts.emitEvent,
-      });
+      group.patchValue(
+        {
+          id: b.id,
+          type: b.type,
+          version: 1,
+          props: b.props as unknown as Record<string, unknown>,
+        },
+        { emitEvent: opts.emitEvent },
+      );
     }
   }
 
@@ -491,13 +475,19 @@ export class BlockEditorComponent {
     if (e?.code === 'P0001') {
       // err.details may be JSON like: { message, block_index, block_type, prop }
       try {
-        const parsed = JSON.parse(e.details ?? '{}') as Partial<BlockValidationError> & {
+        const parsed = JSON.parse(e.details ?? '{}') as Record<string, unknown> & {
           message?: string;
         };
         this.previewError.set({
-          blockIndex: Number(parsed.blockIndex ?? parsed.block_index ?? -1),
-          blockType: String(parsed.blockType ?? parsed.block_type ?? ''),
-          prop: String(parsed.prop ?? parsed.message ?? ''),
+          blockIndex: Number(
+            (parsed['blockIndex'] as unknown) ?? parsed['block_index'] ?? -1,
+          ),
+          blockType: String(
+            (parsed['blockType'] as unknown) ?? parsed['block_type'] ?? '',
+          ),
+          prop: String(
+            (parsed['prop'] as unknown) ?? parsed['message'] ?? '',
+          ),
         });
       } catch {
         this.previewError.set({ blockIndex: -1, blockType: '', prop: e.message ?? '' });

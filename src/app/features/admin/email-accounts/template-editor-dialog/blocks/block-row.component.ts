@@ -2,15 +2,14 @@
  * BlockRowComponent (PR2a email-block-editor)
  *
  * A single row in the block list. Renders the drag handle, a type
- * icon, a short summary of the block's primary content, and the
- * edit/duplicate/delete actions. The header (@switch router) and
+ * icon (unicode glyph), a short summary of the block's primary content,
+ * and the edit/duplicate/delete actions. The header (@switch router) and
  * inline-expanded typed editor are NOT rendered here — the parent
  * BlockEditorComponent owns expansion state and renders the
  * BlockEditorHeaderComponent below the row when expanded.
  *
- * Props access: `props` is a FormGroup with an UNTYPED control map
- * (see design id 1946 §3). We cast through `unknown` to read the
- * concrete control values per block type.
+ * Plain HTML + custom CSS — no Angular Material dependency. Icons are
+ * unicode glyphs (matches the project's icon-light pattern).
  */
 import {
   ChangeDetectionStrategy,
@@ -20,21 +19,10 @@ import {
   output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  CdkDrag,
-  CdkDragHandle,
-} from '@angular/cdk/drag-drop';
-import { MatIconModule } from '@angular/material/icon';
-import { MatIconButton } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { BlockFormGroup } from './block-list.component';
 import type { Block } from './block-types';
 
-/**
- * Helper: read a control value by key from the untyped props FormGroup.
- * Returns `undefined` when the control is missing (graceful forward-compat
- * for partial block arrays).
- */
 function readProp<T = unknown>(group: BlockFormGroup, key: string): T | undefined {
   const ctrl = group.controls.props.controls[key];
   if (!ctrl) return undefined;
@@ -45,29 +33,22 @@ function readProp<T = unknown>(group: BlockFormGroup, key: string): T | undefine
   selector: 'app-block-row',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    CdkDrag,
-    CdkDragHandle,
-    MatIconModule,
-    MatIconButton,
-    MatTooltipModule,
-  ],
+  imports: [CommonModule, CdkDrag, CdkDragHandle],
   template: `
     <div class="br-row" [class.br-row--expanded]="expanded()" data-testid="block-row">
       <button
         type="button"
         class="br-drag"
         cdkDragHandle
-        [attr.aria-label]="'Mover bloque'"
+        aria-label="Mover bloque"
         data-testid="block-row-drag-handle"
       >
-        <mat-icon>drag_indicator</mat-icon>
+        <span class="br-drag-icon">⋮⋮</span>
       </button>
 
-      <mat-icon class="br-type-icon" data-testid="block-row-type-icon">
+      <span class="br-type-icon" data-testid="block-row-type-icon" [attr.aria-label]="typeLabel()">
         {{ typeIcon() }}
-      </mat-icon>
+      </span>
 
       <span class="br-summary" data-testid="block-row-summary">
         {{ summary() || '(vacío)' }}
@@ -75,31 +56,34 @@ function readProp<T = unknown>(group: BlockFormGroup, key: string): T | undefine
 
       <span class="br-actions">
         <button
-          mat-icon-button
           type="button"
+          class="br-icon-btn"
           (click)="edit.emit()"
-          matTooltip="Editar"
+          aria-label="Editar"
+          title="Editar"
           data-testid="block-row-edit"
         >
-          <mat-icon>edit</mat-icon>
+          ✎
         </button>
         <button
-          mat-icon-button
           type="button"
+          class="br-icon-btn"
           (click)="duplicate.emit()"
-          matTooltip="Duplicar"
+          aria-label="Duplicar"
+          title="Duplicar"
           data-testid="block-row-duplicate"
         >
-          <mat-icon>content_copy</mat-icon>
+          ⎘
         </button>
         <button
-          mat-icon-button
           type="button"
+          class="br-icon-btn br-icon-btn--danger"
           (click)="delete.emit()"
-          matTooltip="Eliminar"
+          aria-label="Eliminar"
+          title="Eliminar"
           data-testid="block-row-delete"
         >
-          <mat-icon>delete</mat-icon>
+          🗑
         </button>
       </span>
     </div>
@@ -126,13 +110,20 @@ function readProp<T = unknown>(group: BlockFormGroup, key: string): T | undefine
       border: none;
       cursor: grab;
       color: #9ca3af;
-      padding: 2px;
+      padding: 2px 4px;
       display: flex;
+      align-items: center;
+      font-size: 14px;
+      line-height: 1;
     }
     .br-drag:active { cursor: grabbing; }
+    .br-drag-icon { letter-spacing: -2px; }
     .br-type-icon {
       color: #4f46e5;
       flex: 0 0 auto;
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
     }
     .br-summary {
       flex: 1 1 auto;
@@ -147,6 +138,18 @@ function readProp<T = unknown>(group: BlockFormGroup, key: string): T | undefine
       display: flex;
       gap: 0;
     }
+    .br-icon-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .br-icon-btn:hover { background: #f3f4f6; color: #111827; }
+    .br-icon-btn--danger:hover { background: #fef2f2; color: #b91c1c; }
   `],
 })
 export class BlockRowComponent {
@@ -159,19 +162,35 @@ export class BlockRowComponent {
   readonly duplicate = output<void>();
   readonly delete = output<void>();
 
-  /** Material icon name per block type. */
+  /** Unicode glyph per block type. */
   readonly typeIcon = computed<string>(() => {
     switch (this.formGroup().controls.type.value) {
       case 'logo':
-        return 'image';
+        return '🖼';
       case 'heading':
-        return 'title';
+        return 'H';
       case 'paragraph':
-        return 'notes';
+        return '¶';
       case 'button':
-        return 'smart_button';
+        return '▶';
       default:
-        return 'help_outline';
+        return '?';
+    }
+  });
+
+  /** Spanish label for the type (used by aria-label). */
+  readonly typeLabel = computed<string>(() => {
+    switch (this.formGroup().controls.type.value) {
+      case 'logo':
+        return 'Logo';
+      case 'heading':
+        return 'Encabezado';
+      case 'paragraph':
+        return 'Párrafo';
+      case 'button':
+        return 'Botón';
+      default:
+        return 'Bloque';
     }
   });
 

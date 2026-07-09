@@ -10,17 +10,19 @@
  * The BlockEditorComponent owns the FormArray and passes one FormGroup
  * down here per row. We do NOT mutate the FormGroup here — typed
  * editors mutate it in place via FormControlName bindings.
+ *
+ * Plain HTML + custom CSS — no Angular Material dependency.
  */
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AbstractControl,
   FormGroup,
-  ReactiveFormsModule,
 } from '@angular/forms';
 import { HeadingBlockEditorComponent } from './heading-block-editor.component';
 import { BlockFormGroup } from './block-list.component';
@@ -29,11 +31,7 @@ import { BlockFormGroup } from './block-list.component';
   selector: 'app-block-editor-header',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    HeadingBlockEditorComponent,
-  ],
+  imports: [CommonModule, HeadingBlockEditorComponent],
   template: `
     <div class="beh-root" data-testid="block-editor-header">
       @switch (formGroup().controls.type.value) {
@@ -82,10 +80,10 @@ export class BlockEditorHeaderComponent {
   readonly primaryColor = input<string | null>(null);
 
   /**
-   * Cast the `props` FormGroup to the typed view that HeadingBlockEditorComponent
-   * expects. The cast is intentional — see design id 1946 §3 for why
-   * `props` is untyped at the FormGroup level (heterogeneous Props
-   * union collapses to `never`).
+   * Cast the `props` FormGroup to the typed view that
+   * HeadingBlockEditorComponent expects. The cast is intentional —
+   * see design id 1946 §3 for why `props` is untyped at the FormGroup
+   * level (heterogeneous Props union collapses to `never`).
    */
   readonly typedProps = computed<FormGroup<Record<string, AbstractControl<unknown>>>>(
     () => this.formGroup().controls.props,

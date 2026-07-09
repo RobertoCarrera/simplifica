@@ -44,30 +44,46 @@
           ></textarea>
         </label>
 
-        <label class="ted-field">
-          <span class="ted-label">Texto del botón</span>
-          <input
-            type="text"
-            formControlName="buttonText"
-            class="ted-input"
-            maxlength="100"
-            data-testid="ted-input-buttonText"
-          />
-        </label>
+        <!--
+          PR2a email-block-editor: flag-gated swap per design id 1946 §7.1.
+          When the flag is ON, the legacy TipTap + Texto del botón UI is
+          replaced by the new block editor. When the flag is OFF
+          (production default), the legacy UI is unchanged.
+        -->
+        @if (blockEditorEnabled()) {
+          <app-block-editor
+            [data]="data"
+            [setting]="data.setting"
+            [subject]="form.controls.subject.value ?? ''"
+            [header]="form.controls.header.value ?? ''"
+            (saved)="onBlockSave($event)"
+          ></app-block-editor>
+        } @else {
+          <label class="ted-field">
+            <span class="ted-label">Texto del botón</span>
+            <input
+              type="text"
+              formControlName="buttonText"
+              class="ted-input"
+              maxlength="100"
+              data-testid="ted-input-buttonText"
+            />
+          </label>
 
-        <label class="ted-field">
-          <span class="ted-label">Cuerpo (HTML)</span>
-          <app-tiptap-editor
-            data-testid="ted-input-body"
-            [content]="form.controls.body.value ?? ''"
-            (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
-            [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"
-            [companyId]="data.companyId"
-          ></app-tiptap-editor>
-          <span class="ted-hint">
-            Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
-          </span>
-        </label>
+          <label class="ted-field">
+            <span class="ted-label">Cuerpo (HTML)</span>
+            <app-tiptap-editor
+              data-testid="ted-input-body"
+              [content]="form.controls.body.value"
+              (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
+              [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"
+              [companyId]="data.companyId"
+            ></app-tiptap-editor>
+            <span class="ted-hint">
+              Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
+            </span>
+          </label>
+        }
       </form>
     </section>
 
@@ -97,6 +113,7 @@
             <div><b>previewLoading():</b> {{ previewLoading() }}</div>
             <div><b>previewError():</b> {{ previewError() }}</div>
             <div><b>previewForbidden():</b> {{ previewForbidden() }}</div>
+            <div><b>blockEditorEnabled():</b> {{ blockEditorEnabled() }}</div>
             <div><b>form.body.value length:</b> {{ form.controls.body.value?.length || 0 }} chars</div>
             <div><b>form.subject.value:</b> "{{ form.controls.subject.value }}"</div>
             <div><b>form.buttonText.value:</b> "{{ form.controls.buttonText.value }}"</div>
@@ -109,7 +126,7 @@
 
         <div
           class="ted-preview-html"
-          [innerHTML]="'TEST_RENDER previewHtml().length=' + previewHtml().length"
+          [innerHTML]="previewHtml() | safeHtml"
           data-testid="ted-preview-content"
         ></div>
       </div>

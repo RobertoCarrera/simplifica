@@ -18,6 +18,8 @@
  * ButtonBlockEditorComponent. The BlockEditorHeaderComponent's @switch
  * (see block-editor-header.component.ts) routes to whichever typed
  * editor matches the block.type.
+ *
+ * Plain HTML + custom CSS — no Angular Material dependency.
  */
 import {
   ChangeDetectionStrategy,
@@ -27,15 +29,12 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
+  AbstractControl,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 
-/** Color palette (12 swatches); index 0 is the company's primary_color. */
 interface PaletteSwatch {
   hex: string;
   label: string;
@@ -68,40 +67,40 @@ type HeadingPropsFormGroup = FormGroup<{
   selector: 'app-heading-block-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-  ],
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="hbe-root" [formGroup]="propsForm()" data-testid="heading-block-editor">
-      <mat-form-field appearance="outline" class="hbe-field hbe-field--small">
-        <mat-label>Nivel</mat-label>
-        <mat-select formControlName="level" data-testid="heading-level">
-          <mat-option [value]="1">H1</mat-option>
-          <mat-option [value]="2">H2</mat-option>
-          <mat-option [value]="3">H3</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <div class="hbe-row">
+        <label class="hbe-field hbe-field--small">
+          <span class="hbe-label">Nivel</span>
+          <select
+            class="hbe-select"
+            formControlName="level"
+            data-testid="heading-level"
+          >
+            <option [value]="1">H1</option>
+            <option [value]="2">H2</option>
+            <option [value]="3">H3</option>
+          </select>
+        </label>
 
-      <mat-form-field appearance="outline" class="hbe-field">
-        <mat-label>Texto</mat-label>
-        <input
-          matInput
-          type="text"
-          formControlName="text"
-          maxlength="200"
-          data-testid="heading-text"
-        />
-        @if (propsForm().controls.text.invalid && propsForm().controls.text.touched) {
-          <mat-error>Máximo 200 caracteres</mat-error>
-        }
-      </mat-form-field>
+        <label class="hbe-field hbe-field--grow">
+          <span class="hbe-label">Texto</span>
+          <input
+            type="text"
+            class="hbe-input"
+            formControlName="text"
+            maxlength="200"
+            data-testid="heading-text"
+          />
+          @if (propsForm().controls.text.invalid && propsForm().controls.text.touched) {
+            <span class="hbe-error">Máximo 200 caracteres</span>
+          }
+        </label>
+      </div>
 
       <div class="hbe-color-row">
-        <span class="hbe-color-label">Color</span>
+        <span class="hbe-label">Color</span>
         <div class="hbe-palette" role="radiogroup" aria-label="Color del encabezado">
           @for (swatch of palette(); track swatch.hex) {
             <button
@@ -110,7 +109,7 @@ type HeadingPropsFormGroup = FormGroup<{
               [class.hbe-swatch--active]="propsForm().controls.color.value === swatch.hex"
               [style.background]="swatch.hex"
               [attr.aria-label]="swatch.label"
-              [attr.title]="swatch.label"
+              [title]="swatch.label"
               (click)="propsForm().controls.color.setValue(swatch.hex)"
               [attr.data-testid]="'heading-color-' + swatch.hex"
             ></button>
@@ -119,14 +118,18 @@ type HeadingPropsFormGroup = FormGroup<{
       </div>
 
       <div class="hbe-row">
-        <mat-form-field appearance="outline" class="hbe-field">
-          <mat-label>Alineación</mat-label>
-          <mat-select formControlName="align" data-testid="heading-align">
-            <mat-option value="left">Izquierda</mat-option>
-            <mat-option value="center">Centro</mat-option>
-            <mat-option value="right">Derecha</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <label class="hbe-field">
+          <span class="hbe-label">Alineación</span>
+          <select
+            class="hbe-select"
+            formControlName="align"
+            data-testid="heading-align"
+          >
+            <option value="left">Izquierda</option>
+            <option value="center">Centro</option>
+            <option value="right">Derecha</option>
+          </select>
+        </label>
 
         <div class="hbe-slider-wrap">
           <label class="hbe-slider-label" for="heading-fontsize">
@@ -162,29 +165,55 @@ type HeadingPropsFormGroup = FormGroup<{
       background: #f9fafb;
       border-radius: 6px;
     }
-    .hbe-field { width: 100%; }
-    .hbe-field--small { max-width: 120px; }
     .hbe-row {
       display: flex;
       gap: 12px;
-      align-items: center;
+      align-items: flex-start;
       flex-wrap: wrap;
     }
-    .hbe-row .hbe-field { flex: 1 1 160px; }
+    .hbe-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hbe-field--small { flex: 0 0 110px; }
+    .hbe-field--grow { flex: 1 1 240px; }
+    .hbe-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .hbe-input,
+    .hbe-select {
+      font: inherit;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0f172a;
+      outline: none;
+    }
+    .hbe-input:focus,
+    .hbe-select:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.18);
+    }
+    .hbe-error { color: #b91c1c; font-size: 11px; }
     .hbe-slider-wrap {
       display: flex;
       flex-direction: column;
       gap: 4px;
       flex: 1 1 200px;
     }
-    .hbe-slider-label { font-size: 12px; color: #6b7280; }
+    .hbe-slider-label { font-size: 11px; color: #6b7280; }
     .hbe-slider { width: 100%; }
     .hbe-color-row {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
-    .hbe-color-label { font-size: 12px; color: #6b7280; }
     .hbe-palette {
       display: grid;
       grid-template-columns: repeat(12, 1fr);
@@ -214,23 +243,21 @@ export class HeadingBlockEditorComponent {
   // Header component (block-editor-header.component.ts) is responsible
   // for casting through `unknown` to access props.controls — here we
   // expose the typed shape directly via a computed signal.
-  readonly propsGroup = input.required<FormGroup<Record<string, import('@angular/forms').AbstractControl<unknown>>>>();
+  readonly propsGroup = input.required<
+    FormGroup<Record<string, AbstractControl<unknown>>>
+  >();
 
-  // Build a typed view of the props group for use in template bindings.
-  readonly propsForm = computed<HeadingPropsFormGroup>(() => {
-    const g = this.propsGroup();
-    return g as unknown as HeadingPropsFormGroup;
-  });
+  readonly propsForm = computed<HeadingPropsFormGroup>(
+    () => this.propsGroup() as unknown as HeadingPropsFormGroup,
+  );
 
-  // Resolve the company primary color from the data (template editor
-  // dialog already passes the companyId; full branding lookup is a
-  // PR2b concern). Falls back to the static palette.
+  // Optional primary color override (passed by the parent dialog).
+  // Falls back to the static palette when null.
   readonly primaryColor = input<string | null>(null);
 
   readonly palette = computed<ReadonlyArray<PaletteSwatch>>(() => {
     const primary = this.primaryColor();
     if (!primary) return PALETTE_FALLBACK;
-    // Move primary to index 0 if it isn't already there.
     const rest = PALETTE_FALLBACK.filter(
       (s) => s.hex.toLowerCase() !== primary.toLowerCase(),
     );

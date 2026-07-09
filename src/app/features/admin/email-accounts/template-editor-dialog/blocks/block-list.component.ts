@@ -9,6 +9,9 @@
  * Mirrors the pattern in src/app/features/calendar/calendar.component.ts
  * (cdkDropList + moveItemInArray), but operates on a Reactive Forms
  * FormArray instead of a plain array.
+ *
+ * Plain HTML + custom CSS — no Angular Material dependency (the project
+ * uses CDK directly per design comments in template-editor-dialog.component.ts).
  */
 import {
   ChangeDetectionStrategy,
@@ -128,9 +131,6 @@ export class BlockListComponent {
   onDrop(event: CdkDragDrop<BlockFormGroup[]>): void {
     const arr = this.formArray();
     if (event.previousIndex === event.currentIndex) return;
-    // moveItemInArray mutates the array in place. FormArray.controls
-    // is the underlying AbstractControl[]; mutation is enough to trigger
-    // the valueChanges pipeline on the next updateValueAndValidity call.
     moveItemInArray(
       arr.controls as unknown as BlockFormGroup[],
       event.previousIndex,

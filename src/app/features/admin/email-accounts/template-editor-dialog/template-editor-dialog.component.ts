@@ -29,6 +29,9 @@ import {
 } from '../../../../models/company-email.models';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
+import { RuntimeConfigService } from '../../../../services/runtime-config.service';
+import { BlockEditorComponent, BlockEditorSavePayload } from './blocks/block-editor.component';
+import { Block } from './blocks/block-types';
 
 /**
  * Inline JSON shape carried by the dialog. Mirrors design #1877 §2 — the
@@ -85,6 +88,7 @@ interface FormShape {
     TranslocoPipe,
     SafeHtmlPipe,
     TiptapEditorComponent,
+    BlockEditorComponent,
   ],
   templateUrl: './template-editor-dialog.component.html',
   styleUrls: ['./template-editor-dialog.component.scss'],
@@ -95,7 +99,17 @@ export class TemplateEditorDialogComponent {
   private readonly translocoService = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject<DialogRef<TemplateEditorDialogResult>>(DialogRef);
+  private readonly runtimeConfig = inject(RuntimeConfigService);
   readonly data = inject<TemplateEditorDialogData>(DIALOG_DATA);
+
+  /**
+   * Feature flag (PR2a email-block-editor): when true, the dialog renders
+   * the new <app-block-editor> in place of the TipTap + 4-field legacy UI.
+   * Default OFF in production per design id 1946 §7.1.
+   */
+  readonly blockEditorEnabled = computed<boolean>(
+    () => this.runtimeConfig.get().features?.emailBlockEditorEnabled === true,
+  );
 
   /** Preview pane HTML, sanitized via SafeHtmlPipe in the template. */
   readonly previewHtml = signal<string>('');
@@ -406,6 +420,65 @@ export class TemplateEditorDialogComponent {
   /** Cancel — close with `false` so the caller knows no save happened. */
   close(reload = false): void {
     this.dialogRef.close(reload);
+  }
+
+  /**
+   * PR2a block editor save handler. Persists via `updateCustomBlocks`
+   * (sets custom_blocks JSONB; leaves custom_body_template /
+   * custom_button_text untouched per spec id 1945 §9 rollback-safety).
+   *
+   * Re-entrancy: same synchronous `saving.set(true)` guard as the
+   * legacy saveTemplate path — two fast clicks resolve to one RPC.
+   */
+  async onBlockSave(payload: BlockEditorSavePayload): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    try {
+      const setting = this.data.setting;
+      if (!setting) {
+        this.toast.error(
+          this.translocoService.translate('emailSettings.toast.error') || 'Error',
+          this.translocoService.translate('emailSettings.templateEditor.toast.saveError')
+            || 'No se puede guardar: falta fila de configuración',
+        );
+        return;
+      }
+      // Persist subject + cabecera via the legacy updateTemplate path
+      // (custom_subject_template + custom_header_template) and the
+      // blocks via updateCustomBlocks (custom_blocks JSONB). Both
+      // columns live on the same row so we serialize them.
+      await firstValueFrom(
+        this.companyEmailService.updateTemplate(
+          setting.id,
+          payload.subject,
+          // custom_body_template: untouched on the blocks path.
+          // Sending the existing value preserves any prior text for
+          // potential rollback to the legacy UI.
+          setting.custom_body_template ?? '',
+          payload.header,
+          // button_text: untouched on the blocks path.
+          setting.custom_button_text ?? '',
+        ),
+      );
+      await firstValueFrom(
+        this.companyEmailService.updateCustomBlocks(setting.id, payload.blocks),
+      );
+      this.toast.success(
+        this.translocoService.translate('emailSettings.toast.success') || 'OK',
+        this.translocoService.translate('emailSettings.templateEditor.toast.saved')
+          || 'Plantilla guardada',
+      );
+      this.dialogRef.close(true);
+    } catch (err) {
+      console.error('TemplateEditorDialog.onBlockSave', err);
+      this.toast.error(
+        this.translocoService.translate('emailSettings.toast.error') || 'Error',
+        this.translocoService.translate('emailSettings.templateEditor.toast.saveError')
+          || 'Error al guardar la plantilla',
+      );
+    } finally {
+      this.saving.set(false);
+    }
   }
 }
 
