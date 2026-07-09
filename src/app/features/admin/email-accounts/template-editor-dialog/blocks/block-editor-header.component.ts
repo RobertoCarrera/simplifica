@@ -1,11 +1,10 @@
 /**
- * BlockEditorHeaderComponent (PR2a email-block-editor)
+ * BlockEditorHeaderComponent (PR2a + PR2b email-block-editor)
  *
  * `@switch (formGroup().controls.type.value)` router that delegates the
  * `props` FormGroup to the appropriate typed editor. In PR2a only the
- * heading case is wired; the logo/paragraph/button cases render
- * placeholder cards that say "Disponible en la próxima versión" so the
- * user sees what's coming without breaking the form.
+ * heading case was wired; PR2b adds the logo, paragraph and button
+ * typed editors.
  *
  * The BlockEditorComponent owns the FormArray and passes one FormGroup
  * down here per row. We do NOT mutate the FormGroup here — typed
@@ -25,13 +24,22 @@ import {
   FormGroup,
 } from '@angular/forms';
 import { HeadingBlockEditorComponent } from './heading-block-editor.component';
+import { ParagraphBlockEditorComponent } from './paragraph-block-editor.component';
+import { ButtonBlockEditorComponent } from './button-block-editor.component';
+import { LogoBlockEditorComponent } from './logo-block-editor.component';
 import { BlockFormGroup } from './block-list.component';
 
 @Component({
   selector: 'app-block-editor-header',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, HeadingBlockEditorComponent],
+  imports: [
+    CommonModule,
+    HeadingBlockEditorComponent,
+    ParagraphBlockEditorComponent,
+    ButtonBlockEditorComponent,
+    LogoBlockEditorComponent,
+  ],
   template: `
     <div class="beh-root" data-testid="block-editor-header">
       @switch (formGroup().controls.type.value) {
@@ -42,22 +50,26 @@ import { BlockFormGroup } from './block-list.component';
           ></app-heading-block-editor>
         }
         @case ('paragraph') {
-          <div class="beh-placeholder" data-testid="paragraph-placeholder">
-            Editor de párrafo disponible en PR2b.
-          </div>
+          <app-paragraph-block-editor
+            [propsGroup]="typedProps()"
+            [primaryColor]="primaryColor()"
+          ></app-paragraph-block-editor>
         }
         @case ('button') {
-          <div class="beh-placeholder" data-testid="button-placeholder">
-            Editor de botón disponible en PR2b.
-          </div>
+          <app-button-block-editor
+            [propsGroup]="typedProps()"
+            [primaryColor]="primaryColor()"
+          ></app-button-block-editor>
         }
         @case ('logo') {
-          <div class="beh-placeholder" data-testid="logo-placeholder">
-            Editor de logo disponible en PR2b.
-          </div>
+          <app-logo-block-editor
+            [propsGroup]="typedProps()"
+          ></app-logo-block-editor>
         }
         @default {
-          <div class="beh-placeholder">Tipo de bloque desconocido.</div>
+          <div class="beh-placeholder" data-testid="unknown-type-placeholder">
+            Tipo de bloque desconocido.
+          </div>
         }
       }
     </div>
@@ -80,10 +92,10 @@ export class BlockEditorHeaderComponent {
   readonly primaryColor = input<string | null>(null);
 
   /**
-   * Cast the `props` FormGroup to the typed view that
-   * HeadingBlockEditorComponent expects. The cast is intentional —
-   * see design id 1946 §3 for why `props` is untyped at the FormGroup
-   * level (heterogeneous Props union collapses to `never`).
+   * Cast the `props` FormGroup to the typed view that the typed editors
+   * expect. The cast is intentional — see design id 1946 §3 for why
+   * `props` is untyped at the FormGroup level (heterogeneous Props union
+   * collapses to `never`).
    */
   readonly typedProps = computed<FormGroup<Record<string, AbstractControl<unknown>>>>(
     () => this.formGroup().controls.props,
