@@ -424,7 +424,7 @@ export function buildCompanyAddress(company: CompanyInfo): string {
  * Used as `companyFooter` injected into per-type default templates.
  */
 export function buildEmailFooter(company: CompanyInfo): string {
-  const parts = [company.name];
+  const parts = [escapeHtml(company.name)];
   if (company.nif) parts.push(`NIF: ${company.nif}`);
   const addr = buildCompanyAddress(company);
   if (addr) parts.push(addr);
@@ -482,7 +482,7 @@ function sanitizeFontFamily(value: string): string {
 /** Build the per-type `<img class="brand-logo">` HTML, or '' if no logo. */
 function companyLogoHtml(company: CompanyInfo): string {
   return company.logo_url
-    ? `<img src="${company.logo_url}" alt="${company.name}" style="max-height:60px;max-width:200px;">`
+    ? `<img src="${company.logo_url}" alt="${escapeHtml(company.name)}" style="max-height:60px;max-width:200px;">`
     : '';
 }
 
@@ -504,7 +504,7 @@ function sanitizeText(value: unknown, maxLength = 10000): string {
 
 const renderBookingConfirmation: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
-  const subject = customSubject || `Reserva confirmada - ${company.name}`;
+  const subject = customSubject || `Reserva confirmada - ${escapeHtml(company.name)}`;
   if (customBody) {
     return {
       subject,
@@ -524,7 +524,7 @@ const renderBookingConfirmation: Renderer = (args) => {
     <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Servicio</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.servicio ?? ''))}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.fecha ?? ''))}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Hora</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(String(data.hora ?? ''))}</td></tr>
-    <tr><td style="padding:8px 0;font-weight:bold;">Empresa</td><td style="padding:8px 0;">${escapeHtml(String(data.empresa ?? '')) || company.name}</td></tr>
+    <tr><td style="padding:8px 0;font-weight:bold;">Empresa</td><td style="padding:8px 0;">${escapeHtml(String(data.empresa ?? '')) || escapeHtml(company.name)}</td></tr>
   </table>
   <p style="text-align:center;color:#666;font-size:12px;">${company.settings?.email_branding?.footer_text ?? buildEmailFooter(company)}${buildCompanyAddress(company) ? ' · ' + buildCompanyAddress(company) : ''}</p>
 </body>
@@ -536,7 +536,7 @@ const renderInvoice: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
   const invoiceNum = escapeHtml(String(data.numero_factura ?? ''));
   const safeInvoiceUrl = escapeHtml(String(data.invoice_url ?? ''));
-  const subject = customSubject || `Factura ${invoiceNum} - ${company.name}`;
+  const subject = customSubject || `Factura ${invoiceNum} - ${escapeHtml(company.name)}`;
   const btnText = customButtonText || 'Ver factura PDF';
   if (customBody) {
     return {
@@ -568,7 +568,7 @@ const renderQuote: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
   const quoteNum = escapeHtml(String(data.numero_presupuesto ?? ''));
   const safeQuoteUrl = escapeHtml(String(data.quote_url ?? ''));
-  const subject = customSubject || `Presupuesto ${quoteNum} - ${company.name}`;
+  const subject = customSubject || `Presupuesto ${quoteNum} - ${escapeHtml(company.name)}`;
   const btnText = customButtonText || 'Ver presupuesto';
   if (customBody) {
     return {
@@ -597,7 +597,7 @@ const renderQuote: Renderer = (args) => {
 
 const renderConsent: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader, customButtonText } = args;
-  const subject = customSubject || `Solicitud de consentimiento RGPD - ${company.name}`;
+  const subject = customSubject || `Solicitud de consentimiento RGPD - ${escapeHtml(company.name)}`;
   const btnText = customButtonText || 'Revisar y validar datos';
   const safeConsentUrl = escapeHtml(String(data.consent_url ?? ''));
   if (customBody) {
@@ -645,8 +645,8 @@ function renderInviteInternal(
   const isOwner = args._forceType === 'invite_owner';
   const roleLabel = data.role_label || (isOwner ? 'Propietario' : 'Miembro');
   const subject = customSubject || (isOwner
-    ? `Te han invitado a crear tu empresa en ${company.name}`
-    : `Te han invitado a ${company.name}`);
+    ? `Te han invitado a crear tu empresa en ${escapeHtml(company.name)}`
+    : `Te han invitado a ${escapeHtml(company.name)}`);
   if (customBody) {
     return {
       subject,
@@ -677,10 +677,10 @@ function renderInviteInternal(
 <head><meta charset="utf-8"></head>
 <body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogoHtml(company)}</div>
-  <h1 style="color:${company.settings?.branding?.primary_color || '#4f46e5'};text-align:center;font-size:22px;">${isOwner ? 'Invitación para crear tu empresa' : `Te han invitado a ${company.name}`}</h1>
+  <h1 style="color:${company.settings?.branding?.primary_color || '#4f46e5'};text-align:center;font-size:22px;">${isOwner ? 'Invitación para crear tu empresa' : `Te han invitado a ${escapeHtml(company.name)}`}</h1>
   ${inviterLine}
   <p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">
-    Has recibido una invitación para unirte a <strong>${company.name}</strong>${!isOwner && data.role ? ` como <strong>${roleLabel}</strong>` : ''}.
+    Has recibido una invitación para unirte a <strong>${escapeHtml(company.name)}</strong>${!isOwner && data.role ? ` como <strong>${roleLabel}</strong>` : ''}.
   </p>
   ${messageLine}
   ${extraInfoOwner}
@@ -712,8 +712,8 @@ function renderInviteRoleInternal(
   const displayRoleLabel = data.role_label ? escapeHtml(String(data.role_label)) : defaultLabel;
   const isClient = args._forceType === 'invite_client';
   const subject = customSubject || (isClient
-    ? `Te han invitado a unirte a ${company.name}`
-    : `Te han invitado a ${company.name} como ${displayRoleLabel}`);
+    ? `Te han invitado a unirte a ${escapeHtml(company.name)}`
+    : `Te han invitado a ${escapeHtml(company.name)} como ${displayRoleLabel}`);
   if (customBody) {
     return {
       subject,
@@ -734,8 +734,8 @@ function renderInviteRoleInternal(
     ? `<div style="background:#f9fafb;border-left:4px solid ${company.settings?.branding?.primary_color || '#4f46e5'};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${safeMessage}"</div>`
     : '';
   const clientNote = isClient
-    ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${company.name} para gestionar tus reservas y documentos.</p>`
-    : `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar la invitación, tendrás acceso al panel de ${company.name}.</p>`;
+    ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${escapeHtml(company.name)} para gestionar tus reservas y documentos.</p>`
+    : `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar la invitación, tendrás acceso al panel de ${escapeHtml(company.name)}.</p>`;
   const fontFamily = sanitizeFontFamily(company.settings?.email_branding?.font_family || 'Arial');
   return {
     subject,
@@ -745,7 +745,7 @@ function renderInviteRoleInternal(
 <body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogoHtml(company)}</div>
   ${headerBlock(customHeader, data)}
-  <h1 style="color:${company.settings?.branding?.primary_color || '#4f46e5'};text-align:center;font-size:22px;">Te han invitado a ${company.name}</h1>
+  <h1 style="color:${company.settings?.branding?.primary_color || '#4f46e5'};text-align:center;font-size:22px;">Te han invitado a ${escapeHtml(company.name)}</h1>
   ${!isClient ? `<p style="text-align:center;font-size:16px;color:#374151;">Tu rol: <strong>${displayRoleLabel}</strong></p>` : ''}
   ${inviterLine}
   ${messageLine}
@@ -803,7 +803,7 @@ const renderWaitlist: Renderer = (args) => {
 
 const renderInactiveNotice: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
-  const subject = customSubject || `Clientes inactivos - ${company.name}`;
+  const subject = customSubject || `Clientes inactivos - ${escapeHtml(company.name)}`;
   // Defense in depth: sanitizeText strips angle brackets and trims; escapeHtml
   // additionally encodes any residual special chars (`&`, `"`, `'`) so a
   // malicious client name cannot break out of the <li>.
@@ -835,7 +835,7 @@ const renderInactiveNotice: Renderer = (args) => {
 
 const renderGeneric: Renderer = (args) => {
   const { company, data, customSubject, customBody, customHeader } = args;
-  const subject = customSubject || `Mensaje de ${company.name}`;
+  const subject = customSubject || `Mensaje de ${escapeHtml(company.name)}`;
   const message = escapeHtml(String(data.message ?? ''));
   if (customBody) {
     return {
@@ -907,7 +907,7 @@ function renderBudgetInternal(
     kind === 'budget_created' ? `Nuevo presupuesto ${safePeriod} — ${safeTotal}`.trim()
       : kind === 'budget_reminder' ? `Tu presupuesto vence pronto — ${safeTotal}`.trim()
         : `Presupuesto vencido — ${safeTotal}`.trim();
-  const subject = customSubject || dataSubject || `Presupuesto ${safePeriod} - ${company.name}`.trim();
+  const subject = customSubject || dataSubject || `Presupuesto ${safePeriod} - ${escapeHtml(company.name)}`.trim();
   const btnText = customButtonText || data.cta_text || 'Ver presupuesto';
   if (customBody) {
     return {
@@ -1009,7 +1009,7 @@ const renderBookingChange: Renderer = (args) => {
   const audiencePrefix = audience === 'admin' ? '[Admin] ' : '';
   const safeServiceName = escapeHtml(String(data.service_name ?? ''));
   const dataSubject = `${audiencePrefix}${verbByType[changeType] || verbByType.updated}${data.service_name ? ' — ' + safeServiceName : ''}`;
-  const subject = customSubject || dataSubject || `${audiencePrefix}Actualización de reserva — ${company.name}`;
+  const subject = customSubject || dataSubject || `${audiencePrefix}Actualización de reserva — ${escapeHtml(company.name)}`;
   const btnText = customButtonText || data.cta_text || (audience === 'client' ? 'Ver reserva' : 'Ver detalles');
   const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
   const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
@@ -1187,7 +1187,7 @@ export function renderTemplate(
   if (Array.isArray(customBlocks) && customBlocks.length > 0) {
     // Blocks path wins over body and per-type default.
     // subject is taken from customSubject (no per-type renderer called).
-    subject = customSubject || `Mensaje de ${company.name}`;
+    subject = customSubject || `Mensaje de ${escapeHtml(company.name)}`;
     html = renderBlocksToHtml(customBlocks, data as Record<string, unknown>);
   } else {
     const renderer = RENDERERS[emailType];
