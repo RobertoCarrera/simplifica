@@ -145,6 +145,37 @@ export class EmailSettingsComponent implements OnInit {
   ]);
 
   /**
+   * Accordion state: which categories are currently expanded. Set of
+   * category names. Default: ALL expanded (the user starts with full
+   * visibility, can collapse noisy sections like "Invitaciones" which
+   * has 8 entries). The state is in-memory only (not persisted to
+   * localStorage) — re-navigating to the page resets to all-open,
+   * which is the safer default.
+   */
+  readonly expandedCategories = signal<ReadonlySet<EmailCategory>>(
+    new Set<EmailCategory>([
+      'reservas', 'facturacion', 'consentimiento', 'invitaciones',
+      'credenciales', 'notificaciones',
+    ])
+  );
+
+  isCategoryExpanded(category: EmailCategory): boolean {
+    return this.expandedCategories().has(category);
+  }
+
+  toggleCategory(category: EmailCategory): void {
+    this.expandedCategories.update((set) => {
+      const next = new Set(set);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  }
+
+  /**
    * The 26 types, bucketed by `EmailCategory` and emitted in the order
    * declared by `EMAIL_CATEGORIES` (Reservas → Notificaciones). Categories
    * with zero entries are filtered out so the template never renders an

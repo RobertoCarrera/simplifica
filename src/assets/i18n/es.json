@@ -2333,6 +2333,9 @@
       "invitaciones": "Invitaciones",
       "credenciales": "Credenciales",
       "notificaciones": "Notificaciones"
+    },
+    "accordion": {
+      "toggleCategory": "Alternar visibilidad de la categoría {{category}}"
     }
   },
   "emailBranding": {
