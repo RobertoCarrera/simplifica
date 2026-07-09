@@ -74,8 +74,10 @@ serve(async (req: Request) => {
   const bearerToken  = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1] ?? '';
 
   const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
-  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')     ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
-  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v);
+  // Rafter v0.62 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS from VALID_KEYS
+  // (publishable key is a public, client-shipped key; including it in the
+  // auth bypass set was equivalent to leaving the back door open)
 
   const authedAsServiceRole = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || bearerToken === SERVICE_ROLE_KEY;
   const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);

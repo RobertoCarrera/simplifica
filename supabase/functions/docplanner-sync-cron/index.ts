@@ -65,8 +65,10 @@ const SUPABASE_SECRET_KEYS_RAW      = Deno.env.get('SUPABASE_SECRET_KEYS')      
 const SUPABASE_PUBLISHABLE_KEYS_RAW = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}';
 const VALID_APIKEYS: Set<string> = (() => {
   const out = new Set<string>();
-  try { for (const v of Object.values(JSON.parse(SUPABASE_SECRET_KEYS_RAW)))      if (typeof v === 'string') out.add(v); } catch {}
-  try { for (const v of Object.values(JSON.parse(SUPABASE_PUBLISHABLE_KEYS_RAW))) if (typeof v === 'string') out.add(v); } catch {}
+  try { for (const v of Object.values(JSON.parse(SUPABASE_SECRET_KEYS_RAW))) if (typeof v === 'string') out.add(v); } catch {}
+  // Rafter v0.62 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS from VALID_APIKEYS
+  // (publishable key is a public, client-shipped key; including it in the
+  // auth bypass set was equivalent to leaving the back door open)
   if (SERVICE_ROLE_KEY) out.add(SERVICE_ROLE_KEY); // legacy fallback
   return out;
 })();
