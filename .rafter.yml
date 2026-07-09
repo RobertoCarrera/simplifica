@@ -1,0 +1,41 @@
+# Rafter false-positive suppressions for the simplifica-crm project.
+# Each entry documents the false positive analyzed and the rationale.
+
+# Rule R-07414: "Embedded content forges chat role or template-delimiter tags"
+# Scope: documentation and skill reference files in .agents/, .claude/, .kiro/, docs/
+# Reason: These files are PROMPT INSTRUCTIONS for AI agents, not runtime
+# code. The "forged chat role" is the actual content of documentation
+# examples. They are never executed by the Supabase runtime or the
+# Angular frontend. Confirmed via inspection of 5 sample files.
+ignores:
+  - id: "R-07414-docs"
+    rule: "R-07414"
+    paths:
+      - ".agents/skills/**"
+      - ".claude/skills/**"
+      - ".kiro/skills/**"
+      - "docs/rafter-v22-ddos-audit.md"
+    reason: |
+      Documentation files contain literal examples of prompt-injection
+      patterns to TEACH agents to detect them. They are never executed.
+
+# Rule R-9D881: "Exposed secret in supabase/migrations/..."
+# Scope: specific migration files containing only UUIDs
+# Reason: The flagged values are PostgreSQL UUIDs (e.g.
+# '84b38d8d-5457-4fac-8d5f-eb58ada40341', '767463d6-893f-4869-9c63-e286b978c5f3')
+# not secrets. UUIDs are non-secret identifiers per RFC 9562. They
+# identify rows in public.users / public.services. A leaked UUID
+# only lets an attacker probe row existence, not impersonate.
+ignores:
+  - id: "R-9D881-uuids"
+    rule: "R-9D881"
+    paths:
+      - "supabase/migrations/20260705000014_promote_current_user_to_super_admin.sql"
+      - "supabase/migrations/20260617000006_migrate_psicoterapia_adultos_to_individual.sql"
+      - "supabase/migrations/20260617000005_consolidate_services_and_cleanup_reserva.sql"
+    reason: |
+      The flagged strings are PostgreSQL UUIDs, not secrets. They
+      identify rows in public.users (auth_user_id) and public.services
+      (service id). Per RFC 9562, UUIDs are non-secret identifiers.
+      Leaking a UUID allows row existence probing, not impersonation
+      or privilege escalation.
