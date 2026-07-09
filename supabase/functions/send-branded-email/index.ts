@@ -567,12 +567,32 @@ serve(async (req) => {
     }
 
     // ── Fetch email setting for this company+emailType ──────────────────────
+    // is_active=true is now required: the email-settings page exposes a
+    // toggle per email type that admins use to disable individual
+    // templates (e.g. pause "Invitación — Propietario" while a campaign
+    // is paused). Without this filter, the toggle would be cosmetic —
+    // emails would still go out, which was the original bug. .maybeSingle
+    // (not .single) so a missing/disabled row is null, not a thrown error.
     const { data: emailSetting } = await supabaseClient
       .from('company_email_settings')
       .select('email_account_id, fallback_account_id, custom_subject_template, custom_body_template, custom_header_template, custom_button_text')
       .eq('company_id', companyId)
       .eq('email_type', emailType)
-      .single();
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!emailSetting) {
+      console.log(`[send-branded-email] Email type "${emailType}" is disabled for company ${companyId}. Skipping send (operator paused this template).`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          reason: 'email_type_disabled',
+          message: `Email type "${emailType}" is not active for this company. No email sent.`,
+        }),
+        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } },
+      );
+    }
 
     // ── Fetch email account(s) ──────────────────────────────────────────────
     let accountId = emailSetting?.email_account_id;
