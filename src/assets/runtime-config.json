@@ -6,7 +6,7 @@
   "edgeFunctionsBaseUrl": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1",
   "features": {
     "anychatConversationsEnabled": true,
-    "emailBlockEditorEnabled": false,
+    "emailBlockEditorEnabled": true,
     "emailBlockEditorDeprecationBanner": false
   }
 }
