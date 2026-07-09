@@ -61,6 +61,7 @@ import {
 } from './block-types';
 import { defaultHtmlToBlocks, makeParagraphBlock } from './block-parser';
 import { autoMigrate, AutoMigrateResult } from './auto-migrate';
+import { VariablesPanelComponent } from './variables-panel.component';
 import { CompanyEmailSetting, EmailType } from '../../../../../models/company-email.models';
 import {
   CompanyEmailService,
@@ -94,9 +95,14 @@ export interface BlockValidationError {
     ReactiveFormsModule,
     BlockListComponent,
     AddBlockDropdownComponent,
+    VariablesPanelComponent,
   ],
   template: `
     <div class="be-root" data-testid="block-editor">
+      <app-variables-panel
+        [emailType]="data().emailType"
+      ></app-variables-panel>
+
       <div class="be-toolbar">
         <app-add-block-dropdown
           [hasLogoUrl]="hasLogoUrl()"
