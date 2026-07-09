@@ -59,6 +59,9 @@ export interface ProjectTask {
     assigned_to?: string;
     position?: number;
     created_at?: string;
+    /** Transient runtime flag set by parent component when subtask dates
+     *  fall outside the parent task window. Not a DB column. */
+    date_conflict?: boolean;
     // Relations
     subtasks?: ProjectSubtask[];
 }
