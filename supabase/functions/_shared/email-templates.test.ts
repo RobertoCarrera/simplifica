@@ -436,3 +436,34 @@ Deno.test('blocks:renderTemplate — customBlocks wins over customBody', () => {
   console.assert(html.includes('BLOCK_HEADING'), 'customBlocks must win over customBody');
   console.assert(!html.includes('CUSTOM_BODY'), 'customBody must NOT be used when customBlocks is set');
 });
+
+// ── Test: W2 fix — outer-interpolate {{var}} in TS renderBlocksToHtml ──────
+//
+// SQL `render_blocks_to_html` is wrapped by `interpolate_safe(...)` at
+// migration line 471, so heading/paragraph text containing `{{var}}`
+// tokens is substituted on the SQL path. Before the W2 fix, the TS
+// `renderBlocksToHtml` did NOT outer-interpolate — Edge delivery and
+// the snapshot harness would render `{{var}}` literally. This test
+// locks in the fix.
+
+Deno.test('blocks:renderBlocksToHtml — outer-interpolates {{var}} in block text (W2 fix)', () => {
+  const blocks: Block[] = [
+    {
+      id: 'a',
+      type: 'heading',
+      version: 1,
+      props: { text: 'Hola {{invited_name}}', level: 1 },
+    } as HeadingBlock,
+    {
+      id: 'b',
+      type: 'paragraph',
+      version: 1,
+      props: { text: 'Tu cita es {{fecha}}' },
+    } as ParagraphBlock,
+  ];
+  const html = renderBlocksToHtml(blocks, { invited_name: 'Ada', fecha: 'mañana' });
+  console.assert(html.includes('Hola Ada'), 'heading text {{var}} must be substituted by TS renderBlocksToHtml');
+  console.assert(html.includes('Tu cita es mañana'), 'paragraph text {{var}} must be substituted by TS renderBlocksToHtml');
+  console.assert(!html.includes('{{invited_name}}'), 'literal {{invited_name}} must NOT appear in output');
+  console.assert(!html.includes('{{fecha}}'), 'literal {{fecha}} must NOT appear in output');
+});
