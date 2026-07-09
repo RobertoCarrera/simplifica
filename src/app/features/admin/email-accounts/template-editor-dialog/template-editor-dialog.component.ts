@@ -186,7 +186,13 @@ export class TemplateEditorDialogComponent {
         // initial `valueChanges` emission with a `null` field on edge
         // platforms. Does NOT filter content truthiness (controls are typed
         // `FormControl<string>` and pre-populated with `''`).
-        filter((v): v is FormShape => !!v),
+        // In WYSIWYG mode (blockEditorEnabled) the BlockEditorComponent
+        // owns the preview pipeline and emits via its (preview) output —
+        // skip this legacy pipeline entirely so it doesn't fire `p_custom_*`
+        // without `p_custom_blocks` and the RPC fall back to the per-type
+        // default body, which would be inconsistent with the (empty) block
+        // editor.
+        filter((v): v is FormShape => !!v && !this.blockEditorEnabled()),
         distinctUntilChanged<FormShape>(this.formEqual),
         tap(() => {
           this.previewLoading.set(true);

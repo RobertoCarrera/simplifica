@@ -25,6 +25,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  OnInit,
   computed,
   inject,
   input,
@@ -147,7 +148,7 @@ export interface BlockValidationError {
     .be-loading { color: #6b7280; font-size: 13px; padding: 4px 0; }
   `],
 })
-export class BlockEditorComponent {
+export class BlockEditorComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly companyEmail = inject(CompanyEmailService);
   private readonly destroyRef = inject(DestroyRef);
@@ -199,6 +200,20 @@ export class BlockEditorComponent {
 
   constructor() {
     this.wirePreviewPipeline();
+  }
+
+  /**
+   * Auto-seed runs in ngOnInit, not the constructor. The constructor
+   * runs BEFORE inputs are bound, so `this.setting()` returns null there
+   * and the early return on `if (!setting) return` would fire. By the
+   * time ngOnInit runs, the required inputs are bound and the setting
+   * is available.
+   *
+   * The preview pipeline is set up in the constructor (it reads
+   * blocksForm which IS available in the constructor — it's a class
+   * field, not an input).
+   */
+  ngOnInit(): void {
     void this.runAutoSeed();
   }
 
