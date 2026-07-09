@@ -301,7 +301,7 @@ export class EmailSettingsComponent implements OnInit {
         setting,
         sampleData,
       },
-      width: '1100px',
+      width: '1600px',
     });
 
     ref.closed.subscribe((reloaded) => {

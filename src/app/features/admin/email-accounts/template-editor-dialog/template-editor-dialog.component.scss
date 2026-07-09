@@ -19,8 +19,8 @@
 .ted-root {
   display: flex;
   flex-direction: column;
-  width: min(1100px, 95vw);
-  max-height: 92vh;
+  width: min(1600px, 98vw);
+  max-height: 96vh;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
@@ -62,8 +62,10 @@
 
 .ted-canvas {
   flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow: hidden;
   background: #f8fafc;        // slate-50 — paper-like surface for the canvas
 }
 
@@ -71,9 +73,53 @@
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.ted-preview {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e2e8f0;
+  background: #f1f5f9;        // slate-100 — slightly darker than the canvas
+  min-width: 0;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+  }
+  &__title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+  }
+  &__loading {
+    font-size: 11px;
+    color: #2563eb;
+    font-style: italic;
+  }
+  &__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 20px;
+    background: #ffffff;
+  }
+  // Constrain the email content width so it doesn't stretch on wide dialogs.
+  &__body :global(table) {
+    max-width: 600px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
 }
 
 .ted-field {

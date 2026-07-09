@@ -382,6 +382,22 @@ export class TemplateEditorDialogComponent {
   }
 
   /**
+   * Close on click in the dialog's empty area (the .ted-root element
+   * itself, NOT any of its children). Combined with CDK's default
+   * backdrop-click-to-close, the user can dismiss the dialog by:
+   *   - clicking the gray backdrop outside the dialog box
+   *   - clicking the white area around the form content (padding zone)
+   *   - clicking the white area around the preview pane (padding zone)
+   * Clicks on inputs, textareas, buttons, or the block editor do NOT
+   * close the dialog (event.target would be the child, not the root).
+   */
+  onRootClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.close(false);
+    }
+  }
+
+  /**
    * PR2a block editor save handler. Persists via `updateCustomBlocks`
    * (sets custom_blocks JSONB; leaves custom_body_template /
    * custom_button_text untouched per spec id 1945 §9 rollback-safety).

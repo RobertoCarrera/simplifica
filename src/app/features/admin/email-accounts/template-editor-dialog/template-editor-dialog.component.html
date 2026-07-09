@@ -1,4 +1,4 @@
-<div data-testid="template-editor-dialog" class="ted-root">
+<div data-testid="template-editor-dialog" class="ted-root" (click)="onRootClick($event)">
   <header class="ted-header">
     <h2 class="ted-title" data-testid="template-editor-title">
       {{ title() }}
@@ -16,12 +16,9 @@
 
   <div class="ted-canvas" data-testid="template-editor-canvas">
     <!--
-      PR-wysiwyg email-block-editor: the dialog is now SINGLE-COLUMN.
-      The block editor IS the preview (every block is rendered visually
-      with its real styles via block-visual.ts). The legacy 60% preview
-      pane was removed because the canvas = preview in WYSIWYG mode.
-      The previewHtml signal + debounced previewTemplate call STILL
-      exist (validation/banner triggers, not a visible pane).
+      Two columns: form on the left, live preview on the right. The
+      previewHtml signal is fed by BlockEditorComponent's (preview)
+      output (server-authoritative render via preview_email_template).
     -->
     <section class="ted-form" data-testid="template-editor-form" [formGroup]="form">
       <label class="ted-field">
@@ -46,12 +43,6 @@
         ></textarea>
       </label>
 
-      <!--
-        Block editor: flag-gated swap per design id 1946 §7.1.
-        When the flag is ON, the legacy TipTap UI is replaced by the
-        WYSIWYG canvas. When the flag is OFF (prod default), the
-        legacy UI is unchanged.
-      -->
       @if (blockEditorEnabled()) {
         @if (deprecationBannerEnabled()) {
           <p
@@ -75,6 +66,7 @@
           [header]="form.controls.header.value"
           (saved)="onBlockSave($event)"
           (migrationFallback)="onMigrationFallback($event)"
+          (preview)="previewHtml.set($event)"
         ></app-block-editor>
       } @else {
         <label class="ted-field">
@@ -103,6 +95,19 @@
         </label>
       }
     </section>
+
+    <aside class="ted-preview" data-testid="template-editor-preview" aria-label="Vista previa del email">
+      <div class="ted-preview__header">
+        <span class="ted-preview__title">Vista previa</span>
+        @if (previewLoading()) {
+          <span class="ted-preview__loading">actualizando…</span>
+        }
+      </div>
+      <div
+        class="ted-preview__body"
+        [innerHTML]="previewHtml() | safeHtml"
+      ></div>
+    </aside>
   </div>
 
   <footer class="ted-footer">

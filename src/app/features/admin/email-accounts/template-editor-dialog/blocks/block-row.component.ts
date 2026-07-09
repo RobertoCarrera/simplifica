@@ -185,7 +185,8 @@ function readProp(group: BlockFormGroup, key: string): unknown {
     .br-row:hover .br-handle,
     .br-row--editing .br-handle { opacity: 1; }
 
-    /* Action overlay — only visible on hover or editing */
+    /* Action overlay — only visible on hover (hidden when editing so
+       the "Listo" button of the inline editor isn't covered). */
     .br-actions {
       position: absolute;
       top: 6px;
@@ -196,8 +197,8 @@ function readProp(group: BlockFormGroup, key: string): unknown {
       transition: opacity 120ms ease;
       z-index: 2;
     }
-    .br-row:hover .br-actions,
-    .br-row--editing .br-actions { opacity: 1; }
+    .br-row:hover .br-actions { opacity: 1; }
+    .br-row--editing .br-actions { display: none; }
 
     .br-icon-btn {
       background: #ffffff;

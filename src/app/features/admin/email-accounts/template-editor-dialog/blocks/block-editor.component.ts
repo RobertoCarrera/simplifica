@@ -169,6 +169,13 @@ export class BlockEditorComponent {
   readonly saved = output<BlockEditorSavePayload>();
 
   /**
+   * Live preview HTML emitted to the parent dialog for the right-side
+   * preview pane. Server-authoritative render from `preview_email_template`
+   * — the dialog does NOT call the RPC itself, it consumes this output.
+   */
+  readonly preview = output<string>();
+
+  /**
    * PR2b: surfaces a one-shot event when the auto-migrate flow produced
    * a fallback (single ParagraphBlock with the first 5000 chars of the
    * legacy body). The parent dialog listens to this and shows a yellow
@@ -436,8 +443,10 @@ export class BlockEditorComponent {
       )
       .subscribe({
         next: (result) => {
-          this.previewHtml.set(result.html ?? '');
+          const html = result.html ?? '';
+          this.previewHtml.set(html);
           this.previewLoading.set(false);
+          this.preview.emit(html);
         },
         error: (err: unknown) => {
           this.previewLoading.set(false);
