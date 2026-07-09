@@ -29,6 +29,7 @@ import {
 } from '../../../../models/company-email.models';
 import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { RuntimeConfigService } from '../../../../services/runtime-config.service';
+import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { BlockEditorComponent, BlockEditorSavePayload } from './blocks/block-editor.component';
 import { Block } from './blocks/block-types';
 
@@ -85,6 +86,7 @@ interface FormShape {
     ReactiveFormsModule,
     DialogModule,
     TranslocoPipe,
+    SafeHtmlPipe,
     TiptapEditorComponent,
     BlockEditorComponent,
   ],
@@ -395,6 +397,16 @@ export class TemplateEditorDialogComponent {
     if (event.target === event.currentTarget) {
       this.close(false);
     }
+  }
+
+  /**
+   * Receive the live preview HTML from BlockEditorComponent. Typed
+   * handler (string) so the Angular template type checker doesn't have
+   * to infer $event from the output — it would otherwise widen to
+   * `Event` if the (preview) binding isn't recognised for any reason.
+   */
+  onPreview(html: string): void {
+    this.previewHtml.set(html);
   }
 
   /**

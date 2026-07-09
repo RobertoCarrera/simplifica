@@ -66,7 +66,7 @@
           [header]="form.controls.header.value"
           (saved)="onBlockSave($event)"
           (migrationFallback)="onMigrationFallback($event)"
-          (preview)="previewHtml.set($event)"
+          (preview)="onPreview($event)"
         ></app-block-editor>
       } @else {
         <label class="ted-field">
