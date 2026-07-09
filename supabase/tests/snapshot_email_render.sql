@@ -310,6 +310,52 @@ BEGIN
     RAISE NOTICE 'OK   blocks:check51 — CHECK constraint blocks INSERT with 51 blocks';
   END;
 
+  -- 10-15. PR1-6type-fix: 6 simple types honor p_custom_body (AC3 + AC12).
+  -- Before this follow-up migration, the SQL branches for booking_reminder,
+  -- booking_cancellation, password_reset, magic_link, welcome, and
+  -- staff_credentials silently dropped p_custom_body and rendered the bare
+  -- default `<p style="font-size:16px;">{{message}}</p>`. Migration
+  -- 20260710000001_email_block_6type_hotfix.sql adds the matching IF wrapper
+  -- to each branch. These fixtures assert the fix landed: when p_custom_body
+  -- is provided, the SQL output contains the custom body (interpolated), not
+  -- the bare default. Mirrors the 6 parallel Deno tests in
+  -- _shared/email-templates.test.ts (file lines 422-463).
+  DECLARE
+    v_simple_types text[] := ARRAY[
+      'booking_reminder',
+      'booking_cancellation',
+      'password_reset',
+      'magic_link',
+      'welcome',
+      'staff_credentials'
+    ];
+    v_simple_type text;
+    v_custom_body text;
+    v_expected    text;
+  BEGIN
+    FOREACH v_simple_type IN ARRAY v_simple_types LOOP
+      v_total := v_total + 1;
+      v_custom_body := format('<p>Custom Hello %s</p>', v_simple_type);
+      v_expected := format('Custom Hello %s', v_simple_type);
+      v_html := public.email_render_template(
+        v_company_id,
+        v_simple_type,
+        jsonb_build_object('message', 'ignored-default-token'),
+        NULL,
+        v_custom_body,   -- p_custom_body: should be honored
+        NULL,
+        NULL
+      );
+      IF v_html LIKE format('%%%s%%', v_expected)
+         AND v_html NOT LIKE '%{{message}}%' THEN
+        v_passed := v_passed + 1;
+        RAISE NOTICE 'OK   6type:% — honors p_custom_body (PR1-6type-fix)', v_simple_type;
+      ELSE
+        v_fail_buf := v_fail_buf || format('6type:%s:[p_custom_body NOT honored] ', v_simple_type);
+      END IF;
+    END LOOP;
+  END;
+
   IF v_fail_buf <> '' THEN
     RAISE EXCEPTION 'snapshot_email_render BLOCKS FAILED: %. %/% passed',
       v_fail_buf, v_passed, v_total;
