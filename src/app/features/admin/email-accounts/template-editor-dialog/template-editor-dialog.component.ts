@@ -27,7 +27,6 @@ import {
   EmailType,
   EMAIL_TYPE_LABELS,
 } from '../../../../models/company-email.models';
-import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { RuntimeConfigService } from '../../../../services/runtime-config.service';
 import { BlockEditorComponent, BlockEditorSavePayload } from './blocks/block-editor.component';
@@ -86,7 +85,6 @@ interface FormShape {
     ReactiveFormsModule,
     DialogModule,
     TranslocoPipe,
-    SafeHtmlPipe,
     TiptapEditorComponent,
     BlockEditorComponent,
   ],

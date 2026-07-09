@@ -1,12 +1,13 @@
 // ==========================================================================
-// TemplateEditorDialog — 40/60 split-view, paper-background preview pane
+// TemplateEditorDialog — single-column WYSIWYG canvas
 // ==========================================================================
-// Layout invariants (per design #1877 §2):
-//   - >=md (≥768px): display: grid; grid-template-columns: 40% 60%; gap: 16px
-//   - <md         : stacked single column, form on top, preview below
-//   - preview pane: paper-like background (#F9FAFB / slate-50) + rounded
-//                   + shadow-inner so it visually reads as an iframe without
-//                   being one (sandboxing goes through SafeHtmlPipe).
+// Layout invariants (per PR-wysiwyg email-block-editor):
+//   - Always single-column: header → canvas (form + block editor,
+//     full-width, max 720px for legibility) → footer.
+//   - The legacy 40/60 split-view removed; the block editor IS the
+//     preview (each block renders with its real styles in the canvas).
+//   - The form column is centered with a comfortable max-width so the
+//     rendered blocks are not stretched on wide dialogs.
 // ==========================================================================
 
 :host {
@@ -59,32 +60,20 @@
   }
 }
 
-.ted-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  padding: 16px 24px;
-  overflow-y: auto;
+.ted-canvas {
   flex: 1 1 auto;
-
-  @media (min-width: 768px) {
-    grid-template-columns: 40% 60%;
-    gap: 16px;
-  }
+  overflow-y: auto;
+  padding: 20px 24px;
+  background: #f8fafc;        // slate-50 — paper-like surface for the canvas
 }
 
 .ted-form {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow-y: auto;
-  padding-right: 4px;
-
-  > form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
 }
 
 .ted-field {
@@ -146,34 +135,6 @@
   }
 }
 
-.ted-preview-wrap {
-  min-height: 0;
-  display: flex;
-}
-
-.ted-preview-pane {
-  background: #f8fafc; // bg-slate-50 (paper)
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.06);
-  padding: 24px;
-  width: 100%;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ted-preview-html {
-  flex: 1 1 auto;
-  min-height: 280px;
-  word-break: break-word;
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px dashed #cbd5e1;
-}
-
 .ted-loading,
 .ted-banner {
   font-size: 13px;
@@ -195,13 +156,11 @@
 }
 
 // PR3 email-block-editor: yellow deprecation banner shown above the block
-// editor when the emailBlockEditorDeprecationBanner flag is ON. Same
-// yellow family as --warn (amber-50 / amber-800) but laid out as title +
-// body so the message reads as an advisory, not a transient error.
+// editor when the emailBlockEditorDeprecationBanner flag is ON.
 .ted-banner--deprecation {
-  background: #fffbeb;        // amber-50 — slightly softer than --warn
-  color: #78350f;             // amber-900 — higher contrast title
-  border: 1px solid #fcd34d;  // amber-300 — clearer edge
+  background: #fffbeb;
+  color: #78350f;
+  border: 1px solid #fcd34d;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -212,12 +171,12 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #92400e;            // amber-800
+    color: #92400e;
   }
 
   .ted-banner__body {
     font-size: 13px;
-    color: #78350f;            // amber-900
+    color: #78350f;
   }
 }
 

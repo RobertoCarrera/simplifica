@@ -1,34 +1,23 @@
 /**
- * BlockEditorComponent (PR2a email-block-editor)
+ * BlockEditorComponent (PR-wysiwyg email-block-editor)
  *
- * Root of the Divi-style block editor. Replaces the TipTap + 4-field UI
- * inside TemplateEditorDialogComponent when the `emailBlockEditorEnabled`
- * feature flag is on. Ships behind the flag (OFF in prod by default per
- * design id 1946 §7.1) so the legacy path stays the production default
- * until PR2b adds the Logo/Paragraph/Button typed editors.
+ * Root of the Divi-style block editor in WYSIWYG mode. The
+ * BlockListComponent owns per-row expansion (each row renders its
+ * block visually; click expands the inline editor; "Done" or
+ * click-outside collapses). This component no longer renders an
+ * `app-block-editor-header` separately — each row does that itself.
  *
- * Architecture mirrors design id 1946 §2.1 + §3:
- *   - FormArray<BlockFormGroup> for the block list
- *   - Per-type factory methods (insertHeadingBlock / insertParagraphBlock /
- *     insertButtonBlock / insertLogoBlock) — each builds a concrete set of
- *     FormControls in `props` per spec §3.
- *   - insertBlock(type, atIndex) dispatcher (switch on type)
- *   - Helpers: removeBlock(index, confirm), duplicateBlock(index),
- *     reorderBlocks(from, to).
- *   - Auto-seed on first open of un-customized setting (custom_blocks
- *     IS NULL AND custom_body_template IS NULL): fetch default HTML,
- *     parse via defaultHtmlToBlocks, populate with { emitEvent: false }.
- *   - Pipeline: blocksForm.valueChanges → debounce(250) → distinct(JSON.stringify)
- *     → switchMap → previewTemplate(..., { custom_blocks }).
+ * What this component DOES own:
+ *   - The FormArray<BlockFormGroup> (per-type factory methods).
+ *   - The expansion state, by stable block id (delegated via the
+ *     `blockList` ref so auto-seed can expand the first block).
+ *   - The auto-seed / auto-migrate flows.
+ *   - The blocks → preview RPC pipeline (debounce + distinct + swtchMap).
  *
- * Error handling (per design §2.1):
- *   - err.code === '42501' → previewForbidden.set(true) (orange banner)
- *   - err.code === 'P0001' → previewError.set(parsed from err.details)
- *   - else → previewError.set({blockIndex: -1, ...})
- *
- * Save payload (flag-aware per design §2.0):
- *   - emits { subject, header, blocks: blocksForm.value, button_text: '' }
- *     — parent dialog handles persistence via updateCustomBlocks.
+ * Architecture mirrors design id 1946 §2.1 + §3 for the per-type
+ * factories, save payload, and error handling. The WYSIWYG canvas
+ * is owned by BlockRowComponent and BlockListComponent (this commit
+ * set refactored the round list into a true WYSIWYG surface).
  *
  * Plain HTML + custom CSS — no Angular Material dependency.
  */
@@ -41,6 +30,7 @@ import {
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -59,7 +49,6 @@ import {
   BlockFormGroup,
   BlockListComponent,
 } from './block-list.component';
-import { BlockEditorHeaderComponent } from './block-editor-header.component';
 import { AddBlockDropdownComponent } from './add-block-dropdown.component';
 import {
   Block,
@@ -103,7 +92,6 @@ export interface BlockValidationError {
     CommonModule,
     ReactiveFormsModule,
     BlockListComponent,
-    BlockEditorHeaderComponent,
     AddBlockDropdownComponent,
   ],
   template: `
@@ -116,21 +104,13 @@ export interface BlockValidationError {
       </div>
 
       <app-block-list
+        #blockList
         [formArray]="blocksForm"
+        [primaryColor]="primaryColor()"
         [hasLogoUrl]="hasLogoUrl()"
-        (edit)="onEditBlock($event)"
         (duplicate)="onDuplicateBlock($event)"
         (delete)="onDeleteBlock($event)"
       ></app-block-list>
-
-      @if (expandedIndex() !== null && expandedGroup(); as group) {
-        <div class="be-expanded" data-testid="block-editor-expanded">
-          <app-block-editor-header
-            [formGroup]="group"
-            [primaryColor]="primaryColor()"
-          ></app-block-editor-header>
-        </div>
-      }
 
       @if (previewForbidden()) {
         <p class="be-banner be-banner--warn" data-testid="block-preview-forbidden">
@@ -156,12 +136,6 @@ export interface BlockValidationError {
     :host { display: block; }
     .be-root { display: flex; flex-direction: column; gap: 12px; }
     .be-toolbar { display: flex; justify-content: flex-start; }
-    .be-expanded {
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      padding: 4px;
-      background: #fff;
-    }
     .be-banner {
       padding: 8px 12px;
       border-radius: 6px;
@@ -202,19 +176,16 @@ export class BlockEditorComponent {
    */
   readonly migrationFallback = output<{ reason: 'parse-error' | 'too-large' }>();
 
-  // Signals for template state.
+  // Signals for preview pipeline.
   readonly previewHtml = signal<string>('');
   readonly previewLoading = signal<boolean>(false);
   readonly previewForbidden = signal<boolean>(false);
   readonly previewError = signal<BlockValidationError | null>(null);
 
-  // Expansion state for inline editor.
-  readonly expandedIndex = signal<number | null>(null);
-  readonly expandedGroup = computed<BlockFormGroup | null>(() => {
-    const idx = this.expandedIndex();
-    if (idx === null || idx < 0 || idx >= this.blocksForm.controls.length) return null;
-    return this.blocksForm.at(idx) as BlockFormGroup;
-  });
+  /** Optional view-child handle on the BlockListComponent so auto-seed
+   *  can call `expandById()` on the list without coupling the editor
+   *  to the list's internal signal. */
+  private readonly blockListRef = viewChild<BlockListComponent>('blockList');
 
   /** The FormArray — created empty; auto-seed populates on init. */
   readonly blocksForm: FormArray<BlockFormGroup> = this.fb.array<BlockFormGroup>([]);
@@ -230,11 +201,9 @@ export class BlockEditorComponent {
   onAddBlock(type: BlockType): void {
     this.insertBlock(type);
     // Auto-expand the newly added row so the user can edit immediately.
-    this.expandedIndex.set(this.blocksForm.controls.length - 1);
-  }
-
-  onEditBlock(index: number): void {
-    this.expandedIndex.set(this.expandedIndex() === index ? null : index);
+    const newGroup = this.blocksForm.at(this.blocksForm.controls.length - 1) as BlockFormGroup;
+    const newId = newGroup.controls.id.value as string;
+    this.blockListRef()?.expandById(newId);
   }
 
   onDuplicateBlock(index: number): void {
@@ -242,7 +211,7 @@ export class BlockEditorComponent {
   }
 
   onDeleteBlock(index: number): void {
-    this.removeBlock(index, false);
+    this.removeBlock(index);
   }
 
   /** Save — caller wires to updateCustomBlocks. */
@@ -349,8 +318,6 @@ export class BlockEditorComponent {
 
   private insertLogoBlock(atIndex?: number, src = ''): BlockFormGroup {
     const id: string = crypto.randomUUID();
-    // src is derived from brand (companies.v_logo_url) — not a
-    // user-editable FormControl per spec §3.
     const props = this.fb.group<Record<string, AbstractControl<unknown>>>({
       src: this.fb.control(src),
       alt: this.fb.control(LOGO_DEFAULTS.alt, [Validators.maxLength(200)]),
@@ -392,8 +359,13 @@ export class BlockEditorComponent {
 
   removeBlock(index: number, _confirm = true): void {
     if (index < 0 || index >= this.blocksForm.controls.length) return;
+    // Capture the id BEFORE removeAt so we can clear the expansion
+    // state if the removed block was the active one (collapse, not
+    // re-point at the next row).
+    const removedId = (this.blocksForm.at(index) as BlockFormGroup).controls.id.value as string;
     this.blocksForm.removeAt(index);
-    if (this.expandedIndex() === index) this.expandedIndex.set(null);
+    const list = this.blockListRef();
+    if (list) list.expandById(list.expandedBlockId() === removedId ? null : null);
   }
 
   duplicateBlock(index: number): void {
@@ -408,6 +380,8 @@ export class BlockEditorComponent {
       version: 1,
       props: structuredClone(src.props) as unknown as Record<string, unknown>,
     });
+    // Auto-expand the new copy so the user can tweak immediately.
+    this.blockListRef()?.expandById(newId);
   }
 
   /** Replace FormArray contents (for auto-seed / auto-migrate flows). */
@@ -552,7 +526,8 @@ export class BlockEditorComponent {
         this.migrationFallback.emit({ reason: 'parse-error' });
       }
       if (result.blocks.length > 0) {
-        this.expandedIndex.set(0);
+        const firstId = (this.blocksForm.at(0) as BlockFormGroup).controls.id.value as string;
+        this.blockListRef()?.expandById(firstId);
       }
       return;
     }
@@ -563,7 +538,8 @@ export class BlockEditorComponent {
       if (!html) return;
       const parsed = defaultHtmlToBlocks(html, this.primaryColor());
       this.populateBlocks(parsed, { emitEvent: false });
-      this.expandedIndex.set(0);
+      const firstId = (this.blocksForm.at(0) as BlockFormGroup).controls.id.value as string;
+      this.blockListRef()?.expandById(firstId);
     } catch {
       // Best-effort: leave FormArray empty.
     }

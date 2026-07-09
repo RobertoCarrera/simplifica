@@ -185,7 +185,10 @@ import type { Block, BlockType } from './block-types';
 export function renderBlockToHtmlString(block: Block): string {
   if (!block || typeof block !== 'object') return '';
   const type = block.type as BlockType;
-  const props = (block.props ?? {}) as Record<string, unknown>;
+  // Cast through `unknown` to bridge the discriminated-union of typed
+  // Props interfaces (no index signature) to a uniform dict shape the
+  // per-type renderers expect.
+  const props = ((block.props ?? {}) as unknown) as Record<string, unknown>;
   switch (type) {
     case 'logo':
       return renderBlockLogo(props);

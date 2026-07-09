@@ -14,127 +14,94 @@
     </button>
   </header>
 
-  <div class="ted-grid">
-    <!-- 40% — form column -->
+  <div class="ted-canvas" data-testid="template-editor-canvas">
+    <!--
+      PR-wysiwyg email-block-editor: the dialog is now SINGLE-COLUMN.
+      The block editor IS the preview (every block is rendered visually
+      with its real styles via block-visual.ts). The legacy 60% preview
+      pane was removed because the canvas = preview in WYSIWYG mode.
+      The previewHtml signal + debounced previewTemplate call STILL
+      exist (validation/banner triggers, not a visible pane).
+    -->
     <section class="ted-form" data-testid="template-editor-form">
-      <form
-        [formGroup]="form"
-        (ngSubmit)="saveTemplate()"
-        novalidate
-      >
+      <label class="ted-field">
+        <span class="ted-label">Asunto</span>
+        <input
+          type="text"
+          formControlName="subject"
+          class="ted-input"
+          maxlength="200"
+          data-testid="ted-input-subject"
+        />
+      </label>
+
+      <label class="ted-field">
+        <span class="ted-label">Cabecera</span>
+        <textarea
+          formControlName="header"
+          class="ted-textarea ted-textarea--sm"
+          rows="3"
+          maxlength="2000"
+          data-testid="ted-input-header"
+        ></textarea>
+      </label>
+
+      <!--
+        Block editor: flag-gated swap per design id 1946 §7.1.
+        When the flag is ON, the legacy TipTap UI is replaced by the
+        WYSIWYG canvas. When the flag is OFF (prod default), the
+        legacy UI is unchanged.
+      -->
+      @if (blockEditorEnabled()) {
+        @if (deprecationBannerEnabled()) {
+          <p
+            class="ted-banner ted-banner--deprecation"
+            role="note"
+            data-testid="ted-deprecation-banner"
+          >
+            <strong class="ted-banner__title">
+              {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.title' | transloco }}
+            </strong>
+            <span class="ted-banner__body">
+              {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.body' | transloco }}
+            </span>
+          </p>
+        }
+
+        <app-block-editor
+          [data]="data"
+          [setting]="data.setting"
+          [subject]="form.controls.subject.value"
+          [header]="form.controls.header.value"
+          (saved)="onBlockSave($event)"
+          (migrationFallback)="onMigrationFallback($event)"
+        ></app-block-editor>
+      } @else {
         <label class="ted-field">
-          <span class="ted-label">Asunto</span>
+          <span class="ted-label">Texto del botón</span>
           <input
             type="text"
-            formControlName="subject"
+            formControlName="buttonText"
             class="ted-input"
-            maxlength="200"
-            data-testid="ted-input-subject"
+            maxlength="100"
+            data-testid="ted-input-buttonText"
           />
         </label>
 
         <label class="ted-field">
-          <span class="ted-label">Cabecera</span>
-          <textarea
-            formControlName="header"
-            class="ted-textarea ted-textarea--sm"
-            rows="3"
-            maxlength="2000"
-            data-testid="ted-input-header"
-          ></textarea>
+          <span class="ted-label">Cuerpo (HTML)</span>
+          <app-tiptap-editor
+            data-testid="ted-input-body"
+            [content]="form.controls.body.value"
+            (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
+            [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"
+            [companyId]="data.companyId"
+          ></app-tiptap-editor>
+          <span class="ted-hint">
+            Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
+          </span>
         </label>
-
-        <!--
-          PR2a email-block-editor: flag-gated swap per design id 1946 §7.1.
-          When the flag is ON, the legacy TipTap + Texto del botón UI is
-          replaced by the new block editor. When the flag is OFF
-          (production default), the legacy UI is unchanged.
-        -->
-        @if (blockEditorEnabled()) {
-          <!--
-            PR3 email-block-editor: yellow deprecation banner above the block
-            editor. Gated behind emailBlockEditorDeprecationBanner flag (in
-            runtime-config.json). Only shown in the @if (blockEditorEnabled)
-            branch — the @else (TipTap) branch keeps the legacy UI intact.
-            The legacy fields (Cabecera textarea + Texto del botón input)
-            are still readable; this banner nudges users to use blocks
-            instead. Removal of the legacy columns is a future change.
-          -->
-          @if (deprecationBannerEnabled()) {
-            <p
-              class="ted-banner ted-banner--deprecation"
-              role="note"
-              data-testid="ted-deprecation-banner"
-            >
-              <strong class="ted-banner__title">
-                {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.title' | transloco }}
-              </strong>
-              <span class="ted-banner__body">
-                {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.body' | transloco }}
-              </span>
-            </p>
-          }
-
-          <app-block-editor
-            [data]="data"
-            [setting]="data.setting"
-            [subject]="form.controls.subject.value ?? ''"
-            [header]="form.controls.header.value ?? ''"
-            (saved)="onBlockSave($event)"
-            (migrationFallback)="onMigrationFallback($event)"
-          ></app-block-editor>
-        } @else {
-          <label class="ted-field">
-            <span class="ted-label">Texto del botón</span>
-            <input
-              type="text"
-              formControlName="buttonText"
-              class="ted-input"
-              maxlength="100"
-              data-testid="ted-input-buttonText"
-            />
-          </label>
-
-          <label class="ted-field">
-            <span class="ted-label">Cuerpo (HTML)</span>
-            <app-tiptap-editor
-              data-testid="ted-input-body"
-              [content]="form.controls.body.value"
-              (contentChange)="form.controls.body.setValue($event); previewLoading.set(true)"
-              [placeholder]="'emailSettings.templateEditor.bodyPlaceholder' | transloco"
-              [companyId]="data.companyId"
-            ></app-tiptap-editor>
-            <span class="ted-hint">
-              Variables disponibles: <code>{{ '{' }}{{ '{' }}nombre{{ '}' }}{{ '}' }}</code>
-            </span>
-          </label>
-        }
-      </form>
-    </section>
-
-    <!-- 60% — preview pane -->
-    <section class="ted-preview-wrap" data-testid="template-editor-preview-wrap">
-      <div class="ted-preview-pane" data-testid="template-editor-preview">
-        @if (previewForbidden()) {
-          <p class="ted-banner ted-banner--warn" data-testid="ted-preview-forbidden">
-            No tienes permiso para previsualizar esta plantilla
-          </p>
-        } @else if (previewError()) {
-          <p class="ted-banner ted-banner--error" data-testid="ted-preview-error">
-            No se pudo cargar la previsualización
-          </p>
-        } @else if (previewLoading() && !previewHtml()) {
-          <p class="ted-loading" data-testid="ted-preview-loading">
-            Actualizando previsualización…
-          </p>
-        }
-
-        <div
-          class="ted-preview-html"
-          [innerHTML]="previewHtml() | safeHtml"
-          data-testid="ted-preview-content"
-        ></div>
-      </div>
+      }
     </section>
   </div>
 
