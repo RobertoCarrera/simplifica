@@ -32,6 +32,7 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { VarInsertTargetDirective } from './var-insert-target.directive';
 
 interface PaletteSwatch {
   hex: string;
@@ -67,7 +68,7 @@ type ButtonPropsFormGroup = FormGroup<{
   selector: 'app-button-block-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, VarInsertTargetDirective],
   template: `
     <div
       class="bbe-root"
@@ -82,6 +83,7 @@ type ButtonPropsFormGroup = FormGroup<{
             class="bbe-input"
             formControlName="text"
             maxlength="100"
+            appVarInsertTarget
             data-testid="button-text"
           />
           @if (
@@ -100,6 +102,7 @@ type ButtonPropsFormGroup = FormGroup<{
             formControlName="url"
             maxlength="2000"
             [attr.placeholder]="urlPlaceholder"
+            appVarInsertTarget
             data-testid="button-url"
           />
           @if (
