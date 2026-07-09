@@ -118,6 +118,7 @@ function readId(group: BlockFormGroup): string {
 })
 export class BlockListComponent implements OnInit {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly formArray = input.required<FormArray<BlockFormGroup>>();
   /** Brand primary color forwarded to each row → typed editors. */
@@ -164,7 +165,7 @@ export class BlockListComponent implements OnInit {
     // explicitly. Without this, adding/removing/reordering blocks would
     // not refresh the @for in the template.
     this.formArray().valueChanges
-      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.controls.set([
           ...(this.formArray().controls as readonly BlockFormGroup[]),
