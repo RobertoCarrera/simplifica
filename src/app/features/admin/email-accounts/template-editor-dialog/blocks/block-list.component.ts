@@ -147,14 +147,21 @@ export class BlockListComponent {
    *
    *  See commit 916d529d+1 (fix: react to FormArray mutations) and
    *  engram observation under topic `bug/...` for context. */
-  readonly controls = signal<readonly BlockFormGroup[]>(
-    this.formArray().controls as readonly BlockFormGroup[],
-  );
+   // Start empty — populating from formArray() in the constructor (after
+   // inputs are set). The compiler NG8118-flagged any direct read in a
+   // field initializer because the required input is not guaranteed to
+   // be bound at field-init time.
+   readonly controls = signal<readonly BlockFormGroup[]>([]);
 
   constructor() {
-    // Re-publish the FormArray's controls on every valueChanges emission.
-    // Without this, adding/removing/reordering blocks would not refresh
-    // the @for because signals don't observe FormArray's in-place mutation.
+    // Seed from the (now-bound) input.
+    this.controls.set([
+      ...(this.formArray().controls as readonly BlockFormGroup[]),
+    ]);
+    // Re-publish on every valueChanges emission — signals do NOT observe
+    // FormArray's in-place mutation, so we bridge reactive-forms → signals
+    // explicitly. Without this, adding/removing/reordering blocks would
+    // not refresh the @for in the template.
     this.formArray().valueChanges
       .pipe(takeUntilDestroyed(inject(DestroyRef)))
       .subscribe(() => {
