@@ -52,7 +52,10 @@ function assertServiceRole(req: Request): Response | null {
 
   const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
   try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
-  try { for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID_KEYS.add(v); } catch {}
+  // Rafter v0.63 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS loop.
+  // Publishable key is PUBLIC (embedded in the frontend bundle); including it
+  // in the auth bypass set would let any internet caller invoke this internal
+  // endpoint with the publishable key from the frontend bundle.
 
   const authed = (apikeyHeader && VALID_KEYS.has(apikeyHeader)) || (bearerToken && bearerToken === SERVICE_ROLE_KEY);
   if (!authed) {

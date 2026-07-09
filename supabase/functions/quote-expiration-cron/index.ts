@@ -40,7 +40,10 @@ const SUPABASE_PUBLISHABLE_KEYS_RAW = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') 
 const VALID_APIKEYS: Set<string> = (() => {
   const out = new Set<string>();
   try { for (const v of Object.values(JSON.parse(SUPABASE_SECRET_KEYS_RAW)))      if (typeof v === 'string') out.add(v); } catch {}
-  try { for (const v of Object.values(JSON.parse(SUPABASE_PUBLISHABLE_KEYS_RAW))) if (typeof v === 'string') out.add(v); } catch {}
+  // Rafter v0.63 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS loop.
+  // Publishable key is PUBLIC (embedded in the frontend bundle); including it
+  // in the auth bypass set would let any internet caller invoke this cron
+  // endpoint with the publishable key from the frontend bundle.
   out.add(SERVICE_ROLE_KEY);
   return out;
 })();

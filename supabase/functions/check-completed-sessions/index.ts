@@ -74,7 +74,10 @@ async function requireAuthorizedCaller(
   const VALID = new Set<string>([SERVICE_ROLE_KEY]);
   // v2 keys: registered via env when the project migrated to sb_publishable_/sb_secret_.
   for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')))      if (typeof v === 'string') VALID.add(v);
-  for (const v of Object.values(JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}'))) if (typeof v === 'string') VALID.add(v);
+  // Rafter v0.63 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS loop.
+  // Publishable key is PUBLIC (embedded in the frontend bundle); including it
+  // in the auth bypass set would let any internet caller invoke this cron
+  // endpoint with the publishable key from the frontend bundle.
 
   const apikeyHeader = req.headers.get('apikey') ?? '';
   const authHeader   = req.headers.get('Authorization') ?? '';

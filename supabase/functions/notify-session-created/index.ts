@@ -38,7 +38,10 @@ serve(async (req) => {
   const bearerTok = (req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i) || [])[1] ?? "";
   const VALID_KEYS = new Set<string>([SERVICE_ROLE_KEY]);
   for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}")))      if (typeof v === "string") VALID_KEYS.add(v);
-  for (const v of Object.values(JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}"))) if (typeof v === "string") VALID_KEYS.add(v);
+  // Rafter v0.63 R-44D54: removed SUPABASE_PUBLISHABLE_KEYS loop.
+  // Publishable key is PUBLIC (embedded in the frontend bundle); including it
+  // in the auth bypass set would let any internet caller invoke this trigger
+  // endpoint with the publishable key from the frontend bundle.
   const authed = (apikeyHdr && VALID_KEYS.has(apikeyHdr)) || bearerTok === SERVICE_ROLE_KEY;
   if (!authed) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
