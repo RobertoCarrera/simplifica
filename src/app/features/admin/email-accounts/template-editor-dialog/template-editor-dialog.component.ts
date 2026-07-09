@@ -480,6 +480,22 @@ export class TemplateEditorDialogComponent {
       this.saving.set(false);
     }
   }
+
+  /**
+   * PR2b (email-block-editor): surface a yellow warning snackbar when
+   * the auto-migrate flow applied its 50000-char fallback (single
+   * ParagraphBlock with the first 5000 chars of the legacy body).
+   * The remainder of the legacy HTML stays in `custom_body_template`
+   * for manual recovery. The user can read the legacy content from
+   * the legacy admin path until the deprecation banner PR3 ships.
+   */
+  onMigrationFallback(_payload: { reason: 'parse-error' | 'too-large' }): void {
+    this.toast.warning(
+      this.translocoService.translate('emailSettings.toast.warning') || 'Aviso',
+      this.translocoService.translate('emailSettings.templateEditor.toast.migrationFallback')
+        || 'Hemos convertido tu plantilla anterior en un único bloque de párrafo. El contenido completo sigue disponible en el editor clásico.',
+    );
+  }
 }
 
 export type TemplateEditorDialogResult = boolean;

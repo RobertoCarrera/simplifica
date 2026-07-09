@@ -57,6 +57,7 @@
             [subject]="form.controls.subject.value ?? ''"
             [header]="form.controls.header.value ?? ''"
             (saved)="onBlockSave($event)"
+            (migrationFallback)="onMigrationFallback($event)"
           ></app-block-editor>
         } @else {
           <label class="ted-field">
