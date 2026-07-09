@@ -146,17 +146,21 @@ export class EmailSettingsComponent implements OnInit {
 
   /**
    * Accordion state: which categories are currently expanded. Set of
-   * category names. Default: ALL expanded (the user starts with full
-   * visibility, can collapse noisy sections like "Invitaciones" which
-   * has 8 entries). The state is in-memory only (not persisted to
-   * localStorage) — re-navigating to the page resets to all-open,
-   * which is the safer default.
+   * category names.
+   *
+   * Behaviour:
+   * - On first load, ONLY the first category ("reservas") is open. The
+   *   rest are collapsed so the user sees a clean, focused entry point
+   *   instead of being overwhelmed by 26 rows of email types.
+   * - Exclusive accordion: clicking a category header CLOSES the
+   *   currently-open one and opens the clicked one. There is always at
+   *   most ONE category open. Clicking the already-open category closes
+   *   it (empty set).
+   * - State is in-memory only (not persisted to localStorage) — re-
+   *   navigating to the page resets to "reservas" open.
    */
   readonly expandedCategories = signal<ReadonlySet<EmailCategory>>(
-    new Set<EmailCategory>([
-      'reservas', 'facturacion', 'consentimiento', 'invitaciones',
-      'credenciales', 'notificaciones',
-    ])
+    new Set<EmailCategory>(['reservas'])
   );
 
   isCategoryExpanded(category: EmailCategory): boolean {
@@ -165,13 +169,13 @@ export class EmailSettingsComponent implements OnInit {
 
   toggleCategory(category: EmailCategory): void {
     this.expandedCategories.update((set) => {
-      const next = new Set(set);
-      if (next.has(category)) {
-        next.delete(category);
-      } else {
-        next.add(category);
+      // Exclusive accordion: clicking an open category closes it
+      // (empty set); clicking a closed category opens only that one
+      // and implicitly closes the previously-open one.
+      if (set.has(category)) {
+        return new Set<EmailCategory>();
       }
-      return next;
+      return new Set<EmailCategory>([category]);
     });
   }
 
