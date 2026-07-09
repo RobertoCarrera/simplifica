@@ -2305,6 +2305,10 @@
           "alignLabel": "Alineación",
           "fontSizeLabel": "Tamaño de fuente",
           "emptyWarning": "El bloque está vacío"
+        },
+        "deprecationBanner": {
+          "title": "Campos deprecated",
+          "body": "Los campos 'Cabecera' y 'Texto del botón' están deprecated. Usa bloques (heading, paragraph, button) en su lugar."
         }
       }
     },

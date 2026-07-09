@@ -111,6 +111,18 @@ export class TemplateEditorDialogComponent {
     () => this.runtimeConfig.get().features?.emailBlockEditorEnabled === true,
   );
 
+  /**
+   * Feature flag (PR3 email-block-editor): when true, a yellow deprecation
+   * banner is rendered above the block editor warning users that the
+   * legacy "Cabecera" + "Texto del botón" fields are deprecated in favor
+   * of blocks. Independent of `blockEditorEnabled` so the banner can be
+   * flipped on a different cadence (e.g. show banner while the block
+   * editor is still behind a separate flag in production).
+   */
+  readonly deprecationBannerEnabled = computed<boolean>(
+    () => this.runtimeConfig.get().features?.emailBlockEditorDeprecationBanner === true,
+  );
+
   /** Preview pane HTML, sanitized via SafeHtmlPipe in the template. */
   readonly previewHtml = signal<string>('');
 

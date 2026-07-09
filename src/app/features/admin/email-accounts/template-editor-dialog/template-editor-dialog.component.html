@@ -51,6 +51,30 @@
           (production default), the legacy UI is unchanged.
         -->
         @if (blockEditorEnabled()) {
+          <!--
+            PR3 email-block-editor: yellow deprecation banner above the block
+            editor. Gated behind emailBlockEditorDeprecationBanner flag (in
+            runtime-config.json). Only shown in the @if (blockEditorEnabled)
+            branch — the @else (TipTap) branch keeps the legacy UI intact.
+            The legacy fields (Cabecera textarea + Texto del botón input)
+            are still readable; this banner nudges users to use blocks
+            instead. Removal of the legacy columns is a future change.
+          -->
+          @if (deprecationBannerEnabled()) {
+            <p
+              class="ted-banner ted-banner--deprecation"
+              role="note"
+              data-testid="ted-deprecation-banner"
+            >
+              <strong class="ted-banner__title">
+                {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.title' | transloco }}
+              </strong>
+              <span class="ted-banner__body">
+                {{ 'emailSettings.templateEditor.blockEditor.deprecationBanner.body' | transloco }}
+              </span>
+            </p>
+          }
+
           <app-block-editor
             [data]="data"
             [setting]="data.setting"

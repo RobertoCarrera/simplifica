@@ -17,6 +17,14 @@ export interface RuntimeConfig {
     // swaps the legacy TipTap + 4-field UI for the Divi-style block editor.
     // Default OFF in production; ON in dev/staging until PR2b ships.
     emailBlockEditorEnabled?: boolean;
+    // PR3 (email-block-editor): when true, the dialog shows a yellow
+    // deprecation banner above the block editor warning users that the
+    // legacy "Cabecera" + "Texto del botón" fields are deprecated in
+    // favor of blocks. Independent of emailBlockEditorEnabled so the
+    // banner can be enabled in production even before the block editor
+    // itself is the default. Default OFF (will be flipped after users
+    // have had time to migrate).
+    emailBlockEditorDeprecationBanner?: boolean;
   };
 }
 
@@ -61,6 +69,8 @@ export class RuntimeConfigService {
           anychatConversationsEnabled: true,
           // emailBlockEditorEnabled: default OFF — flag-flip PR after PR2b merges.
           emailBlockEditorEnabled: false,
+          // PR3: deprecation banner default OFF. Independent of block editor flag.
+          emailBlockEditorDeprecationBanner: false,
         },
       };
 
@@ -88,6 +98,13 @@ export class RuntimeConfigService {
             cfg?.features?.emailBlockEditorEnabled === true
               ? true
               : (defaults.features?.emailBlockEditorEnabled ?? false),
+          // PR3: emailBlockEditorDeprecationBanner — strict OFF unless
+          // explicitly true. Independent of the block editor flag so it
+          // can be flipped on a different cadence.
+          emailBlockEditorDeprecationBanner:
+            cfg?.features?.emailBlockEditorDeprecationBanner === true
+              ? true
+              : (defaults.features?.emailBlockEditorDeprecationBanner ?? false),
         },
       };
 
@@ -105,6 +122,7 @@ export class RuntimeConfigService {
         features: {
           anychatConversationsEnabled: true,
           emailBlockEditorEnabled: false,
+          emailBlockEditorDeprecationBanner: false,
         },
       };
     }
@@ -123,6 +141,7 @@ export class RuntimeConfigService {
         features: {
           anychatConversationsEnabled: true,
           emailBlockEditorEnabled: false,
+          emailBlockEditorDeprecationBanner: false,
         },
       } as RuntimeConfig;
     }
