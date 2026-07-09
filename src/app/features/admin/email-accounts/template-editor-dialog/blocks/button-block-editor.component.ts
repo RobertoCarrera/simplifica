@@ -99,7 +99,7 @@ type ButtonPropsFormGroup = FormGroup<{
             class="bbe-input"
             formControlName="url"
             maxlength="2000"
-            placeholder="https://…  o  mailto:…  o  {{invoice_url}}"
+            [attr.placeholder]="urlPlaceholder"
             data-testid="button-url"
           />
           @if (
@@ -308,6 +308,14 @@ export class ButtonBlockEditorComponent {
   );
 
   readonly primaryColor = input<string | null>(null);
+
+  /**
+   * Placeholder string shown in the URL input. Built at construction
+   * time so the literal `{{`/`}}` braces don't trip Angular's template
+   * parser (which would try to interpolate them as a binding).
+   */
+  readonly urlPlaceholder =
+    'https://…  o  mailto:…  o  ' + '{' + '{' + ' var ' + '}' + '}';
 
   readonly palette = computed<ReadonlyArray<PaletteSwatch>>(() => {
     const primary = this.primaryColor();
