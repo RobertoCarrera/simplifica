@@ -227,58 +227,13 @@ export class TemplateEditorDialogComponent {
   }
 
   /**
-   * Fires one explicit previewTemplate RPC at construction with the form's
-   * current values, so the preview pane is populated on dialog open even
-   * if the user hasn't typed yet and the seed async path is slow.
-   * Best-effort: errors are silently swallowed. Subsequent user edits
-   * flow through the debounce pipeline.
-   */
-  private fetchInitialPreview(): void {
-    console.log('[TEMPLATE-EDITOR] fetchInitialPreview() called for type:', this.data.emailType, 'companyId:', this.data.companyId, 'sampleData:', this.data.sampleData);
-    firstValueFrom(
-      this.companyEmailService.previewTemplate(
-        this.data.companyId,
-        this.data.emailType,
-        this.data.sampleData,
-        {
-          custom_subject: this.form.controls.subject.value ?? '',
-          custom_header: this.form.controls.header.value ?? '',
-          custom_button_text: this.form.controls.buttonText.value ?? '',
-          custom_body: this.form.controls.body.value ?? '',
-        }
-      )
-    )
-      .then((result) => {
-        console.log('[TEMPLATE-EDITOR] fetchInitialPreview() success, html length:', result.html?.length, 'first 100 chars:', result.html?.substring(0, 100));
-        this.previewHtml.set(result.html ?? '');
-      })
-      .catch((err) => {
-        console.error('[TEMPLATE-EDITOR] fetchInitialPreview() ERROR:', err);
-      });
-  }
-
-  /**
-   * Best-effort seed: when the user opens the editor for an email type
-   * with no saved `custom_*` values, the preview pane already shows
-   * the rendered default HTML but the four inputs are blank. We
-   * pre-populate `body`, `subject` and `buttonText` from the rendered
-   * default so the user edits from a real starting point instead of a
-   * blank wall.
-   *
-   *   - body: the inner `<body>...</body>` content with the RGPD
-   *     compliance footer stripped.
-   *   - subject: text content of the first `<h1>` in the default body.
-   *   - buttonText: text content of the first `<a>` whose inline
-   *     `style` contains a `background:` declaration (the CTA button).
-   *
-   * Uses `patchValue({ ... }, { emitEvent: false })` so the existing
-   * `form.valueChanges` debounce pipeline does NOT fire a second RPC —
-   * the pipeline above already seeded the preview pane on construction,
-   * and re-firing it with the same value would be wasted work.
-   *
-   * Errors are swallowed: the preview pane still reflects the default
-   * via the existing pipeline, and a failed seed leaves the editor
-   * blank (the pre-fix behavior) instead of erroring out.
+   * PR2b cleanup note: the prior `fetchInitialPreview` debug helper and
+   * all `[TEMPLATE-EDITOR]` console.log instrumentation have been
+   * removed. The dialog now relies on:
+   *   1. the form.valueChanges → previewTemplate pipeline (subscribed
+   *      in the constructor) for the debounced live preview, and
+   *   2. `seedFromDefaultIfEmpty` for the best-effort one-shot seed
+   *      on first open of an un-customized setting.
    */
   private async seedFromDefaultIfEmpty(): Promise<void> {
     const setting = this.data.setting;
@@ -288,7 +243,6 @@ export class TemplateEditorDialogComponent {
     if (hasSavedBody && hasSavedSubject && hasSavedButtonText) return;
 
     try {
-      console.log('[TEMPLATE-EDITOR] seed() called for type:', this.data.emailType, 'hasSavedBody:', hasSavedBody, 'hasSavedSubject:', hasSavedSubject, 'hasSavedButtonText:', hasSavedButtonText);
       const result = await firstValueFrom(
         this.companyEmailService.previewTemplate(
           this.data.companyId,
@@ -302,26 +256,21 @@ export class TemplateEditorDialogComponent {
           }
         )
       );
-      console.log('[TEMPLATE-EDITOR] seed() result.html length:', result.html?.length, 'first 80 chars:', result.html?.substring(0, 80));
       const extracted = this.extractFromDefaultHtml(result.html ?? '');
-      console.log('[TEMPLATE-EDITOR] extracted subject:', extracted.subject, 'buttonText:', extracted.buttonText, 'body length:', extracted.body.length);
       const patch: Partial<FormShape> = {};
       if (!hasSavedBody && extracted.body) patch.body = extracted.body;
       if (!hasSavedSubject && extracted.subject) patch.subject = extracted.subject;
       if (!hasSavedButtonText && extracted.buttonText) patch.buttonText = extracted.buttonText;
       if (Object.keys(patch).length > 0) {
         this.form.patchValue(patch, { emitEvent: false });
-        console.log('[TEMPLATE-EDITOR] patched form keys:', Object.keys(patch));
       }
       // Reuse the same RPC response to populate the preview pane so the
       // right side is not empty after the seed (the form pipeline uses
       // emitEvent: false above to avoid a duplicate round-trip, so it
       // won't fire on its own).
-      console.log('[TEMPLATE-EDITOR] setting previewHtml to result.html (length:', result.html?.length, ')');
       this.previewHtml.set(result.html ?? '');
-      console.log('[TEMPLATE-EDITOR] previewHtml set. Current value length:', this.previewHtml().length);
     } catch (err) {
-      console.error('[TEMPLATE-EDITOR] seed() ERROR:', err);
+      console.error('TemplateEditorDialog.seedFromDefaultIfEmpty', err);
       // best-effort: preview pane still shows the default via the pipeline
     }
   }

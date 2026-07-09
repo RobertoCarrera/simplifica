@@ -104,26 +104,6 @@
             Actualizando previsualización…
           </p>
         }
-        <!-- DEBUG PANEL — will be removed once the preview bug is fixed -->
-        <details class="ted-debug" style="background:#fef3c7;border:2px dashed #f59e0b;padding:8px;margin:8px;font-size:11px;font-family:monospace;border-radius:4px;">
-          <summary style="cursor:pointer;font-weight:bold;">🔍 DEBUG preview state (click to expand)</summary>
-          <div style="margin-top:8px;line-height:1.4;">
-            <div><b>emailType:</b> {{ data.emailType }}</div>
-            <div><b>companyId:</b> {{ data.companyId }}</div>
-            <div><b>previewHtml().length:</b> {{ previewHtml().length }} chars</div>
-            <div><b>previewLoading():</b> {{ previewLoading() }}</div>
-            <div><b>previewError():</b> {{ previewError() }}</div>
-            <div><b>previewForbidden():</b> {{ previewForbidden() }}</div>
-            <div><b>blockEditorEnabled():</b> {{ blockEditorEnabled() }}</div>
-            <div><b>form.body.value length:</b> {{ form.controls.body.value?.length || 0 }} chars</div>
-            <div><b>form.subject.value:</b> "{{ form.controls.subject.value }}"</div>
-            <div><b>form.buttonText.value:</b> "{{ form.controls.buttonText.value }}"</div>
-            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f59e0b;">
-              <b>previewHtml() (first 500 chars):</b>
-              <pre style="background:#fff;padding:4px;margin:4px 0;max-height:200px;overflow:auto;white-space:pre-wrap;font-size:10px;">{{ previewHtml().substring(0, 500) }}</pre>
-            </div>
-          </div>
-        </details>
 
         <div
           class="ted-preview-html"
