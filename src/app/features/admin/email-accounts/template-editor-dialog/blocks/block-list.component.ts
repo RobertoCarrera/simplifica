@@ -24,6 +24,7 @@ import {
   DestroyRef,
   ElementRef,
   HostListener,
+  OnInit,
   inject,
   input,
   output,
@@ -115,7 +116,7 @@ function readId(group: BlockFormGroup): string {
     }
   `],
 })
-export class BlockListComponent {
+export class BlockListComponent implements OnInit {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
 
   readonly formArray = input.required<FormArray<BlockFormGroup>>();
@@ -147,13 +148,13 @@ export class BlockListComponent {
    *
    *  See commit 916d529d+1 (fix: react to FormArray mutations) and
    *  engram observation under topic `bug/...` for context. */
-   // Start empty — populating from formArray() in the constructor (after
-   // inputs are set). The compiler NG8118-flagged any direct read in a
-   // field initializer because the required input is not guaranteed to
-   // be bound at field-init time.
-   readonly controls = signal<readonly BlockFormGroup[]>([]);
+  // Start empty — populated in ngOnInit (after the required input is
+  // bound). Field initializers and the constructor body run BEFORE inputs
+  // are set, so the compiler NG8118-flags any direct read in those
+  // contexts. ngOnInit is the earliest lifecycle hook where reads are safe.
+  readonly controls = signal<readonly BlockFormGroup[]>([]);
 
-  constructor() {
+  ngOnInit(): void {
     // Seed from the (now-bound) input.
     this.controls.set([
       ...(this.formArray().controls as readonly BlockFormGroup[]),
