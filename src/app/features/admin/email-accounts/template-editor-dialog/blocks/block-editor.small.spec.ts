@@ -1,17 +1,27 @@
 /**
- * Unit tests for the smaller block-editor components (PR2a).
+ * Unit tests for the block-editor components (PR-wysiwyg email-block-editor).
  *
  * Covers:
- *   - BlockListComponent: cdkDropListDropped fires reorder (via moveItemInArray)
- *   - BlockRowComponent: summary text per block type, action emissions
+ *   - BlockListComponent: cdkDropListDropped fires reorder (via moveItemInArray);
+ *     expansion tracked by stable block id; duplicate / delete re-emit with
+ *     the row index.
+ *   - BlockRowComponent: visual HTML rendering via block-visual.ts;
+ *     click-to-expand / Done-to-collapse; hover overlay controls emit.
  *   - AddBlockDropdownComponent: emits selected type, Logo disabled when !hasLogoUrl
- *   - BlockEditorHeaderComponent: routes heading type to HeadingBlockEditor
+ *   - BlockEditorHeaderComponent: routes heading/paragraph/button/logo to the
+ *     matching typed editor; "(closeEditor)" fires on the "Listo" button.
  *   - HeadingBlockEditorComponent: validation (text maxlength, color regex,
  *     font_size range)
+ *   - block-visual.ts: renderBlockToHtmlString emits the per-type HTML
+ *     matching the SQL renderer (snapshot-style assertions on substrings).
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, NonNullableFormBuilder } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  NonNullableFormBuilder,
+  FormArray,
+} from '@angular/forms';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import {
   BlockListComponent,
@@ -21,6 +31,10 @@ import { BlockRowComponent } from './block-row.component';
 import { AddBlockDropdownComponent } from './add-block-dropdown.component';
 import { BlockEditorHeaderComponent } from './block-editor-header.component';
 import { HeadingBlockEditorComponent } from './heading-block-editor.component';
+import { ParagraphBlockEditorComponent } from './paragraph-block-editor.component';
+import { ButtonBlockEditorComponent } from './button-block-editor.component';
+import { LogoBlockEditorComponent } from './logo-block-editor.component';
+import { renderBlockToHtmlString } from './block-visual';
 
 // ---------- helpers ----------------------------------------------------
 
@@ -68,6 +82,7 @@ describe('BlockListComponent', () => {
     }).compileComponents();
     const fixture = TestBed.createComponent(BlockListComponent);
     fixture.componentRef.setInput('formArray', formArray);
+    fixture.componentRef.setInput('primaryColor', null);
     fixture.componentRef.setInput('hasLogoUrl', false);
     fixture.detectChanges();
     return { fixture, component: fixture.componentInstance, formArray };
@@ -80,7 +95,9 @@ describe('BlockListComponent', () => {
       makeBlockFormGroup(fb, 'paragraph'),
     ];
     const { fixture } = setup(arr);
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid^="block-row-"]');
+    // The row carries [data-block-id] so the host click-outside
+    // listener can detect "outside-row" clicks.
+    const rows = fixture.nativeElement.querySelectorAll('[data-block-id]');
     expect(rows.length).toBe(2);
   });
 
@@ -99,7 +116,6 @@ describe('BlockListComponent', () => {
     const c = makeBlockFormGroup(fb, 'button');
     const { component, formArray } = setup([a, b, c]);
     spyOn(formArray, 'updateValueAndValidity').and.callThrough();
-    // Simulate a drop from index 0 → index 2.
     const event: Partial<CdkDragDrop<BlockFormGroup[]>> = {
       previousIndex: 0,
       currentIndex: 2,
@@ -111,93 +127,154 @@ describe('BlockListComponent', () => {
     expect(formArray.at(2).controls.type.value).toBe('heading');
   });
 
-  it('emits edit/duplicate/delete outputs with the row index', () => {
+  it('emits duplicate/delete outputs with the row index', () => {
     const fb = TestBed.inject(NonNullableFormBuilder);
     const a = makeBlockFormGroup(fb, 'heading');
     const { component, fixture } = setup([a]);
-    const edits: number[] = [];
     const dups: number[] = [];
     const dels: number[] = [];
-    component.edit.subscribe((i: number) => edits.push(i));
     component.duplicate.subscribe((i: number) => dups.push(i));
     component.delete.subscribe((i: number) => dels.push(i));
-    // Trigger directly on the child BlockRowComponent via querySelector.
-    const editBtn = fixture.nativeElement.querySelector('[data-testid="block-row-edit"]') as HTMLButtonElement;
     const dupBtn = fixture.nativeElement.querySelector('[data-testid="block-row-duplicate"]') as HTMLButtonElement;
     const delBtn = fixture.nativeElement.querySelector('[data-testid="block-row-delete"]') as HTMLButtonElement;
-    editBtn.click();
     dupBtn.click();
     delBtn.click();
-    expect(edits).toEqual([0]);
     expect(dups).toEqual([0]);
     expect(dels).toEqual([0]);
+  });
+
+  it('tracks expansion by stable id (survives reorder)', () => {
+    const fb = TestBed.inject(NonNullableFormBuilder);
+    const a = makeBlockFormGroup(fb, 'heading');
+    const b = makeBlockFormGroup(fb, 'paragraph');
+    const { component, fixture, formArray } = setup([a, b]);
+    component.expandById(a.controls.id.value as string);
+    fixture.detectChanges();
+    expect(component.expandedBlockId()).toBe(a.controls.id.value as string);
+
+    // Reorder so the "a" row moves to index 1.
+    (formArray as FormArray<BlockFormGroup>).removeAt(0);
+    (formArray as FormArray<BlockFormGroup>).push(a);
+    expect(component.expandedBlockId()).toBe(a.controls.id.value as string);
+  });
+
+  it('expandById(null) collapses the active row', () => {
+    const fb = TestBed.inject(NonNullableFormBuilder);
+    const a = makeBlockFormGroup(fb, 'heading');
+    const { component } = setup([a]);
+    component.expandById(a.controls.id.value as string);
+    expect(component.expandedBlockId()).toBe(a.controls.id.value as string);
+    component.expandById(null);
+    expect(component.expandedBlockId()).toBeNull();
   });
 });
 
 // ---------- BlockRowComponent -----------------------------------------
 
 describe('BlockRowComponent', () => {
-  function setup(type: 'logo' | 'heading' | 'paragraph' | 'button', summaryValue: string) {
+  function setup(
+    type: 'logo' | 'heading' | 'paragraph' | 'button',
+    expanded = false,
+  ) {
     const fb = TestBed.inject(NonNullableFormBuilder);
     const group = makeBlockFormGroup(fb, type);
-    // Patch the summary field
-    if (type === 'heading' || type === 'paragraph') {
-      group.controls.props.controls['text']!.setValue(summaryValue);
-    } else if (type === 'button') {
-      group.controls.props.controls['text']!.setValue(summaryValue);
-    } else {
-      group.controls.props.controls['alt']!.setValue(summaryValue);
-    }
     TestBed.configureTestingModule({
-      imports: [CommonModule, BlockRowComponent],
+      imports: [
+        CommonModule,
+        BlockRowComponent,
+        BlockEditorHeaderComponent,
+        HeadingBlockEditorComponent,
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(BlockRowComponent);
     fixture.componentRef.setInput('formGroup', group);
     fixture.componentRef.setInput('index', 0);
-    fixture.componentRef.setInput('hasLogoUrl', true);
-    fixture.componentRef.setInput('expanded', false);
+    fixture.componentRef.setInput('expanded', expanded);
+    fixture.componentRef.setInput('primaryColor', null);
     fixture.detectChanges();
-    return { fixture, component: fixture.componentInstance };
+    return { fixture, component: fixture.componentInstance, group };
   }
 
-  it('summary shows the heading text (truncated to 30 chars)', () => {
-    const { fixture } = setup('heading', 'Bienvenida al equipo de Simplifica CRM');
-    const summary = fixture.nativeElement.querySelector(
-      '[data-testid="block-row-summary"]',
-    ) as HTMLElement;
-    expect(summary.textContent).toContain('Bienvenida al equipo de Simpli');
+  it('renders the visual HTML via block-visual.ts (heading renders an <h1>)', () => {
+    const { fixture, group } = setup('heading');
+    group.controls.props.controls['text']!.setValue('Bienvenida');
+    fixture.detectChanges();
+    const visual = fixture.nativeElement.querySelector('[data-testid="block-row-visual"]') as HTMLElement;
+    expect(visual).toBeTruthy();
+    expect(visual.innerHTML).toContain('<h1');
+    expect(visual.innerHTML).toContain('Bienvenida');
   });
 
-  it('summary shows the paragraph text', () => {
-    const { fixture } = setup('paragraph', 'Cuerpo del email');
-    const summary = fixture.nativeElement.querySelector(
-      '[data-testid="block-row-summary"]',
-    ) as HTMLElement;
-    expect(summary.textContent).toContain('Cuerpo del email');
+  it('renders paragraph text inside a <p> tag', () => {
+    const { fixture, group } = setup('paragraph');
+    group.controls.props.controls['text']!.setValue('Cuerpo del email');
+    fixture.detectChanges();
+    const visual = fixture.nativeElement.querySelector('[data-testid="block-row-visual"]') as HTMLElement;
+    expect(visual.innerHTML).toContain('<p');
+    expect(visual.innerHTML).toContain('Cuerpo del email');
   });
 
-  it('summary falls back to (vacío) when heading text is empty', () => {
-    const { fixture } = setup('heading', '');
-    const summary = fixture.nativeElement.querySelector(
-      '[data-testid="block-row-summary"]',
-    ) as HTMLElement;
-    expect(summary.textContent).toContain('(vacío)');
+  it('renders button block with primary background color', () => {
+    const { fixture } = setup('button');
+    const visual = fixture.nativeElement.querySelector('[data-testid="block-row-visual"]') as HTMLElement;
+    expect(visual.innerHTML).toContain('background:#4f46e5');
+    expect(visual.innerHTML).toContain('Click aquí');
   });
 
-  it('emits edit/duplicate/delete on action button clicks', () => {
-    const { component, fixture } = setup('heading', 'Hi');
-    const edits: void[] = [];
-    const dups: void[] = [];
-    const dels: void[] = [];
-    component.edit.subscribe(() => edits.push(undefined));
-    component.duplicate.subscribe(() => dups.push(undefined));
-    component.delete.subscribe(() => dels.push(undefined));
-    (fixture.nativeElement.querySelector('[data-testid="block-row-edit"]') as HTMLButtonElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="block-row-duplicate"]') as HTMLButtonElement).click();
-    (fixture.nativeElement.querySelector('[data-testid="block-row-delete"]') as HTMLButtonElement).click();
-    expect(edits.length).toBe(1);
-    expect(dups.length).toBe(1);
-    expect(dels.length).toBe(1);
+  it('does not render the editor when expanded=false', () => {
+    const { fixture } = setup('heading', false);
+    expect(fixture.nativeElement.querySelector('[data-testid="block-row-editor"]')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('[data-testid="block-row-visual"]')).toBeTruthy();
+  });
+
+  it('renders the inline editor when expanded=true', () => {
+    const { fixture } = setup('heading', true);
+    expect(fixture.nativeElement.querySelector('[data-testid="block-row-editor"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="block-row-visual"]')).toBeFalsy();
+  });
+
+  it('emits (expandedChange)=true on visual click', () => {
+    const { component, fixture } = setup('heading', false);
+    const emitted: boolean[] = [];
+    component.expandedChange.subscribe((v: boolean) => emitted.push(v));
+    const visualBtn = fixture.nativeElement.querySelector(
+      '[data-testid="block-row-visual"]',
+    ) as HTMLButtonElement;
+    visualBtn.click();
+    expect(emitted).toEqual([true]);
+  });
+
+  it('emits (expandedChange)=false via the editor Done button', () => {
+    const { component, fixture } = setup('heading', true);
+    const emitted: boolean[] = [];
+    component.expandedChange.subscribe((v: boolean) => emitted.push(v));
+    const doneBtn = fixture.nativeElement.querySelector(
+      '[data-testid="block-editor-done"]',
+    ) as HTMLButtonElement;
+    doneBtn.click();
+    expect(emitted).toEqual([false]);
+  });
+
+  it('emits (duplicateBlock) on the duplicate button click', () => {
+    const { component, fixture } = setup('heading');
+    let fired = false;
+    component.duplicateBlock.subscribe(() => (fired = true));
+    const dupBtn = fixture.nativeElement.querySelector(
+      '[data-testid="block-row-duplicate"]',
+    ) as HTMLButtonElement;
+    dupBtn.click();
+    expect(fired).toBe(true);
+  });
+
+  it('emits (deleteBlock) on the delete button click', () => {
+    const { component, fixture } = setup('heading');
+    let fired = false;
+    component.deleteBlock.subscribe(() => (fired = true));
+    const delBtn = fixture.nativeElement.querySelector(
+      '[data-testid="block-row-delete"]',
+    ) as HTMLButtonElement;
+    delBtn.click();
+    expect(fired).toBe(true);
   });
 });
 
@@ -265,6 +342,9 @@ describe('BlockEditorHeaderComponent', () => {
         ReactiveFormsModule,
         BlockEditorHeaderComponent,
         HeadingBlockEditorComponent,
+        ParagraphBlockEditorComponent,
+        ButtonBlockEditorComponent,
+        LogoBlockEditorComponent,
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(BlockEditorHeaderComponent);
@@ -274,24 +354,38 @@ describe('BlockEditorHeaderComponent', () => {
     return { fixture, component: fixture.componentInstance };
   }
 
+  it('renders the type label and the "Listo" Done button in the toolbar', () => {
+    const { fixture } = setup('heading');
+    expect(fixture.nativeElement.querySelector('[data-testid="block-editor-toolbar"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="block-editor-done"]')).toBeTruthy();
+  });
+
   it('routes heading type to HeadingBlockEditor', () => {
     const { fixture } = setup('heading');
     expect(fixture.nativeElement.querySelector('[data-testid="heading-block-editor"]')).toBeTruthy();
   });
 
-  it('renders paragraph placeholder for paragraph type (PR2b)', () => {
+  it('routes paragraph type to ParagraphBlockEditor', () => {
     const { fixture } = setup('paragraph');
-    expect(fixture.nativeElement.querySelector('[data-testid="paragraph-placeholder"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="paragraph-block-editor"]')).toBeTruthy();
   });
 
-  it('renders button placeholder for button type (PR2b)', () => {
+  it('routes button type to ButtonBlockEditor', () => {
     const { fixture } = setup('button');
-    expect(fixture.nativeElement.querySelector('[data-testid="button-placeholder"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="button-block-editor"]')).toBeTruthy();
   });
 
-  it('renders logo placeholder for logo type (PR2b)', () => {
+  it('routes logo type to LogoBlockEditor', () => {
     const { fixture } = setup('logo');
-    expect(fixture.nativeElement.querySelector('[data-testid="logo-placeholder"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="logo-block-editor"]')).toBeTruthy();
+  });
+
+  it('emits (closeEditor) when the Done button is clicked', () => {
+    const { component, fixture } = setup('heading');
+    let fired = false;
+    component.closeEditor.subscribe(() => (fired = true));
+    (fixture.nativeElement.querySelector('[data-testid="block-editor-done"]') as HTMLButtonElement).click();
+    expect(fired).toBe(true);
   });
 });
 
@@ -364,5 +458,85 @@ describe('HeadingBlockEditorComponent', () => {
     fixture.detectChanges();
     const firstSwatch = fixture.nativeElement.querySelector('.hbe-swatch') as HTMLButtonElement;
     expect(firstSwatch.getAttribute('data-testid')).toBe('heading-color-#FF6B35');
+  });
+});
+
+// ---------- block-visual.ts renderers ---------------------------------
+
+describe('block-visual.ts renderers', () => {
+  it('renderBlockHeading emits an <h1> with the typed text and color', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'heading', version: 1,
+      props: { text: 'Hola', color: '#4f46e5', align: 'center', level: 1, font_size: 28 },
+    } as never);
+    expect(html).toContain('<h1');
+    expect(html).toContain('Hola');
+    expect(html).toContain('#4f46e5');
+  });
+
+  it('renderBlockParagraph escapes text-injection attempts (OWASP)', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'paragraph', version: 1,
+      props: { text: '<script>alert(1)</script>', color: '#374151', font_size: 16 },
+    } as never);
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('renderBlockButton falls back to <span> for unsafe literal URLs', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'button', version: 1,
+      props: {
+        text: 'Click',
+        url: 'javascript:alert(1)',
+        background_color: '#4f46e5',
+        text_color: '#FFFFFF',
+        padding: 12,
+        border_radius: 6,
+        align: 'center',
+      },
+    } as never);
+    expect(html).not.toContain('<a href="javascript:');
+    expect(html).toContain('<span');
+  });
+
+  it('renderBlockButton emits an <a> for safe https URLs', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'button', version: 1,
+      props: {
+        text: 'Ir',
+        url: 'https://app.example.com/cta',
+        background_color: '#4f46e5',
+        text_color: '#FFFFFF',
+        padding: 12,
+        border_radius: 6,
+        align: 'center',
+      },
+    } as never);
+    expect(html).toContain('<a href="https://app.example.com/cta"');
+  });
+
+  it('renderBlockButton emits an <a> for {{var}} placeholder URLs (deferred validation)', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'button', version: 1,
+      props: {
+        text: 'Ir',
+        url: '{{cta_url}}',
+        background_color: '#4f46e5',
+        text_color: '#FFFFFF',
+        padding: 12,
+        border_radius: 6,
+        align: 'center',
+      },
+    } as never);
+    expect(html).toContain('<a href="{{cta_url}}"');
+  });
+
+  it('returns empty string for unknown block types (forward-compat)', () => {
+    const html = renderBlockToHtmlString({
+      id: 'i', type: 'unknown_type', version: 1,
+      props: {},
+    } as never);
+    expect(html).toBe('');
   });
 });
