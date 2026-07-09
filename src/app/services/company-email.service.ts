@@ -562,10 +562,16 @@ export class CompanyEmailService {
       email_account_id: defaults.email_account_id ?? null,
     };
 
+    // BUG FIX: was .upsert() with onConflict — this would UPDATE an existing
+    // row's is_active from false to true on every dialog open, even when the
+    // user made no changes. Now uses .insert() which fails with Postgres
+    // 23505 (unique_violation) if the row already exists. The existing row
+    // is preserved (its actual is_active is kept). The call site in
+    // email-settings.component.ts catches 23505 and just re-fetches.
     return from(
       this.supabase
         .from('company_email_settings')
-        .upsert(payload, { onConflict: 'company_id,email_type' })
+        .insert(payload)
         .select()
         .single()
     ).pipe(

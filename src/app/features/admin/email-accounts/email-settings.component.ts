@@ -275,6 +275,8 @@ export class EmailSettingsComponent implements OnInit {
     let setting = this.getSettingForType(type);
     if (!setting) {
       try {
+        // No setting exists — insert one. is_active defaults to true
+        // (standard default for a brand-new email template).
         await firstValueFrom(
           this.emailService.upsertTemplate(this.companyId, type, {
             is_active: true,
@@ -284,12 +286,22 @@ export class EmailSettingsComponent implements OnInit {
         await this.loadData();
         setting = this.getSettingForType(type);
       } catch (err: any) {
-        this.toast.error(
-          this.translocoService.translate('emailSettings.toast.error'),
-          this.translocoService.translate('emailSettings.toast.templateSaveError')
-        );
-        console.error('openTemplateEditor upsert failed', err);
-        return;
+        // Postgres 23505 (unique_violation) means the setting was created
+        // by a concurrent request between our getSettingForType check and
+        // our insert. That's a benign race — the existing row is preserved
+        // (its actual is_active is kept, NOT forced to true). Just reload
+        // and continue. Any other error is a real failure — show toast.
+        if (err?.code === '23505') {
+          await this.loadData();
+          setting = this.getSettingForType(type);
+        } else {
+          this.toast.error(
+            this.translocoService.translate('emailSettings.toast.error'),
+            this.translocoService.translate('emailSettings.toast.templateSaveError')
+          );
+          console.error('openTemplateEditor upsert failed', err);
+          return;
+        }
       }
     }
 
