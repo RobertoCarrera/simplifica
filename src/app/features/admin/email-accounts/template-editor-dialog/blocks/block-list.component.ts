@@ -21,14 +21,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
-  computed,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import {
@@ -134,10 +135,34 @@ export class BlockListComponent {
    *  reference but does not mutate `id.value`. */
   readonly expandedBlockId = signal<string | null>(null);
 
-  /** Computed snapshot of the array's controls (signal-friendly view). */
-  readonly controls = computed<readonly BlockFormGroup[]>(
-    () => this.formArray().controls as readonly BlockFormGroup[]
+  /** Snapshot of the array's controls (signal-friendly view).
+   *
+   *  CRITICAL: this is a writable signal, NOT a computed, because
+   *  FormArray.push/removeAt/patchValue do NOT change the array's
+   *  reference — they mutate it in place. A `computed` reading
+   *  `formArray().controls` would only re-evaluate when the input
+   *  signal changes (never, in practice), so the @for wouldn't react
+   *  to addBlock. The subscription to valueChanges below is the
+   *  bridge from reactive-forms mutation → signal invalidation.
+   *
+   *  See commit 916d529d+1 (fix: react to FormArray mutations) and
+   *  engram observation under topic `bug/...` for context. */
+  readonly controls = signal<readonly BlockFormGroup[]>(
+    this.formArray().controls as readonly BlockFormGroup[],
   );
+
+  constructor() {
+    // Re-publish the FormArray's controls on every valueChanges emission.
+    // Without this, adding/removing/reordering blocks would not refresh
+    // the @for because signals don't observe FormArray's in-place mutation.
+    this.formArray().valueChanges
+      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .subscribe(() => {
+        this.controls.set([
+          ...(this.formArray().controls as readonly BlockFormGroup[]),
+        ]);
+      });
+  }
 
   trackById(index: number, group: BlockFormGroup): string {
     return readId(group) ?? `__pending-${index}`;
