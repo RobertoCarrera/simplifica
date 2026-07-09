@@ -23,7 +23,7 @@
       The previewHtml signal + debounced previewTemplate call STILL
       exist (validation/banner triggers, not a visible pane).
     -->
-    <section class="ted-form" data-testid="template-editor-form">
+    <section class="ted-form" data-testid="template-editor-form" [formGroup]="form">
       <label class="ted-field">
         <span class="ted-label">Asunto</span>
         <input
