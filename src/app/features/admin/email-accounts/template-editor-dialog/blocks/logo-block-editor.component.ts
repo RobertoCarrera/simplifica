@@ -37,6 +37,7 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { VarInsertTargetDirective } from './var-insert-target.directive';
 
 type LogoPropsFormGroup = FormGroup<{
   src: FormControl<string>;
@@ -49,7 +50,7 @@ type LogoPropsFormGroup = FormGroup<{
   selector: 'app-logo-block-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, VarInsertTargetDirective],
   template: `
     <div
       class="lbe-root"
@@ -92,6 +93,7 @@ type LogoPropsFormGroup = FormGroup<{
               class="lbe-input"
               formControlName="alt"
               maxlength="200"
+              appVarInsertTarget
               data-testid="logo-alt"
             />
             @if (

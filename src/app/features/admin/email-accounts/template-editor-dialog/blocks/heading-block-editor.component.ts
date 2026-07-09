@@ -34,6 +34,7 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { VarInsertTargetDirective } from './var-insert-target.directive';
 
 interface PaletteSwatch {
   hex: string;
@@ -67,7 +68,7 @@ type HeadingPropsFormGroup = FormGroup<{
   selector: 'app-heading-block-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, VarInsertTargetDirective],
   template: `
     <div class="hbe-root" [formGroup]="propsForm()" data-testid="heading-block-editor">
       <div class="hbe-row">
@@ -91,6 +92,7 @@ type HeadingPropsFormGroup = FormGroup<{
             class="hbe-input"
             formControlName="text"
             maxlength="200"
+            appVarInsertTarget
             data-testid="heading-text"
           />
           @if (propsForm().controls.text.invalid && propsForm().controls.text.touched) {

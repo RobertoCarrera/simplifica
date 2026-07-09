@@ -29,6 +29,7 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { VarInsertTargetDirective } from './var-insert-target.directive';
 
 interface PaletteSwatch {
   hex: string;
@@ -62,7 +63,7 @@ type ParagraphPropsFormGroup = FormGroup<{
   selector: 'app-paragraph-block-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, VarInsertTargetDirective],
   template: `
     <div
       class="pbe-root"
@@ -76,6 +77,7 @@ type ParagraphPropsFormGroup = FormGroup<{
           formControlName="text"
           rows="4"
           maxlength="5000"
+          appVarInsertTarget
           data-testid="paragraph-text"
         ></textarea>
         @if (
